@@ -1,0 +1,34 @@
+rules_version = '2';
+// Regole di sicurezza del database del gestionale iTeam.
+// Da incollare in Firebase → Firestore Database → Regole → Pubblica.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signed() { return request.auth != null; }
+    function owner() {
+      return signed() && request.auth.token.email == 'segreteria.iteam@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+    function hasProfile() { return signed() && exists(/databases/$(database)/documents/utenti/$(request.auth.uid)); }
+    function prof() { return get(/databases/$(database)/documents/utenti/$(request.auth.uid)).data; }
+    function active() { return owner() || (hasProfile() && prof().attivo == true); }
+    function admin() { return owner() || (active() && prof().ruolo == 'admin'); }
+    function office() { return admin() || (active() && prof().ruolo == 'ufficio'); }
+
+    // Utenti: ognuno si registra "in attesa", solo l'amministratore attiva e assegna i ruoli
+    match /utenti/{uid} {
+      allow read: if admin() || (signed() && request.auth.uid == uid);
+      allow create: if admin() || (signed() && request.auth.uid == uid
+        && request.resource.data.attivo == false && request.resource.data.ruolo == 'nuovo');
+      allow update, delete: if admin();
+    }
+    // Impostazioni: tutti gli attivi leggono, solo ufficio e amministratore modificano
+    match /config/{doc} {
+      allow read: if active();
+      allow write: if office();
+    }
+    // Tutti gli altri dati (clienti, interventi, preventivi, fatture, magazzino, listino, dico, …)
+    match /{col}/{id} {
+      allow read, write: if active() && col != 'utenti' && col != 'config';
+    }
+  }
+}
