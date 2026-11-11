@@ -5,7 +5,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signed() { return request.auth != null; }
     function owner() {
-      return signed() && request.auth.token.email == 'segreteria.iteam@gmail.com'
+      return signed() && request.auth.token.email.lower() == 'carone.t46@gmail.com'
         && request.auth.token.email_verified == true;
     }
     function hasProfile() { return signed() && exists(/databases/$(database)/documents/utenti/$(request.auth.uid)); }

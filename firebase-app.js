@@ -3,7 +3,7 @@
 // così il resto dell'app non cambia.
 (() => {
 "use strict";
-const OWNER = "segreteria.iteam@gmail.com";
+const OWNER = "carone.t46@gmail.com";
 const RUOLI = [["admin", "Amministratore"], ["ufficio", "Ufficio"], ["tecnico", "Tecnico"], ["preventivatore", "Preventivatore"]];
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const cfg = window.FIREBASE_CONFIG || {};

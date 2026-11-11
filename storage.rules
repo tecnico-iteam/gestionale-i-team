@@ -5,7 +5,7 @@ service firebase.storage {
   match /b/{bucket}/o {
     function active() {
       return request.auth != null && (
-        (request.auth.token.email == 'segreteria.iteam@gmail.com' && request.auth.token.email_verified == true)
+        (request.auth.token.email.lower() == 'carone.t46@gmail.com' && request.auth.token.email_verified == true)
         || firestore.get(/databases/(default)/documents/utenti/$(request.auth.uid)).data.attivo == true);
     }
     match /media/{file} {
