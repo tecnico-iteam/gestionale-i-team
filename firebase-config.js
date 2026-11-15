@@ -9,5 +9,5 @@ window.FIREBASE_CONFIG = {
   appId: "1:13537841574:web:a6fc04055489dd2a197f67",
   // Chiave pubblica per le notifiche (Impostazioni progetto → Cloud Messaging → Certificati push web).
   // Finché è vuota il pulsante «Attiva notifiche» non compare.
-  vapidKey: ""
+  vapidKey: "BOshS4goqoADM5dLJfQoAiEu9OwEHD4yBRsm9YxJOFOeqx0PRXFub4lnliZV6qhGX6GOBwSOKLYYkThzHB92EYw"
 };
