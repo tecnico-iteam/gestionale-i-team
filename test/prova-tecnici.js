@@ -1,0 +1,21 @@
+const {chromium} = require('playwright');
+(async () => {
+  const b = await chromium.launch(); const errs = [];
+  const p = await (await b.newContext({viewport:{width:390,height:844}})).newPage();
+  p.on('pageerror', e => errs.push(e.message));
+  await p.route('https://**', r => r.fulfill({body: '', contentType: 'text/javascript'}));
+  await p.addInitScript({path: 'test/fbmock.js'});
+  await p.addInitScript(() => { window.__nextUser = {uid:'u1', email:'carone.t46@gmail.com', emailVerified:true, displayName:'Tommaso Carone'}; });
+  await p.route('**/firebase-config.js', r => r.fulfill({body: 'window.FIREBASE_CONFIG={apiKey:"x",projectId:"p"};', contentType:'text/javascript'}));
+  await p.goto('file://' + process.cwd() + '/index.html'); await p.waitForTimeout(500);
+  await p.click('#gGoogle'); await p.waitForTimeout(800);
+  await p.click('[data-mode="ufficio"]').catch(()=>{}); await p.waitForTimeout(400);
+  await p.click('#htec'); await p.waitForTimeout(300);
+  await p.click('[data-t="new"]'); await p.waitForTimeout(300);
+  const inputs = await p.$$('.dlg input'); await inputs[0].fill('Failaci Maurizio');
+  await p.fill('.dlg [name="ruolo"], .dlg #f_ruolo', 'Tecnico').catch(()=>{});
+  const btn = await p.$('.dlg button:has-text("Salva")'); await btn.click(); await p.waitForTimeout(800);
+  console.log('config', JSON.stringify(await p.evaluate(() => window.__store.config)));
+  await p.screenshot({path:'/tmp/tec.png'});
+  console.log('errors', errs); await b.close();
+})();

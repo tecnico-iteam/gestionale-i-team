@@ -274,7 +274,7 @@ async function remove(col, id){
   try { await db.collection(col).doc(id).delete(); } catch(e){ writeErr(e); throw e; }
 }
 function writeErr(e){
-  if (e && e.code === "invalid_argument") { canWrite = false; toast("Non hai i permessi per modificare i dati. Chiedi al titolare di controllare il tuo account (👤 → Utenti).", 4500); }
+  if (e && (e.code === "invalid_argument" || e.code === "permission-denied")) { canWrite = false; toast("Non hai i permessi per modificare i dati. Chiedi al titolare di controllare il tuo account (👤 → Utenti).", 4500); }
   else if (e && e.code === "quota_exceeded") toast("Spazio dati esaurito: elimina dati vecchi.", 4500);
   else toast("Salvataggio non riuscito, riprova.");
 }
@@ -1960,8 +1960,9 @@ async function runMagImport(list){
 
 // ---------- gestione tecnici (ufficio) ----------
 async function saveTecnici(list){
-  try { await db.doc("config/impostazioni").update({tecnici: list}); }
-  catch(e) { if (e && e.code === "invalid_argument") { try { await db.doc("config/impostazioni").set({...CFG, tecnici: list}); } catch(e2) { writeErr(e2); throw e2; } } else { writeErr(e); throw e; } }
+  // set con merge: funziona anche quando le impostazioni non sono mai state salvate (prima l'update falliva con "not-found")
+  try { await db.doc("config/impostazioni").set({tecnici: list}, {merge: true}); }
+  catch(e) { writeErr(e); throw e; }
 }
 function nextTecCode(){ const n = TEC().map(t => parseInt(String(t.codice || "").replace(/\D/g, ""))).filter(x => !isNaN(x)); return "T" + String((n.length ? Math.max(...n) : 0) + 1).padStart(2, "0"); }
 function vTecnici(){

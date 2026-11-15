@@ -7,7 +7,7 @@
   const mkDoc = (col, id) => ({ id,
     async get(){ return docSnap(col, id); },
     async set(b, o){ store[col] = store[col] || {}; store[col][id] = o && o.merge ? {...store[col][id], ...b} : JSON.parse(JSON.stringify(b)); notify(); },
-    async update(b){ store[col][id] = {...store[col][id], ...b}; notify(); },
+    async update(b){ if (!(store[col] || {})[id]) throw {code: "not-found"}; store[col][id] = {...store[col][id], ...b}; notify(); },
     async delete(){ delete store[col][id]; notify(); },
     onSnapshot(fn){ const f = () => fn(docSnap(col, id)); subs.push(f); setTimeout(f); return () => {}; } });
   const fs = {
