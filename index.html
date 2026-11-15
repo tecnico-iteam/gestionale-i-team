@@ -640,7 +640,7 @@ function formImpostazioni(){
       {k:"tecinfo", type:"info", label:"Tecnici", html: () => `${TEC().length} tecnici registrati · si gestiscono dal pulsante 👷 in alto`},
       {k:"exp", type:"info", label:"Esporta dati (backup in Excel)", html: () => `<div class="row wrap" style="gap:6px"><button type="button" class="btn sm" data-exp="expcli">Clienti</button><button type="button" class="btn sm" data-exp="expint">Interventi</button><button type="button" class="btn sm" data-exp="expmag">Magazzino</button><button type="button" class="btn sm" data-exp="expfat">Fatture</button></div>`},
       {k:"postazioni", label:"Postazioni ufficio (una per riga)", type:"textarea"},
-      {k:"waUfficio", label:"WhatsApp dell'ufficio (per i messaggi dei tecnici)", type:"tel", ph:"es. +39 392 3585899", half:true},
+      {k:"waUfficio", label:"WhatsApp dell'ufficio (per i messaggi dei tecnici)", type:"tel", ph:"+39 345 0736526", half:true},
       {k:"pinUfficio", label:"PIN per entrare in Ufficio (vuoto = nessun PIN)", ph:"es. 2580", half:true},
       {k:"lavori", label:"Elenco lavori selezionabili dai tecnici (uno per riga)", type:"textarea"},
       {k:"titolare", label:"DiCo: titolare / legale rappresentante", half:true},
@@ -1203,7 +1203,7 @@ function fatturaDaRapportino(x){
 const waNum = tel => { let d = String(tel || "").replace(/[^\d+]/g, ""); if (d.startsWith("+")) return d.slice(1); if (d.startsWith("00")) return d.slice(2); if (/^3\d{8,9}$/.test(d) || /^0\d{5,10}$/.test(d)) return "39" + d; return d; };
 const waLink = (tel, txt) => `https://wa.me/${waNum(tel)}?text=${encodeURIComponent(txt)}`;
 // numero WhatsApp dell'ufficio: quello delle Impostazioni, altrimenti il primo numero dell'azienda
-const waUff = () => CFG.waUfficio || String(AZIENDA.tel).split(/\s+-\s+/)[0];
+const waUff = () => CFG.waUfficio || "+39 345 0736526";
 function waTecnico(x){
   const c = byId("clienti", x.clienteId) || {};
   const dove = [c.nome, addr(c)].filter(Boolean).join(", ");
