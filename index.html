@@ -256,6 +256,11 @@ const mapLink = c => addr(c) ? `<a href="https://www.google.com/maps/search/?api
 const minsBetween = (a, b) => { if (!a || !b) return 0; const [h1,m1] = a.split(":").map(Number), [h2,m2] = b.split(":").map(Number); let d = (h2*60+m2) - (h1*60+m1); if (d < 0) d += 1440; return d; };
 const hm = m => { m = Math.max(0, Math.round(m)); return Math.floor(m/60) + "h " + pad(m%60) + "m"; };
 const sameTec = (a, b) => (a || "").trim().toLowerCase() === (b || "").trim().toLowerCase();
+// un appuntamento può avere due tecnici: tecnico (principale) e tecnico2 (facoltativo)
+const tecDi = x => [x.tecnico, x.tecnico2].filter((t, i, a) => t && (i === 0 || !sameTec(t, a[0])));
+const haTec = (x, n) => tecDi(x).some(t => sameTec(t, n));
+const tecTxt = x => tecDi(x).join(" e ");
+const promOn = x => x.promemoria !== false; // promemoria al cliente il giorno prima, scelto dall'ufficio
 const TEC = () => (CFG.tecnici || []).filter(t => t && t.nome);
 const tecnici = () => { const l = TEC(); if (l.length) return l.map(t => t.nome); const s = new Set(); S.interventi.forEach(i => i.tecnico && s.add(i.tecnico)); return [...s].sort((a,b)=>a.localeCompare(b)); };
 const tecByCode = c => TEC().find(t => (t.codice || "").toUpperCase() === String(c || "").trim().toUpperCase());
@@ -509,18 +514,20 @@ function formImpianto(i = {}){
   });
 }
 function formIntervento(x = {}){
-  openForm({ title: x.id ? "Modifica intervento" : "Nuovo intervento", values: x,
+  openForm({ title: x.id ? "Modifica appuntamento" : "Nuovo intervento", values: x,
     fields: [
       {k:"clienteId", label:"Cliente", type:"select", search:true, options:() => cliOpts(), req:true, rerender:true, onChange: v => { v.impiantoId = ""; }},
       {k:"impiantoId", label:"Impianto", type:"select", options: v => impOpts(v.clienteId)},
       {k:"data", label:"Data", type:"date", def: today, req:true, half:true},
       {k:"ora", label:"Ora", type:"time", half:true},
       {k:"tipo", label:"Tipo", type:"select", options:TIPI_INT, def:"Manutenzione", half:true},
-      {k:"tecnico", label:"Tecnico", type:"select", options:() => [["", "— Da assegnare —"], ...tecnici()], half:true},
+      {k:"tecnico", label:"Tecnico", type:"select", options:() => [["", "— Da assegnare —"], ...tecnici()], half:true, rerender:true},
+      {k:"tecnico2", label:"Secondo tecnico (facoltativo)", type:"select", options: v => [["", "— Nessuno —"], ...tecnici().filter(t => !sameTec(t, v.tecnico))], half:true, show: v => !!v.tecnico},
       {k:"descrizione", label:"Cosa c'è da fare", type:"textarea", ph:"Richiesta del cliente, problema segnalato…"},
-      {k:"stato", label:"Stato", type:"select", options:STATI_INT, def:"Programmato"}
+      {k:"stato", label:"Stato", type:"select", options:STATI_INT, def:"Programmato"},
+      {k:"promemoria", label:"⚠️ Manda al cliente il promemoria il giorno prima (email e WhatsApp)", type:"checkbox", def:true}
     ],
-    onSave: async v => { await save("interventi", x.id, v); toast("Intervento salvato"); render(); },
+    onSave: async v => { if (!v.tecnico || sameTec(v.tecnico2, v.tecnico)) v.tecnico2 = ""; await save("interventi", x.id, v); if (x.id) closeModal(); toast("Appuntamento salvato"); render(); },
     onDelete: x.id ? async () => { await remove("interventi", x.id); closeModal(); toast("Intervento eliminato"); render(); } : null
   });
 }
@@ -1156,7 +1163,7 @@ async function buildPdf(x){
   };
   box("Cliente", [c.nome, addr(c), [c.telefono && "Tel. " + c.telefono, c.piva && "P.IVA/CF " + c.piva].filter(Boolean).join("   ")]);
   if (imp) box("Impianto", [impName(imp), [imp.matricola && "Matricola " + imp.matricola, imp.potenza, imp.gas && "Gas " + imp.gas + (imp.caricaKg ? " - " + imp.caricaKg + " kg" : "")].filter(Boolean).join("   ")]);
-  box("Intervento", [`${x.tipo || "Intervento"} - Tecnico: ${x.tecnico || r.inviatoDa || "-"}`, `Orario: ${r.inizio || "-"} - ${r.fine || "-"}${r.pausaMin ? ` (pausa ${r.pausaMin} min)` : ""}   Ore lavorate: ${hm(r.minutiLavoro || 0)}${r.viaggioMin ? `   Viaggio: ${hm(r.viaggioMin)}` : ""}`, x.descrizione ? "Richiesta: " + x.descrizione : "", "Esito: " + (r.esito || "-")]);
+  box("Intervento", [`${x.tipo || "Intervento"} - ${tecDi(x).length > 1 ? "Tecnici" : "Tecnico"}: ${tecTxt(x) || r.inviatoDa || "-"}`, `Orario: ${r.inizio || "-"} - ${r.fine || "-"}${r.pausaMin ? ` (pausa ${r.pausaMin} min)` : ""}   Ore lavorate: ${hm(r.minutiLavoro || 0)}${r.viaggioMin ? `   Viaggio: ${hm(r.viaggioMin)}` : ""}`, x.descrizione ? "Richiesta: " + x.descrizione : "", "Esito: " + (r.esito || "-")]);
   box("Lavori eseguiti", [...(r.lavori || []).map(l => "-  " + l), r.altro || ""]);
   if ((r.materiali || []).length) box("Materiali utilizzati", r.materiali.map(m => `-  ${m.qta} ${m.unita || "pz"}  ${m.descrizione}${m.codice ? "  (" + m.codice + ")" : ""}`));
   const decl = doc.splitTextToSize("Il cliente conferma l'esecuzione dei lavori sopra descritti e dichiara di aver ricevuto l'informativa sul trattamento dei dati personali ai sensi dell'art. 13 del Regolamento (UE) 2016/679, riportata in allegato.", W - 2 * M);
@@ -1167,7 +1174,7 @@ async function buildPdf(x){
   doc.setTextColor(20); doc.setFont("helvetica", "normal"); doc.setFontSize(10);
   if (r.firma) { try { doc.addImage(r.firma, "JPEG", M, y, 75, 25); } catch(e){} }
   else doc.text(r.clienteAssente ? "Cliente non presente" : "", M, y + 14);
-  doc.text(x.tecnico || r.inviatoDa || "", W / 2 + 10, y + 14);
+  doc.text(tecTxt(x) || r.inviatoDa || "", W / 2 + 10, y + 14);
   y += 27; doc.setDrawColor(180); doc.setLineWidth(0.3); doc.line(M, y, M + 75, y); doc.line(W / 2 + 10, y, W - M, y); y += 5;
   doc.setFontSize(8.5); doc.setTextColor(90);
   if (r.firma) doc.text(`${r.firmatoDa || ""}${r.firmatoIl ? " - firmato il " + fdt(r.firmatoIl) : ""}`, M, y);
@@ -1245,7 +1252,7 @@ async function saveCsv(name, header, rows){
 async function toDataURL(src){
   try { const b = await (await fetch(src)).blob(); return await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.onerror = () => r(null); fr.readAsDataURL(b); }); } catch(e) { return null; }
 }
-const msgAppuntamento = x => { const c = byId("clienti", x.clienteId) || {}; return `Buongiorno${c.nome ? " " + c.nome : ""}, le ricordiamo l'appuntamento con ${AZIENDA.nome} per ${String(x.tipo || "intervento").toLowerCase()} ${x.data === today() ? "oggi" : "il " + fdl(x.data)}${x.ora ? " alle " + x.ora : ""}${addr(c) ? " in " + addr(c) : ""}.${x.tecnico ? " Il tecnico sarà " + x.tecnico + "." : ""} Per qualsiasi necessità ci contatti al ${waUff()} (anche WhatsApp). Grazie!`; };
+const msgAppuntamento = x => { const c = byId("clienti", x.clienteId) || {}; return `Buongiorno${c.nome ? " " + c.nome : ""}, le ricordiamo l'appuntamento con ${AZIENDA.nome} per ${String(x.tipo || "intervento").toLowerCase()} ${x.data === today() ? "oggi" : "il " + fdl(x.data)}${x.ora ? " alle " + x.ora : ""}${addr(c) ? " in " + addr(c) : ""}.${tecDi(x).length > 1 ? " I tecnici saranno " + tecTxt(x) + "." : x.tecnico ? " Il tecnico sarà " + x.tecnico + "." : ""} Per qualsiasi necessità ci contatti al ${waUff()} (anche WhatsApp). Grazie!`; };
 const msgManutenzione = i => { const c = byId("clienti", i.clienteId) || {}; return `Buongiorno${c.nome ? " " + c.nome : ""}, la manutenzione periodica del suo impianto ${impName(i)} è prevista entro il ${fd(i.prossimaManutenzione)}. Una corretta manutenzione mantiene efficienza, consumi bassi e garanzia. Vuole fissare un appuntamento? ${AZIENDA.nome} - ${AZIENDA.tel.split(" - ")[0]}`; };
 
 // ---------- DiCo (DM 37/2008, allegato I) ----------
@@ -1414,7 +1421,7 @@ function icsEvento(x){
   }
   L.push("SUMMARY:" + icsEsc(`iTeam · ${x.tipo || "Intervento"} · ${c?.nome || "Cliente"}`));
   if (c && addr(c)) L.push("LOCATION:" + icsEsc(addr(c)));
-  L.push("DESCRIPTION:" + icsEsc([imp && "Impianto: " + impName(imp), x.descrizione, c?.telefono && "Tel. cliente: " + c.telefono, x.tecnico && "Tecnico: " + x.tecnico].filter(Boolean).join("\n")));
+  L.push("DESCRIPTION:" + icsEsc([imp && "Impianto: " + impName(imp), x.descrizione, c?.telefono && "Tel. cliente: " + c.telefono, tecTxt(x) && (tecDi(x).length > 1 ? "Tecnici: " : "Tecnico: ") + tecTxt(x)].filter(Boolean).join("\n")));
   L.push("BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + (conOra ? "Appuntamento tra 1 ora" : "Appuntamento domani"), "TRIGGER:" + (conOra ? "-PT1H" : "-PT6H"), "END:VALARM");
   L.push("END:VEVENT");
   return L.map(icsFold).join("\r\n");
@@ -1428,7 +1435,7 @@ function apriIcs(list, nome){
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 60000);
   toast(iOS ? "Tocca «Aggiungi tutto» per salvarlo nel calendario" : "Apri il file per aggiungerlo al calendario", 4000);
 }
-const mieiProssimi = () => S.interventi.filter(x => sameTec(x.tecnico, ui.tecnico) && x.stato === "Programmato" && x.data >= today()).sort(sortInt);
+const mieiProssimi = () => S.interventi.filter(x => haTec(x, ui.tecnico) && x.stato === "Programmato" && x.data >= today()).sort(sortInt);
 
 // ---------- notifiche sul telefono ----------
 function boxNotifiche(){
@@ -1451,7 +1458,7 @@ function detIntervento(x){
       ${c?.telefono ? `<span class="k">Telefono</span><span><a href="tel:${esc(c.telefono)}">${esc(c.telefono)}</a></span>` : ""}
       ${addr(c) ? `<span class="k">Indirizzo</span><span>${esc(addr(c))}<br>${mapLink(c)}</span>` : ""}
       ${c?.note ? `<span class="k">Note cliente</span><span>${esc(c.note)}</span>` : ""}
-      <span class="k">Tecnico</span><span>${esc(x.tecnico || "Da assegnare")}</span>
+      <span class="k">${tecDi(x).length > 1 ? "Tecnici" : "Tecnico"}</span><span>${esc(tecTxt(x) || "Da assegnare")}</span>
       ${imp ? `<span class="k">Impianto</span><span>${esc(impName(imp))}${imp.matricola ? `<br><span class="m">Matr. ${esc(imp.matricola)}</span>` : ""}${imp.gas ? `<br><span class="m">${esc(imp.gas)}${imp.caricaKg ? " · " + esc(imp.caricaKg) + " kg" : ""}</span>` : ""}</span>` : ""}
     </div>
     ${x.descrizione ? `<div class="info" style="margin-top:10px">${esc(x.descrizione)}</div>` : ""}
@@ -1462,7 +1469,7 @@ function detIntervento(x){
     ${x.verificato ? `<p class="m" style="margin-top:8px">✔ Verificato da ${esc(x.verificatoDa || "ufficio")} il ${esc(fdt(x.verificatoIl))}</p>` : ""}
     ${storico.length ? `<h3>Interventi precedenti su questo impianto</h3>${storico.map(s => `<div class="m">• ${esc(fd(s.data))} · ${esc(s.tipo)} · ${esc((s.rapportino.lavori || []).slice(0,3).join(", "))}</div>`).join("")}` : ""}
     <div class="acts">
-      ${!tec ? `<button class="btn" data-a="edit">Modifica</button><button class="btn" data-a="cli">Scheda cliente</button>${x.stato === "Programmato" ? waBtn(c?.telefono, msgAppuntamento(x), "💬 Promemoria") : ""}` : ""}
+      ${!tec ? `<button class="btn pri" data-a="edit">✏️ Modifica appuntamento</button><button class="btn" data-a="cli">Scheda cliente</button>${x.stato === "Programmato" ? waBtn(c?.telefono, msgAppuntamento(x), "💬 Promemoria") : ""}` : ""}
       <span class="sp"></span>
       ${!tec && x.rapportino && !x.verificato ? `<button class="btn ok" data-a="ver">Segna verificato</button>` : ""}
       ${!tec && x.rapportino && x.verificato ? `<button class="btn" data-a="fat">Crea fattura</button>` : ""}
@@ -1497,7 +1504,7 @@ function intCard(x, opts = {}){
   const nuovo = ui.modo === "ufficio" && x.rapportino && !x.verificato;
   return `<div class="card tap" data-int="${x.id}">
     <div class="row">${nuovo ? '<span class="new-dot"></span>' : ""}<span class="t">${x.ora ? esc(x.ora) + " · " : ""}${esc(c?.nome || "Cliente")}</span><span class="sp"></span>${statoChip(x)}</div>
-    <div class="m">${esc(x.tipo || "")}${imp ? " · " + esc(impName(imp)) : ""}${opts.data ? " · " + esc(fd(x.data)) : ""}${!opts.noTec ? " · " + esc(x.tecnico || "da assegnare") : ""}</div>
+    <div class="m">${esc(x.tipo || "")}${imp ? " · " + esc(impName(imp)) : ""}${opts.data ? " · " + esc(fd(x.data)) : ""}${!opts.noTec ? " · " + esc(tecTxt(x) || "da assegnare") : ""}</div>
     ${c && addr(c) && opts.addr ? `<div class="m">${esc(addr(c))}</div>` : ""}
     ${x.rapportino ? `<div class="m" style="margin-top:4px">⏱ ${hm(x.rapportino.minutiLavoro)} · ${esc((x.rapportino.lavori || []).length)} lavori · ${esc((x.rapportino.materiali || []).length)} materiali${(x.media || []).length ? ` · 📷 ${x.media.length}` : ""}</div>` : (x.descrizione ? `<div class="m" style="margin-top:4px">${esc(x.descrizione.slice(0, 110))}</div>` : "")}
     ${opts.actions || ""}
@@ -1513,18 +1520,19 @@ function promemoriaDomani(){
   const dom = addDays(today(), 1);
   const l = S.interventi.filter(x => x.data === dom && x.stato === "Programmato" && x.clienteId).sort(sortInt);
   if (!l.length) return "";
-  const da = l.filter(x => { const c = byId("clienti", x.clienteId) || {}, p = byId("promemoriaClienti", x.id) || {}; return !c.noPromemoria && c.telefono && p.wa !== `${x.data}|${x.ora || ""}`; }).length;
+  const da = l.filter(x => { const c = byId("clienti", x.clienteId) || {}, p = byId("promemoriaClienti", x.id) || {}; return promOn(x) && !c.noPromemoria && c.telefono && p.wa !== `${x.data}|${x.ora || ""}`; }).length;
   return `<h3>⚠️ Promemoria ai clienti per domani${da ? ` <span class="chip warn">${da} WhatsApp da mandare</span>` : ""}</h3>
   ${l.map(x => {
     const c = byId("clienti", x.clienteId) || {}, p = byId("promemoriaClienti", x.id) || {}, sig = `${x.data}|${x.ora || ""}`;
-    const mail = c.noPromemoria ? `<span class="chip">promemoria disattivati</span>` : p.mail === sig ? `<span class="chip ok">📧 email inviata</span>` : c.email ? `<span class="chip">📧 email alle 17</span>` : `<span class="chip warn">📧 manca l'email</span>`;
-    const wa = c.noPromemoria ? "" : !c.telefono ? `<span class="chip warn">manca il telefono</span>` : p.wa === sig ? `<span class="chip ok">💬 WhatsApp inviato</span>`
+    const mail = !promOn(x) ? `<span class="chip">promemoria non richiesto</span>` : c.noPromemoria ? `<span class="chip">promemoria disattivati</span>` : p.mail === sig ? `<span class="chip ok">📧 email inviata</span>` : c.email ? `<span class="chip">📧 email alle 17</span>` : `<span class="chip warn">📧 manca l'email</span>`;
+    const wa = !promOn(x) || c.noPromemoria ? "" : !c.telefono ? `<span class="chip warn">manca il telefono</span>` : p.wa === sig ? `<span class="chip ok">💬 WhatsApp inviato</span>`
       : `<a class="btn sm wa" style="min-height:40px" data-wapr="${x.id}" href="${esc(waLink(c.telefono, "⚠️ Promemoria iTeam\n" + msgAppuntamento(x)))}" target="_blank" rel="noopener">💬 Manda WhatsApp</a>`;
     return `<div class="card"><div class="row"><span class="t">${esc(x.ora || "In giornata")} · ${esc(c.nome || "Cliente")}</span><span class="sp"></span>${mail}</div>
-      <div class="m">${esc([x.tipo, x.tecnico].filter(Boolean).join(" · "))}</div><div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">${wa}</div></div>`;
+      <div class="m">${esc([x.tipo, tecTxt(x)].filter(Boolean).join(" · "))}</div><div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">${wa}<button class="btn sm" style="min-height:40px" data-intedit="${x.id}">✏️ Modifica</button></div></div>`;
   }).join("")}`;
 }
 document.addEventListener("click", e => {
+  const ed = e.target.closest("[data-intedit]"); if (ed) { const x = byId("interventi", ed.dataset.intedit); if (x) formIntervento(x); return; }
   const b = e.target.closest("[data-wapr]"); if (!b) return;
   const x = byId("interventi", b.dataset.wapr); if (!x) return;
   const p = byId("promemoriaClienti", x.id) || {};
@@ -1567,7 +1575,7 @@ function vOre(){
   if (!ui.oreM) ui.oreM = today().slice(0, 7);
   const rows = S.interventi.filter(x => x.rapportino && (x.data || "").startsWith(ui.oreM));
   const by = {};
-  rows.forEach(x => { const k = x.tecnico || x.rapportino.inviatoDa || "—"; const b = by[k] = by[k] || {n: 0, lav: 0, via: 0, mat: 0, giorni: new Set()}; b.n++; b.lav += num(x.rapportino.minutiLavoro); b.via += num(x.rapportino.viaggioMin); b.mat += (x.rapportino.materiali || []).reduce((s, m) => s + num(m.prezzo) * num(m.qta), 0); b.giorni.add(x.data); });
+  rows.forEach(x => { const ks = tecDi(x).length ? tecDi(x) : [x.rapportino.inviatoDa || "—"]; ks.forEach((k, i) => { const b = by[k] = by[k] || {n: 0, lav: 0, via: 0, mat: 0, giorni: new Set()}; b.n++; b.lav += num(x.rapportino.minutiLavoro); b.via += num(x.rapportino.viaggioMin); if (!i) b.mat += (x.rapportino.materiali || []).reduce((s, m) => s + num(m.prezzo) * num(m.qta), 0); b.giorni.add(x.data); }); });
   const ks = Object.keys(by).sort();
   const mName = new Date(ui.oreM + "-15T12:00:00").toLocaleDateString("it-IT", {month: "long", year: "numeric"});
   const tot = ks.reduce((s, k) => s + by[k].lav, 0);
@@ -1581,7 +1589,7 @@ function vOre(){
 function vInterventi(){
   if (ui.intF === "ore") return vOre();
   const t = today(); let list = S.interventi.slice();
-  if (ui.intTec) list = list.filter(x => ui.intTec === "-" ? !x.tecnico : sameTec(x.tecnico, ui.intTec));
+  if (ui.intTec) list = list.filter(x => ui.intTec === "-" ? !x.tecnico : haTec(x, ui.intTec));
   const F = {
     oggi: l => l.filter(x => x.data === t),
     prossimi: l => l.filter(x => x.data > t && x.stato !== "Annullato"),
@@ -1774,7 +1782,7 @@ function vCalendario(fixedTec){
   if (!ui.calM) ui.calM = ui.calSel.slice(0, 7);
   const tec = fixedTec || ui.calTec;
   let ints = S.interventi.filter(x => x.stato !== "Annullato");
-  if (tec) ints = ints.filter(x => tec === "-" ? !x.tecnico : sameTec(x.tecnico, tec));
+  if (tec) ints = ints.filter(x => tec === "-" ? !x.tecnico : haTec(x, tec));
   const byDay = {}; ints.forEach(x => { (byDay[x.data] = byDay[x.data] || []).push(x); });
   Object.values(byDay).forEach(l => l.sort(sortInt));
   const manDay = {}; if (!fixedTec) S.impianti.forEach(i => { if (i.prossimaManutenzione) (manDay[i.prossimaManutenzione] = manDay[i.prossimaManutenzione] || []).push(i); });
@@ -2479,7 +2487,7 @@ async function saveTecnici(list){
 function nextTecCode(){ const n = TEC().map(t => parseInt(String(t.codice || "").replace(/\D/g, ""))).filter(x => !isNaN(x)); return "T" + String((n.length ? Math.max(...n) : 0) + 1).padStart(2, "0"); }
 function vTecnici(){
   const l = TEC();
-  const open = n => S.interventi.filter(x => sameTec(x.tecnico, n) && x.stato !== "Completato" && x.stato !== "Annullato").length;
+  const open = n => S.interventi.filter(x => haTec(x, n) && x.stato !== "Completato" && x.stato !== "Annullato").length;
   const ov = modal(`<div class="row"><h2 style="flex:1">👷 Tecnici</h2><button class="btn pri sm" data-t="new">+ Nuovo tecnico</button></div>
     <p class="m" style="margin-top:0">Ogni tecnico entra nel gestionale con il suo codice. Il codice serve a riconoscerlo, non è una password: per la sicurezza contano gli inviti dal menu Condividi.</p>
     ${l.length ? l.map((t, i) => `<div class="card row" style="gap:10px"><span class="chip pri" style="font-size:14px;font-weight:700;letter-spacing:1px">${esc(t.codice || "—")}</span><div class="sp"><div class="t">${esc(t.nome)}</div><div class="m">${esc([t.telefono, open(t.nome) + " lavori aperti"].filter(Boolean).join(" · "))}</div>${t.patentino || t.patScad ? `<div class="m">F-gas ${esc(t.patentino || "")}${t.patScad ? ` · <b style="color:${t.patScad < today() ? "var(--bad)" : t.patScad <= addDays(today(), 60) ? "var(--warn)" : "var(--ok)"}">scade ${esc(fd(t.patScad))}</b>` : ""}</div>` : `<div class="m" style="color:var(--warn)">Patentino F-gas non inserito</div>`}</div><button class="btn sm" data-t="edit" data-i="${i}">Modifica</button></div>`).join("") : `<div class="empty">Nessun tecnico. Aggiungi il primo con "+ Nuovo tecnico".</div>`}
@@ -2502,7 +2510,7 @@ function formTecnico(t = {}, idx = -1){
       const code = String(v.codice).trim().toUpperCase();
       if (TEC().some((x, i) => i !== idx && (x.codice || "").toUpperCase() === code)) { toast("Codice già usato da un altro tecnico"); throw new Error("dup"); }
       const list = TEC().slice(); const item = {nome: v.nome.trim(), codice: code, telefono: v.telefono || "", ruolo: v.ruolo || "", email: String(v.email || "").trim().toLowerCase(), patentino: v.patentino || "", patScad: v.patScad || "", note: v.note || ""};
-      if (idx >= 0) { const old = list[idx]; list[idx] = item; if (old.nome !== item.nome) { for (const x of S.interventi.filter(x => sameTec(x.tecnico, old.nome))) { try { await patch("interventi", x.id, {tecnico: item.nome}); } catch(e){} } } }
+      if (idx >= 0) { const old = list[idx]; list[idx] = item; if (old.nome !== item.nome) { for (const x of S.interventi.filter(x => haTec(x, old.nome))) { try { await patch("interventi", x.id, sameTec(x.tecnico, old.nome) ? {tecnico: item.nome} : {tecnico2: item.nome}); } catch(e){} } } }
       else list.push(item);
       await saveTecnici(list); toast(`Tecnico salvato · codice ${code}`); setTimeout(vTecnici, 300);
     },
@@ -2561,7 +2569,7 @@ async function vBiglietto(){
 function vTecnico(){
   const t = today(), me = ui.tecnico;
   try { window.ITEAM && window.ITEAM.notifiche && window.ITEAM.notifiche.collega(me); } catch(e){}
-  const mine = S.interventi.filter(x => sameTec(x.tecnico, me) && x.stato !== "Annullato");
+  const mine = S.interventi.filter(x => haTec(x, me) && x.stato !== "Annullato");
   const free = S.interventi.filter(x => !x.tecnico && x.stato === "Programmato" && x.data >= addDays(t, -7)).sort(sortInt);
   const F = {
     oggi: mine.filter(x => x.data === t || (x.data < t && x.stato !== "Completato")).sort(sortInt),
@@ -2812,9 +2820,9 @@ document.addEventListener("click", async e => {
   if (a === "lnew") formListinoItem();
   if (a === "magimp") formImportMag();
   if (a === "magsc") formScontoMassivo();
-  if (a === "orecsv") { const rows = S.interventi.filter(x => x.rapportino && (x.data || "").startsWith(ui.oreM)).sort(sortInt); saveCsv(`Ore tecnici ${ui.oreM}.csv`, ["Data", "Tecnico", "Cliente", "Tipo", "Inizio", "Fine", "Pausa min", "Ore lavorate", "Viaggio min", "Lavori", "Materiali", "Esito"], rows.map(x => { const r = x.rapportino; return [x.data, x.tecnico || r.inviatoDa || "", cliName(x.clienteId), x.tipo || "", r.inizio, r.fine, r.pausaMin || 0, String(r2(num(r.minutiLavoro) / 60)).replace(".", ","), r.viaggioMin || 0, (r.lavori || []).join(", "), (r.materiali || []).map(m => m.qta + " " + m.descrizione).join(", "), r.esito || ""]; })); }
+  if (a === "orecsv") { const rows = S.interventi.filter(x => x.rapportino && (x.data || "").startsWith(ui.oreM)).sort(sortInt); saveCsv(`Ore tecnici ${ui.oreM}.csv`, ["Data", "Tecnico", "Cliente", "Tipo", "Inizio", "Fine", "Pausa min", "Ore lavorate", "Viaggio min", "Lavori", "Materiali", "Esito"], rows.map(x => { const r = x.rapportino; return [x.data, tecTxt(x) || r.inviatoDa || "", cliName(x.clienteId), x.tipo || "", r.inizio, r.fine, r.pausaMin || 0, String(r2(num(r.minutiLavoro) / 60)).replace(".", ","), r.viaggioMin || 0, (r.lavori || []).join(", "), (r.materiali || []).map(m => m.qta + " " + m.descrizione).join(", "), r.esito || ""]; })); }
   if (a === "expcli") saveCsv("Clienti iTeam.csv", ["Nome", "Tipo", "Telefono", "Email", "Indirizzo", "CAP", "Città", "P.IVA/CF", "Referente", "Note"], S.clienti.map(c => [c.nome, c.tipo, c.telefono, c.email, c.indirizzo, c.cap, c.citta, c.piva, c.referente, c.note]));
-  if (a === "expint") saveCsv("Interventi iTeam.csv", ["Data", "Ora", "Cliente", "Tipo", "Tecnico", "Stato", "Descrizione", "Ore lavorate", "Esito"], S.interventi.slice().sort(sortInt).map(x => [x.data, x.ora, cliName(x.clienteId), x.tipo, x.tecnico, x.stato, x.descrizione, x.rapportino ? String(r2(num(x.rapportino.minutiLavoro) / 60)).replace(".", ",") : "", x.rapportino?.esito || ""]));
+  if (a === "expint") saveCsv("Interventi iTeam.csv", ["Data", "Ora", "Cliente", "Tipo", "Tecnico", "Stato", "Descrizione", "Ore lavorate", "Esito"], S.interventi.slice().sort(sortInt).map(x => [x.data, x.ora, cliName(x.clienteId), x.tipo, tecTxt(x), x.stato, x.descrizione, x.rapportino ? String(r2(num(x.rapportino.minutiLavoro) / 60)).replace(".", ",") : "", x.rapportino?.esito || ""]));
   if (a === "expmag") saveCsv("Magazzino iTeam.csv", ["Codice", "Descrizione", "Fornitore", "Categoria", "Serie", "Quantità", "Unità", "Scorta minima", "Prezzo listino", "Sconto %", "Prezzo cliente", "Costo"], S.magazzino.map(m => [m.codice, m.descrizione, m.fornitore, m.categoria, m.serie, m.quantita, m.unita, m.scortaMinima, m.prezzoListino, m.sconto, m.prezzoVendita, m.prezzoAcquisto].map(v => typeof v === "number" ? String(v).replace(".", ",") : v)));
   if (a === "expfat") saveCsv("Fatture iTeam.csv", ["Numero", "Data", "Cliente", "Descrizione", "Imponibile", "IVA %", "Totale", "Scadenza", "Pagata", "Data pagamento"], S.fatture.map(f => [f.numero, f.data, cliName(f.clienteId), f.descrizione, String(num(f.imponibile)).replace(".", ","), f.iva, String(r2(fatTot(f))).replace(".", ","), f.scadenza, f.pagata ? "Sì" : "No", f.dataPagamento]));
   if (a === "newdico") formDico();

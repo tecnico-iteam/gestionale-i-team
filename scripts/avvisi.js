@@ -31,9 +31,13 @@ async function esegui({db, messaging, now = new Date(), log = console.log}){
   ]);
   const tokens = {};
   dispSnap.docs.forEach(d => { const t = norm(d.data().tecnico); if (t) (tokens[t] = tokens[t] || []).push(d.id); });
-  const ints = intSnap.docs.map(d => ({id: d.id, ...d.data()})).filter(x => x.stato === "Programmato" && norm(x.tecnico));
+  // un appuntamento può avere due tecnici: ognuno riceve i suoi avvisi (stato in avvisi/{id} e avvisi/{id}-2)
+  const ints = [];
+  intSnap.docs.forEach(d => { const x = {id: d.id, ...d.data()}; if (x.stato !== "Programmato") return;
+    if (norm(x.tecnico)) ints.push({...x, _doc: x.id, _tec: norm(x.tecnico)});
+    if (norm(x.tecnico2) && norm(x.tecnico2) !== norm(x.tecnico)) ints.push({...x, _doc: x.id + "-2", _tec: norm(x.tecnico2)}); });
   const stati = {};
-  if (ints.length) (await db.getAll(...ints.map(x => db.collection("avvisi").doc(x.id)))).forEach(s => { stati[s.id] = s.exists ? s.data() : {}; });
+  if (ints.length) (await db.getAll(...ints.map(x => db.collection("avvisi").doc(x._doc)))).forEach(s => { stati[s.id] = s.exists ? s.data() : {}; });
   const prima = !cfgSnap.exists; // primo avvio: segna tutto come già avvisato, senza inviare nulla
   const clienti = {};
   const cids = [...new Set(ints.map(x => x.clienteId).filter(Boolean))];
@@ -41,12 +45,12 @@ async function esegui({db, messaging, now = new Date(), log = console.log}){
 
   const invii = [], scritture = [];
   for (const x of ints) {
-    const tec = norm(x.tecnico), sig = [tec, x.data, x.ora || ""].join("|"), st = stati[x.id] || {};
+    const tec = x._tec, sig = [tec, x.data, x.ora || ""].join("|"), st = stati[x._doc] || {};
     const inizio = minuti(x.ora), mancano = x.data === oggi && inizio !== null ? inizio - oraMin : null;
     const passato = x.data === oggi && mancano !== null && mancano < 0;
     const nuovo = st.sig !== sig, promemoria = mancano !== null && mancano >= 0 && mancano <= PRIMA_MIN && st.promemoria !== sig;
     if (!nuovo && !promemoria) continue;
-    scritture.push([x.id, {sig, tecnico: tec, ...(promemoria || passato || nuovo && mancano !== null && mancano <= PRIMA_MIN ? {promemoria: sig} : {}), aggiornato: now.toISOString()}]);
+    scritture.push([x._doc, {sig, tecnico: tec, ...(promemoria || passato || nuovo && mancano !== null && mancano <= PRIMA_MIN ? {promemoria: sig} : {}), aggiornato: now.toISOString()}]);
     if (prima || passato || !tokens[tec]) continue;
     const c = clienti[x.clienteId] || {}, dove = [c.indirizzo, c.citta].filter(Boolean).join(", ");
     const corpo = [quando(x, oggi) + " · " + (c.nome || "Cliente"), [x.tipo, dove].filter(Boolean).join(" · ")].filter(Boolean).join("\n");

@@ -24,12 +24,13 @@ function componi(x, c){
   const quando = `domani, ${giornoLungo(x.data)}${x.ora ? ", alle " + x.ora : ""}`;
   const dove = [c.indirizzo, c.citta].filter(Boolean).join(", ");
   const lavoro = String(x.tipo || "intervento").toLowerCase();
+  const tec = [x.tecnico, x.tecnico2].filter((t, i, a) => t && (i === 0 || String(t).trim().toLowerCase() !== String(a[0] || "").trim().toLowerCase()));
   const oggetto = `⚠️ Promemoria: appuntamento ${UFFICIO.nome} domani${x.ora ? " alle " + x.ora : ""}`;
   const righe = [
     `Gentile ${c.nome || "cliente"},`,
     "",
     `le ricordiamo l'appuntamento con ${UFFICIO.nome} per ${lavoro} ${quando}${dove ? ", in " + dove : ""}.`,
-    x.tecnico ? `Il tecnico sarà ${x.tecnico}.` : "",
+    tec.length > 1 ? `I tecnici saranno ${tec.join(" e ")}.` : tec.length ? `Il tecnico sarà ${tec[0]}.` : "",
     "",
     `Se ha bisogno di spostarlo o annullarlo ci contatti al ${UFFICIO.tel} (anche WhatsApp) o rispondendo a questa email.`,
     "",
@@ -40,7 +41,7 @@ function componi(x, c){
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1f2933;max-width:560px">
 <p style="background:#fff4d6;border-radius:8px;padding:10px 14px;font-weight:bold;margin:0 0 16px">⚠️ Promemoria appuntamento: ${esc(quando)}</p>
 <p>Gentile ${esc(c.nome || "cliente")},</p>
-<p>le ricordiamo l'appuntamento con <b>${esc(UFFICIO.nome)}</b> per <b>${esc(lavoro)}</b> <b>${esc(quando)}</b>${dove ? `, in ${esc(dove)}` : ""}.${x.tecnico ? `<br>Il tecnico sarà <b>${esc(x.tecnico)}</b>.` : ""}</p>
+<p>le ricordiamo l'appuntamento con <b>${esc(UFFICIO.nome)}</b> per <b>${esc(lavoro)}</b> <b>${esc(quando)}</b>${dove ? `, in ${esc(dove)}` : ""}.${tec.length ? `<br>${tec.length > 1 ? "I tecnici saranno" : "Il tecnico sarà"} <b>${tec.map(esc).join("</b> e <b>")}</b>.` : ""}</p>
 <p>Se ha bisogno di spostarlo o annullarlo ci contatti al <a href="tel:${UFFICIO.tel.replace(/\s/g, "")}">${esc(UFFICIO.tel)}</a> (anche WhatsApp) o rispondendo a questa email.</p>
 <p>Grazie e a domani,<br><b>${esc(UFFICIO.nome)}</b> – Climatizzazione e fotovoltaico<br><span style="color:#5a6672;font-size:13px">${esc(UFFICIO.indirizzo)} · ${esc(UFFICIO.tel)} · ${esc(UFFICIO.email)}</span></p>
 </div>`;
@@ -52,7 +53,7 @@ async function esegui({db, invia, now = new Date(), log = console.log}){
   if (min < ORA_INVIO) { log("Promemoria clienti: si inviano dalle 17:00"); return {inviate: 0, saltate: 0}; }
   const domani = addGiorni(oggi, 1);
   const snap = await db.collection("interventi").where("data", "==", domani).get();
-  const ints = snap.docs.map(d => ({id: d.id, ...d.data()})).filter(x => x.stato === "Programmato" && x.clienteId);
+  const ints = snap.docs.map(d => ({id: d.id, ...d.data()})).filter(x => x.stato === "Programmato" && x.clienteId && x.promemoria !== false); // promemoria: scelta dell'ufficio sull'appuntamento
   if (!ints.length) { log(`Promemoria clienti: nessun appuntamento il ${domani}`); return {inviate: 0, saltate: 0}; }
   const stati = {}, clienti = {};
   (await db.getAll(...ints.map(x => db.collection("promemoriaClienti").doc(x.id)))).forEach(s => { stati[s.id] = s.exists ? s.data() : {}; });
