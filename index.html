@@ -621,6 +621,7 @@ function formArticolo(a = {}){
     intro: !a.id && a.fotoUrl ? `<div style="margin:-4px 0 12px"><img src="${esc(a.fotoUrl)}" alt="Foto dell'articolo" style="width:100%;max-height:240px;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#fff"><p class="m" style="margin:4px 0 0">Foto salvata: ora scrivi descrizione, codice, quantità e prezzi.</p></div>` : a.id ? `<div class="row" style="gap:12px;margin:-4px 0 12px">${magImg(a) ? `<img src="${esc(magImg(a))}" data-zoom="${esc(magImg(a))}" data-zl="${esc(a.descrizione)}" style="width:120px;height:90px;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:zoom-in">` : `<img src="${iconFor(a.descrizione)}" style="width:120px;height:90px;border-radius:10px">`}<div><div class="t">${num(a.prezzoVendita) ? "Cliente " + eur(a.prezzoVendita) : ""}</div><div class="m">${num(a.prezzoListino) ? "Listino " + eur(a.prezzoListino) : ""}</div><button type="button" class="btn sm" style="margin-top:6px" data-magfoto="${a.id}">📷 ${magImg(a) ? "Cambia foto" : "Aggiungi foto"}</button></div></div>` : "",
     fields: [
       {k:"descrizione", label:"Descrizione", req:true},
+      {k:"ean", label:"Codice a barre", half:true, ph:"si compila leggendo il codice"},
       {k:"codice", label:"Codice", half:true}, {k:"categoria", label:"Categoria", type:"select", options:CAT_MAG, def:"Ricambi", half:true},
       {k:"quantita", label:"Quantità", type:"number", def:0, half:true}, {k:"unita", label:"Unità", type:"select", options:["pz","kg","m","conf","l"], def:"pz", half:true},
       {k:"scortaMinima", label:"Scorta minima", type:"number", def:0, half:true}, {k:"ubicazione", label:"Dove si trova", ph:"Sede, furgone…", half:true},
@@ -807,34 +808,44 @@ async function fotoDoc(cid){
 const isDesktop = () => !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !(navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
 const mioUid = () => { try { return (window.firebase && firebase.auth().currentUser && firebase.auth().currentUser.uid) || ""; } catch(e) { return ""; } };
 const scanMie = new Set();
-function chiediFotoTelefono(etichetta){
+function chiediFotoTelefono(etichetta, tipo = "foto"){
+  const bc = tipo === "barcode";
   return new Promise(async resolve => {
     if (!db) { toast("Dati non raggiungibili"); return resolve(null); }
     const token = Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
     scanMie.add(token);
     const ref = db.collection("scansioni").doc(token);
-    try { await ref.set({stato: "attesa", uid: mioUid(), etichetta: etichetta || "Foto", da: chiSono(), creato: new Date().toISOString()}); }
+    try { await ref.set({stato: "attesa", tipo, uid: mioUid(), etichetta: etichetta || "Foto", da: chiSono(), creato: new Date().toISOString()}); }
     catch(e) { writeErr(e); return resolve(null); }
     try { await loadQR(); } catch(e){}
     const link = location.origin + location.pathname + "#scan-" + token;
     const ov = document.createElement("div"); ov.className = "ov"; ov.style.zIndex = 80;
     ov.innerHTML = `<div class="dlg" style="text-align:center;max-width:460px">
-      <h2>📱 Scatta la foto con il telefono</h2>
+      <h2>${bc ? "▦ Leggi il codice a barre" : "📱 Scatta la foto con il telefono"}</h2>
       <p style="margin:0 0 6px"><b>${esc(etichetta || "")}</b></p>
-      <p class="m" style="margin-top:0">Apri il gestionale sul telefono: comparirà da solo il pulsante per scattare la foto.<br>Oppure inquadra questo QR con la fotocamera del telefono.</p>
+      ${bc ? `<label class="lb" for="bcman" style="display:block;text-align:left">Scrivi il codice, oppure usa il lettore USB</label>
+      <div class="row" style="gap:8px;margin-bottom:10px"><input id="bcman" inputmode="text" autocomplete="off" style="flex:1"><button class="btn pri" data-x="man">Usa</button></div>
+      <p class="m" style="margin-top:0">Oppure apri il gestionale sul telefono (o inquadra il QR) e leggi il codice con la fotocamera.</p>`
+      : `<p class="m" style="margin-top:0">Apri il gestionale sul telefono: comparirà da solo il pulsante per scattare la foto.<br>Oppure inquadra questo QR con la fotocamera del telefono.</p>`}
       ${window.iteamQRsvg ? `<div style="max-width:220px;margin:0 auto">${window.iteamQRsvg(link, "M")}</div>` : ""}
-      <p class="m" id="scst" style="font-weight:600;margin-top:10px">⏳ In attesa della foto…</p>
+      <p class="m" id="scst" style="font-weight:600;margin-top:10px">⏳ ${bc ? "In attesa del codice…" : "In attesa della foto…"}</p>
       <div class="acts"><span class="sp"></span><button class="btn" data-x="no">Annulla</button></div></div>`;
     document.body.appendChild(ov);
+    if (bc) setTimeout(() => ov.querySelector("#bcman")?.focus(), 50);
     let fatto = false;
     const stop = ref.onSnapshot(s => {
       const d = s.exists ? s.data() : null; if (!d || fatto) return;
       if (d.stato === "scatto") { const st = ov.querySelector("#scst"); if (st) st.textContent = "📷 Il telefono sta caricando la foto…"; }
+      if (d.stato === "fatto" && d.codice) { fatto = true; stop(); ov.remove(); toast("✅ Codice arrivato dal telefono"); resolve({codice: d.codice}); ref.delete().catch(() => {}); return; }
       if (d.stato === "fatto" && d.url) { fatto = true; stop(); ov.remove(); toast("✅ Foto arrivata dal telefono"); resolve({id: d.assetId, url: d.url}); ref.delete().catch(() => {}); }
     }, () => {});
+    const chiudi = val => { fatto = true; try { stop(); } catch(err){} ov.remove(); ref.set({stato: "annullata"}, {merge: true}).catch(() => {}); resolve(val); };
+    const manuale = () => { const v = (ov.querySelector("#bcman")?.value || "").trim(); if (v) chiudi({codice: v}); };
     ov.addEventListener("click", e => {
-      if (e.target.dataset.x === "no") { fatto = true; try { stop(); } catch(err){} ov.remove(); ref.set({stato: "annullata"}, {merge: true}).catch(() => {}); resolve(null); }
+      if (e.target.dataset.x === "no") chiudi(null);
+      if (e.target.dataset.x === "man") manuale();
     });
+    ov.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "bcman") { e.preventDefault(); manuale(); } });
   });
 }
 // Sul telefono: richieste in attesa (dal QR o per lo stesso account)
@@ -845,15 +856,24 @@ function mostraRichiestaFoto(token, d){
   scanAperta = token;
   const ov = document.createElement("div"); ov.className = "ov"; ov.style.zIndex = 90;
   ov.innerHTML = `<div class="dlg" style="text-align:center">
-    <h2>💻 Il PC ti chiede una foto</h2>
+    <h2>💻 ${d && d.tipo === "barcode" ? "Il PC ti chiede un codice a barre" : "Il PC ti chiede una foto"}</h2>
     <p><b>${esc((d && d.etichetta) || "Foto")}</b>${d && d.da ? `<br><span class="m">richiesta da ${esc(d.da)}</span>` : ""}</p>
-    <button class="btn pri big" data-x="scatta" style="width:100%">📷 Apri la fotocamera</button>
+    ${d && d.tipo === "barcode" ? `<button class="btn pri big" data-x="leggi" style="width:100%">▦ Leggi il codice a barre</button>` : `<button class="btn pri big" data-x="scatta" style="width:100%">📷 Apri la fotocamera</button>`}
     <div class="acts"><span class="sp"></span><button class="btn" data-x="no">Non ora</button></div></div>`;
   document.body.appendChild(ov);
   const ref = db.collection("scansioni").doc(token);
   ov.addEventListener("click", e => {
     const a = e.target.closest("[data-x]")?.dataset.x; if (!a) return;
     if (a === "no") { ov.remove(); return; }
+    if (a === "leggi") {
+      ov.remove();
+      leggiCodice("Codice per il PC").then(async code => {
+        if (!code) return;
+        try { await ref.set({stato: "fatto", codice: code}, {merge: true}); toast("✅ Codice inviato al PC: " + code, 3000); } catch(err) { toast("Codice non inviato, riprova." + errDet(err), 5000); }
+        if (location.hash.startsWith("#scan-")) history.replaceState(null, "", location.pathname);
+      });
+      return;
+    }
     if (a === "scatta") {
       camIn.value = "";
       camIn.onchange = async () => {
@@ -1711,7 +1731,7 @@ function vMagazzino(){
   return `<h2>Magazzino</h2>
   <div class="tiles" style="margin-bottom:10px"><div class="tile"><div class="n">${S.magazzino.length}</div><div class="l">Articoli</div></div><div class="tile" data-a="low"><div class="n" style="color:${nLow ? "var(--bad)" : "inherit"}">${nLow}</div><div class="l">Sotto scorta</div></div><div class="tile"><div class="n money" style="font-size:19px">${eur(val)}</div><div class="l">Valore a costo</div></div></div>
   <div class="row wrap" style="gap:8px;margin-bottom:10px"><button class="btn pri" data-a="magimp">⬆ Importa cataloghi</button><button class="btn" data-a="magsc">% Sconto</button><select class="search" style="margin:0;flex:1;min-width:150px" data-magforn><option value="">Tutti i fornitori</option>${[...new Set(S.magazzino.map(m => m.fornitore).filter(Boolean))].sort().map(f => `<option ${ui.magForn === f ? "selected" : ""}>${esc(f)}</option>`).join("")}</select></div>
-  <button class="btn pri big" data-a="artfoto" style="width:100%;margin-bottom:10px">${isDesktop() ? "📱 Fotografa con il telefono e aggiungi articolo" : "📷 Fotografa e aggiungi articolo"}</button>
+  <div class="row" style="gap:8px;margin-bottom:10px"><button class="btn pri big" data-a="artscan" style="flex:1">▦ Scansiona codice a barre</button><button class="btn big" data-a="artfoto" style="flex:1">${isDesktop() ? "📱 Foto dal telefono" : "📷 Fotografa articolo"}</button></div>
   <input class="search" placeholder="Cerca articolo, codice, serie, fornitore…" value="${esc(ui.q)}" data-q>
   <div class="seg"><button class="${!ui.magCat && !ui.magLow ? "on" : ""}" data-cat="">Tutti</button>${CAT_MAG.map(c => `<button class="${ui.magCat === c ? "on" : ""}" data-cat="${esc(c)}">${esc(c)}</button>`).join("")}<button class="${ui.magLow ? "on" : ""}" data-a="low">Sotto scorta</button></div>
   ${l.length > 120 ? `<div class="m" style="margin:0 2px 8px">${l.length} articoli: ne mostro 120, usa ricerca o filtri.</div>` : ""}
@@ -2200,6 +2220,92 @@ const rankSearch = (list, q, fields) => {
     if (magImg(it) || imgOf(it)) sc += 1; return [sc, it]; }).sort((a, b) => b[0] - a[0] || (a[1].descrizione || "").localeCompare(b[1].descrizione || "")).map(x => x[1]);
 };
 const magImg = m => m ? (m.foto ? (m.fotoUrl || "/_blob/" + m.foto) : (m.img || IMGMAP[m.codice] || "")) : "";
+// ---------- codice a barre ----------
+// Telefono: fotocamera dal vivo. Lettore integrato del browser (BarcodeDetector) se c'è, altrimenti libreria ZXing (caricata da internet).
+// PC: il codice si scrive, arriva da un lettore USB, oppure lo legge il telefono (stessa richiesta delle foto, tipo "barcode").
+let zxP = null;
+function loadZX(){
+  if (window.ZXing && window.ZXing.BrowserMultiFormatReader) return Promise.resolve();
+  if (!zxP) zxP = new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = "https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"; sc.onload = () => res(); sc.onerror = () => { zxP = null; rej(new Error("load")); }; document.head.appendChild(sc); });
+  return zxP;
+}
+const normCod = c => String(c || "").trim().toUpperCase().replace(/\s+/g, "");
+function leggiCodice(titolo){
+  return new Promise(resolve => {
+    const ov = document.createElement("div"); ov.className = "ov"; ov.style.zIndex = 95;
+    ov.innerHTML = `<div class="dlg" style="text-align:center">
+      <h2>▦ ${esc(titolo || "Leggi il codice a barre")}</h2>
+      <div style="position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3">
+        <video id="bcvid" playsinline muted autoplay style="width:100%;height:100%;object-fit:cover;display:block"></video>
+        <div aria-hidden="true" style="position:absolute;left:8%;right:8%;top:50%;height:2px;background:#E8382F;box-shadow:0 0 8px #E8382F"></div>
+      </div>
+      <p class="m" id="bcst" style="margin:8px 0">Avvio la fotocamera…</p>
+      <label class="lb" for="bcin" style="display:block;text-align:left">Non lo legge? Scrivi il codice</label>
+      <div class="row" style="gap:8px"><input id="bcin" autocomplete="off" style="flex:1"><button class="btn pri" data-x="ok">Usa</button></div>
+      <div class="acts"><span class="sp"></span><button class="btn" data-x="no">Annulla</button></div></div>`;
+    document.body.appendChild(ov);
+    const vid = ov.querySelector("#bcvid"), st = ov.querySelector("#bcst");
+    let finito = false, stream = null, timer = null, reader = null;
+    const fine = code => {
+      if (finito) return; finito = true;
+      try { if (timer) clearTimeout(timer); } catch(e){}
+      try { if (reader) reader.reset(); } catch(e){}
+      try { (stream || vid.srcObject)?.getTracks().forEach(t => t.stop()); } catch(e){}
+      ov.remove();
+      if (code && navigator.vibrate) { try { navigator.vibrate(80); } catch(e){} }
+      resolve(code ? String(code).trim() : null);
+    };
+    ov.addEventListener("click", e => { const a = e.target.dataset.x; if (a === "no") fine(null); if (a === "ok") { const v = ov.querySelector("#bcin").value.trim(); if (v) fine(v); } });
+    ov.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "bcin") { e.preventDefault(); const v = e.target.value.trim(); if (v) fine(v); } });
+    const pronto = () => { st.textContent = "Inquadra il codice a barre sulla linea rossa"; };
+    (async () => {
+      try {
+        if ("BarcodeDetector" in window) {
+          const det = new window.BarcodeDetector();
+          stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: "environment"}, audio: false});
+          if (finito) { stream.getTracks().forEach(t => t.stop()); return; }
+          vid.srcObject = stream; await vid.play().catch(() => {}); pronto();
+          const giro = async () => {
+            if (finito) return;
+            try { const r = await det.detect(vid); if (r && r.length && r[0].rawValue) return fine(r[0].rawValue); } catch(e){}
+            timer = setTimeout(giro, 180);
+          };
+          giro();
+        } else {
+          await loadZX(); if (finito) return;
+          reader = new window.ZXing.BrowserMultiFormatReader();
+          pronto();
+          reader.decodeFromConstraints({video: {facingMode: "environment"}}, vid, (res) => { if (res && !finito) fine(res.getText ? res.getText() : res.text); });
+        }
+      } catch(e) {
+        st.textContent = "Non riesco ad aprire la fotocamera: scrivi il codice qui sotto (o controlla il permesso della fotocamera)." + errDet(e);
+      }
+    })();
+  });
+}
+function trovaCodice(code){
+  const n = normCod(code); if (!n) return null;
+  const a = S.magazzino.find(x => normCod(x.ean) === n || normCod(x.codice) === n);
+  if (a) return {tipo: "mag", a};
+  for (const ch of S.listino) for (const it of (ch.items || [])) if (normCod(it.codice) === n) return {tipo: "lis", it};
+  return null;
+}
+async function scansionaArticolo(){
+  let code = null;
+  if (isDesktop()) { const r = await chiediFotoTelefono("Codice a barre per il magazzino", "barcode"); code = r && r.codice; }
+  else code = await leggiCodice("Scansiona l'articolo");
+  if (!code) return;
+  const r = trovaCodice(code);
+  if (r && r.tipo === "mag") { toast("✅ Articolo trovato in magazzino: " + (r.a.descrizione || r.a.codice || ""), 3500); formArticolo(r.a); return; }
+  if (r && r.tipo === "lis") {
+    toast("Trovato nel listino: controlla i dati, metti la quantità e salva", 4500);
+    formArticolo({ean: /^\d{8,14}$/.test(code) ? code : "", codice: r.it.codice || code, descrizione: [r.it.descrizione, r.it.potenza].filter(Boolean).join(" "), fornitore: r.it.marca || "", serie: r.it.categoria || "", prezzoListino: r.it.prezzo || ""});
+    return;
+  }
+  toast("Articolo nuovo: compila i dati e salva. La prossima volta lo riconosco da solo.", 5000);
+  formArticolo(/^\d{8,14}$/.test(code) ? {ean: code} : {codice: code, ean: code});
+}
+
 // Nuovo articolo partendo da una foto: fotocamera sul telefono, richiesta al telefono dal PC
 async function nuovoArtFoto(){
   if (!assetsNS) { toast("Il caricamento foto non è attivo per il tuo account", 4000); return; }
@@ -2673,6 +2779,7 @@ document.addEventListener("click", async e => {
   if (a === "newfat") formFattura();
   if (a === "newart") formArticolo();
   if (a === "artfoto") nuovoArtFoto();
+  if (a === "artscan") scansionaArticolo();
   if (a === "low") { ui.magLow = !ui.magLow; ui.magCat = ""; render(); }
   if (a === "set") formImpostazioni();
   if (a === "tecnew") formTecNew();
