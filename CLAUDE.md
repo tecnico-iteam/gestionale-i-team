@@ -23,6 +23,9 @@ in italiano semplice, senza gergo tecnico.
   esegue `scripts/avvisi.js` ogni 10 min (segreto GitHub `FIREBASE_SERVICE_ACCOUNT`): "nuovo/spostato" e promemoria
   ~1 ora prima; lo stato inviato sta in `avvisi/{idIntervento}`, `config/avvisi` segna il primo avvio. Il `push` lo mostra `sw.js`.
   Il tecnico può anche salvare gli appuntamenti nel calendario del telefono (.ics con avviso 1 ora prima).
+- Promemoria ai clienti il giorno prima: `scripts/promemoria-clienti.js` (stesso workflow) manda dalle 17 un'email da
+  ufficio@iteamservice.it (SMTP Hostinger, segreto GitHub `SMTP_PASSWORD`); il WhatsApp lo manda l'ufficio con un tocco dalla
+  pagina Oggi (gratis, link wa.me). Stato in `promemoriaClienti/{idIntervento}` = {mail, wa} (firma data|ora); `clienti.noPromemoria` li disattiva.
 - Account: l'amministratore li crea da 👤 (nome utente → `nome@utenti.iteamservice.it`). Ruoli: admin, ufficio,
   ufficio_tecnico, tecnico, preventivatore; ogni ruolo vede solo le sue aree (`modiConsentiti()` in index.html).
   Con l'account si entra come se stessi: `utenti.postazione` / `utenti.tecnico` (collegati da 👤 → Utenti, se vuoti

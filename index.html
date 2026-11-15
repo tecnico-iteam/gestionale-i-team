@@ -189,7 +189,7 @@ const AZIENDA = {nome: "iTeam", legale: "Via dei Mille 2, 10024 Moncalieri (TO)"
 // Biglietto da visita virtuale (pulsante QR in alto a sinistra): riferimenti dell'ufficio sempre presenti
 const BIGLIETTO = {email: "ufficio@iteamservice.it", servizi: "Impianti di climatizzazione - Impianti fotovoltaici", via: "Via dei Mille 2", citta: "Moncalieri", prov: "TO", cap: "10024"};
 const aziendaTxt = () => `${AZIENDA.ragione}\n${AZIENDA.attivita}\nSede legale: ${AZIENDA.legale}\nSede operativa: ${AZIENDA.operativa}\nTel. ${AZIENDA.tel}\nEmail: ${AZIENDA.email} - PEC: ${AZIENDA.pec}\nP.IVA ${AZIENDA.piva} - SDI ${AZIENDA.sdi}`;
-const COLS = ["clienti","impianti","interventi","preventivi","fatture","magazzino","listino","dico","commesse"];
+const COLS = ["clienti","impianti","interventi","preventivi","fatture","magazzino","listino","dico","commesse","promemoriaClienti"];
 let LISTINO = [];
 const DEFAULT_LAVORI = [
   "Pulizia filtri unità interna","Sanificazione batteria / evaporatore","Pulizia unità esterna / condensatore",
@@ -480,7 +480,8 @@ function formCliente(c = {}){
       {k:"indirizzo", label:"Indirizzo"},
       {k:"citta", label:"Città", half:true}, {k:"cap", label:"CAP", half:true},
       {k:"piva", label:"P.IVA / Codice fiscale", half:true}, {k:"referente", label:"Referente", half:true},
-      {k:"note", label:"Note (accesso, citofono, orari…)", type:"textarea"}
+      {k:"note", label:"Note (accesso, citofono, orari…)", type:"textarea"},
+      {k:"noPromemoria", label:"Non mandare a questo cliente i promemoria del giorno prima (email e WhatsApp)", type:"checkbox"}
     ],
     onSave: async v => { if (!c.id) v.creatoDa = ui.modo === "comm" ? ui.comm : ui.modo === "tecnico" ? ui.tecnico : (ui.uff || "Ufficio"); const id = await save("clienti", c.id, v); if (!c.id && ui.modo !== "ufficio") { toast("Cliente creato"); setTimeout(() => detTecCliente(id), 300); return; } if (!c.id) { ui.cliente = id; ui.tab = "clienti"; location.hash = "clienti"; } toast("Cliente salvato"); render(); },
     onDelete: c.id && ui.modo !== "tecnico" ? async () => { await remove("clienti", c.id); ui.cliente = null; closeModal(); toast("Cliente eliminato"); render(); } : null
@@ -1244,7 +1245,7 @@ async function saveCsv(name, header, rows){
 async function toDataURL(src){
   try { const b = await (await fetch(src)).blob(); return await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.onerror = () => r(null); fr.readAsDataURL(b); }); } catch(e) { return null; }
 }
-const msgAppuntamento = x => { const c = byId("clienti", x.clienteId) || {}; return `Buongiorno${c.nome ? " " + c.nome : ""}, le ricordiamo l'appuntamento con ${AZIENDA.nome} per ${String(x.tipo || "intervento").toLowerCase()} ${x.data === today() ? "oggi" : "il " + fdl(x.data)}${x.ora ? " alle " + x.ora : ""}${addr(c) ? " in " + addr(c) : ""}.${x.tecnico ? " Il tecnico sarà " + x.tecnico + "." : ""} Per qualsiasi necessità ci contatti al ${AZIENDA.tel.split(" - ")[0]}. Grazie!`; };
+const msgAppuntamento = x => { const c = byId("clienti", x.clienteId) || {}; return `Buongiorno${c.nome ? " " + c.nome : ""}, le ricordiamo l'appuntamento con ${AZIENDA.nome} per ${String(x.tipo || "intervento").toLowerCase()} ${x.data === today() ? "oggi" : "il " + fdl(x.data)}${x.ora ? " alle " + x.ora : ""}${addr(c) ? " in " + addr(c) : ""}.${x.tecnico ? " Il tecnico sarà " + x.tecnico + "." : ""} Per qualsiasi necessità ci contatti al ${waUff()} (anche WhatsApp). Grazie!`; };
 const msgManutenzione = i => { const c = byId("clienti", i.clienteId) || {}; return `Buongiorno${c.nome ? " " + c.nome : ""}, la manutenzione periodica del suo impianto ${impName(i)} è prevista entro il ${fd(i.prossimaManutenzione)}. Una corretta manutenzione mantiene efficienza, consumi bassi e garanzia. Vuole fissare un appuntamento? ${AZIENDA.nome} - ${AZIENDA.tel.split(" - ")[0]}`; };
 
 // ---------- DiCo (DM 37/2008, allegato I) ----------
@@ -1506,6 +1507,29 @@ const sortInt = (a, b) => (a.data || "").localeCompare(b.data || "") || (a.ora |
 const groupByDate = (list, opts) => { let h = "", last = ""; list.forEach(x => { if (x.data !== last) { last = x.data; h += `<div class="list-date">${esc(x.data === today() ? "Oggi" : fdl(x.data))}</div>`; } h += intCard(x, opts); }); return h; };
 const empty = (msg, btn = "") => `<div class="empty">${esc(msg)}${btn ? `<div style="margin-top:12px">${btn}</div>` : ""}</div>`;
 
+// Promemoria ai clienti per gli appuntamenti di domani: email automatica alle 17 (scripts/promemoria-clienti.js),
+// WhatsApp con un tocco dall'ufficio. Lo stato sta in promemoriaClienti/{idIntervento} = {mail, wa} (firma = data|ora).
+function promemoriaDomani(){
+  const dom = addDays(today(), 1);
+  const l = S.interventi.filter(x => x.data === dom && x.stato === "Programmato" && x.clienteId).sort(sortInt);
+  if (!l.length) return "";
+  const da = l.filter(x => { const c = byId("clienti", x.clienteId) || {}, p = byId("promemoriaClienti", x.id) || {}; return !c.noPromemoria && c.telefono && p.wa !== `${x.data}|${x.ora || ""}`; }).length;
+  return `<h3>⚠️ Promemoria ai clienti per domani${da ? ` <span class="chip warn">${da} WhatsApp da mandare</span>` : ""}</h3>
+  ${l.map(x => {
+    const c = byId("clienti", x.clienteId) || {}, p = byId("promemoriaClienti", x.id) || {}, sig = `${x.data}|${x.ora || ""}`;
+    const mail = c.noPromemoria ? `<span class="chip">promemoria disattivati</span>` : p.mail === sig ? `<span class="chip ok">📧 email inviata</span>` : c.email ? `<span class="chip">📧 email alle 17</span>` : `<span class="chip warn">📧 manca l'email</span>`;
+    const wa = c.noPromemoria ? "" : !c.telefono ? `<span class="chip warn">manca il telefono</span>` : p.wa === sig ? `<span class="chip ok">💬 WhatsApp inviato</span>`
+      : `<a class="btn sm wa" style="min-height:40px" data-wapr="${x.id}" href="${esc(waLink(c.telefono, "⚠️ Promemoria iTeam\n" + msgAppuntamento(x)))}" target="_blank" rel="noopener">💬 Manda WhatsApp</a>`;
+    return `<div class="card"><div class="row"><span class="t">${esc(x.ora || "In giornata")} · ${esc(c.nome || "Cliente")}</span><span class="sp"></span>${mail}</div>
+      <div class="m">${esc([x.tipo, x.tecnico].filter(Boolean).join(" · "))}</div><div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">${wa}</div></div>`;
+  }).join("")}`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-wapr]"); if (!b) return;
+  const x = byId("interventi", b.dataset.wapr); if (!x) return;
+  const p = byId("promemoriaClienti", x.id) || {};
+  save("promemoriaClienti", x.id, {...p, wa: `${x.data}|${x.ora || ""}`, waIl: new Date().toISOString(), waDa: chiSono()}).catch(() => {});
+}, true);
 function vOggi(){
   const t = today(), in30 = addDays(t, 30);
   const oggi = S.interventi.filter(x => x.data === t && x.stato !== "Annullato").sort(sortInt);
@@ -1530,6 +1554,7 @@ function vOggi(){
   ${daVer.length ? daVer.slice(0, 8).map(x => intCard(x, {data: true})).join("") : empty("Nessun rapportino da verificare. Appena un tecnico invia un lavoro, compare qui in tempo reale.")}
   <h3>Interventi di oggi</h3>
   ${oggi.length ? oggi.map(x => intCard(x)).join("") : empty("Nessun intervento programmato per oggi.", `<button class="btn sm" data-a="newint">+ Programma intervento</button>`)}
+  ${promemoriaDomani()}
   <h3 id="scad">Manutenzioni in scadenza</h3>
   ${scad.length ? scad.map(i => `<div class="card"><div class="row"><span class="t">${esc(cliName(i.clienteId))}</span><span class="sp"></span><span class="chip ${i.prossimaManutenzione < t ? "bad" : "warn"}">${esc(fd(i.prossimaManutenzione))}</span></div><div class="m">${esc(impName(i))}</div><div class="row wrap" style="margin-top:8px;gap:6px"><button class="btn sm" data-prog="${i.id}">Programma manutenzione</button>${waBtn(byId("clienti", i.clienteId)?.telefono, msgManutenzione(i), "💬 Avvisa cliente")}</div></div>`).join("") : empty("Nessuna manutenzione in scadenza nei prossimi 30 giorni.")}
   ${low.length ? `<h3>Da riordinare</h3>${low.map(m => `<div class="card tap" data-art="${m.id}"><div class="row"><span class="t">${esc(m.descrizione)}</span><span class="sp"></span><span class="chip bad">${esc(m.quantita ?? 0)} ${esc(m.unita || "pz")}</span></div><div class="m">Scorta minima ${esc(m.scortaMinima)}${m.fornitore ? " · " + esc(m.fornitore) : ""}</div></div>`).join("")}` : ""}

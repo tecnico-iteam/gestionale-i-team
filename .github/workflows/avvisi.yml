@@ -1,4 +1,5 @@
-# Controlla gli appuntamenti ogni 10 minuti e manda le notifiche ai tecnici (scripts/avvisi.js).
+# Controlla gli appuntamenti ogni 10 minuti: notifiche ai tecnici (scripts/avvisi.js)
+# e, dalle 17, email di promemoria ai clienti per gli appuntamenti di domani (scripts/promemoria-clienti.js).
 name: Avvisi appuntamenti
 on:
   schedule:
@@ -19,8 +20,13 @@ jobs:
         with:
           node-version: 20
       - name: Installa il collegamento a Firebase
-        run: npm install --prefix scripts --no-save --no-audit --no-fund firebase-admin@12
+        run: npm install --prefix scripts --no-save --no-audit --no-fund firebase-admin@12 nodemailer@6
       - name: Manda gli avvisi
         run: node scripts/avvisi.js
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - name: Promemoria ai clienti (email)
+        run: node scripts/promemoria-clienti.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
