@@ -157,8 +157,8 @@ const assets = {
     const ext = (type.split("/")[1] || "bin").replace("jpeg", "jpg").replace(/[^a-z0-9]/g, "");
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8) + "." + ext;
     const ref = storage.ref("media/" + id);
-    try { await ref.put(blob, {contentType: type}); } catch(e) { throw {code: e && e.code === "storage/quota-exceeded" ? "quota_or_state" : "upload_failed"}; }
-    const url = await ref.getDownloadURL();
+    try { await ref.put(blob, {contentType: type}); } catch(e) { console.warn("upload", e); throw {code: e && e.code === "storage/quota-exceeded" ? "quota_or_state" : "upload_failed", detail: (e && e.code) || String(e && e.message || e)}; }
+    let url; try { url = await ref.getDownloadURL(); } catch(e) { throw {code: "upload_failed", detail: (e && e.code) || "download-url"}; }
     return {id, url, sizeBytes: blob.size, contentType: type};
   },
   async delete(id){ if (storage && id) await storage.ref("media/" + id).delete(); },

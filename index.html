@@ -668,6 +668,8 @@ function formImpostazioni(){
 }
 
 
+// testo tecnico dell'errore, da mandare a Claude per capire il problema
+const errDet = e => { const d = e && (e.detail || e.code || e.message); return d ? ` [${String(d).replace(/^storage\//, "")}]` : ""; };
 // ---------- commesse ----------
 // commesse/{id} = {clienteId, numero, titolo, stato, indirizzo, descrizione (solo ufficio), notaTecnici,
 //   documenti: [{id, url, nome, tipo: "pdf"|"foto"|"file", categoria, condiviso, da, il, note: [{id, testo, da, il}]}]}
@@ -795,7 +797,7 @@ async function fotoDoc(cid){
       const up = await assetsNS.upload(r.blob, {type: r.type});
       await salva(up);
       clearToasts(); toast("📄 Documento salvato. Tocca di nuovo 📷 per un'altra pagina.", 3500);
-    } catch(e) { clearToasts(); toast("Non sono riuscito a salvare la foto, riprova.", 4000); }
+    } catch(e) { clearToasts(); toast("Non sono riuscito a salvare la foto, riprova." + errDet(e), 6000); }
   };
   camIn.click();
 }
@@ -863,7 +865,7 @@ function mostraRichiestaFoto(token, d){
           const up = await assetsNS.upload(r.blob, {type: r.type});
           await ref.set({stato: "fatto", url: up.url, assetId: up.id}, {merge: true});
           clearToasts(); toast("✅ Foto inviata al PC", 3000);
-        } catch(err) { clearToasts(); toast("Foto non inviata, riprova dal PC.", 4000); }
+        } catch(err) { clearToasts(); toast("Foto non inviata, riprova dal PC." + errDet(err), 6000); }
         if (location.hash.startsWith("#scan-")) history.replaceState(null, "", location.pathname);
       };
       camIn.click();
@@ -905,7 +907,7 @@ function addDocs(cid){
         added.push({id: up.id, url: up.url, nome, ext, tipo: isPdf ? "pdf" : isImg ? "foto" : "file", categoria: /plan|pianta|piano/i.test(nome) ? "Planimetria" : isImg ? "Foto" : "Altro", condiviso: false, da: chiSono(), il: new Date().toISOString(), note: []});
       } catch(e) {
         clearToasts();
-        toast(`Non riesco a caricare "${f.name}". Se succede con PDF o altri documenti, va aggiornata una regola in Firebase: chiedi a Claude.`, 6000);
+        toast(`Non riesco a caricare "${f.name}".` + errDet(e), 6000);
       }
     }
     clearToasts();
@@ -1014,7 +1016,7 @@ function addMedia(intId){
       } catch(e) {
         clearToasts();
         const msg = {too_large: "File troppo grande (max 20 MB)", unsupported_type: "Formato non supportato", quota_or_state: "Spazio per foto e video esaurito", rate_limited: "Troppi caricamenti, riprova tra poco"}[e && e.code] || "Caricamento non riuscito";
-        toast(msg + (f.name ? ": " + f.name : ""), 4500);
+        toast(msg + (f.name ? ": " + f.name : "") + errDet(e), 6000);
       }
     }
     clearToasts();
@@ -2207,7 +2209,7 @@ async function nuovoArtFoto(){
     const f = camIn.files[0]; if (!f) return;
     toast("Salvo la foto…", 60000);
     try { const r = await shrinkImage(f); if (!r) throw {code: "unsupported_type"}; const up = await assetsNS.upload(r.blob, {type: r.type}); clearToasts(); formArticolo({foto: up.id, fotoUrl: up.url}); }
-    catch(e) { clearToasts(); toast("Foto non caricata, riprova.", 3500); }
+    catch(e) { clearToasts(); toast("Foto non caricata, riprova." + errDet(e), 6000); }
   };
   camIn.click();
 }
@@ -2231,7 +2233,7 @@ async function magFoto(id, daFile){
   inp.onchange = async () => {
     const f = inp.files[0]; if (!f) return; toast("Carico la foto…", 30000);
     try { const r = await shrinkImage(f); if (!r) throw {code: "unsupported_type"}; const up = await assetsNS.upload(r.blob, {type: r.type}); await patch("magazzino", id, {foto: up.id, fotoUrl: up.url}); clearToasts(); toast("📷 Foto salvata"); }
-    catch(e) { clearToasts(); toast("Foto non caricata" + (e && e.code === "too_large" ? ": troppo grande" : ""), 3500); }
+    catch(e) { clearToasts(); toast("Foto non caricata" + (e && e.code === "too_large" ? ": troppo grande" : "") + errDet(e), 6000); }
   };
   inp.click();
 }
