@@ -35,10 +35,20 @@ header.top{position:sticky;top:0;z-index:20;background:#fff;color:var(--ink);bor
 header.top h1{font-size:17px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:650;letter-spacing:.2px}
 header.top .who{font-size:13px;color:var(--mute)}
 .logo{height:38px;width:auto;display:block}
+.fsearch{margin-bottom:6px}.smatch{display:flex;flex-direction:column;gap:4px;margin-bottom:6px}.smatch:empty{display:none}
+.smi{text-align:left;background:var(--pri-2);border:0;border-radius:10px;padding:12px;font-weight:600;cursor:pointer;min-height:44px}
+.plist{display:flex;flex-direction:column;gap:6px;margin-top:8px}.pli{display:flex;align-items:center;gap:10px;border:1px solid var(--line,#e3e7ee);border-radius:10px;padding:8px;background:#fff;text-align:left;width:100%}
+.pli .open{display:flex;align-items:center;gap:10px;flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;cursor:pointer;font:inherit}
+.pli img,.pli .ft{width:52px;height:52px;object-fit:cover;border-radius:6px;flex:none;background:#eef2f7;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#b3261e}
+.pli .sh{flex:none;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:6px 8px;border-radius:8px;background:#f3f5f8;cursor:pointer;min-height:44px}
+.pli .sh.on{background:#e3f4ea;color:#14713f}
+.pnote{border-top:1px solid var(--line,#e3e7ee);padding:8px 0}.pnote .m{font-size:12px}
+.planimg{width:100%;height:auto;display:block;border-radius:8px;background:#f3f5f8}
+@media (max-width:440px){header.top .who{display:none}}
 .hqr{flex:none;width:44px;height:44px;border:2px solid var(--brand-l);background:#fff;color:var(--ink);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
 .hqr svg{width:26px;height:26px}
 .qrcard{text-align:center}.qrcard .qn{font-size:22px;font-weight:700;margin:2px 0 0}.qrcard .qr{color:#C62B24;font-weight:600;text-transform:uppercase;letter-spacing:1px;font-size:13px;margin:2px 0 12px}
-.qrcard .qrimg{width:100%;max-width:320px;height:auto;display:block;margin:0 auto;border:1px solid var(--line,#e3e7ee);border-radius:12px}
+.qrcard .qrimg{width:100%;max-width:400px;height:auto;display:block;margin:0 auto;border:1px solid var(--line,#e3e7ee);border-radius:12px}
 .qrcard .qh{font-weight:600;margin:12px 0 4px}.qrcard .qu{background:var(--pri-2);border-radius:12px;padding:10px 12px;margin-top:14px;text-align:left;font-size:14px}
 .qrcard .qu b{display:block;margin-bottom:2px}
 .logo-big{height:84px;width:auto;margin:0 auto 10px;display:block}
@@ -178,7 +188,7 @@ const AZIENDA = {nome: "iTeam", legale: "Via dei Mille 2, 10024 Moncalieri (TO)"
 // Biglietto da visita virtuale (pulsante QR in alto a sinistra): riferimenti dell'ufficio sempre presenti
 const BIGLIETTO = {email: "ufficio@iteamservice.it", servizi: "Impianti di climatizzazione - Impianti fotovoltaici", via: "Via dei Mille 2", citta: "Moncalieri", prov: "TO", cap: "10024"};
 const aziendaTxt = () => `${AZIENDA.ragione}\n${AZIENDA.attivita}\nSede legale: ${AZIENDA.legale}\nSede operativa: ${AZIENDA.operativa}\nTel. ${AZIENDA.tel}\nEmail: ${AZIENDA.email} - PEC: ${AZIENDA.pec}\nP.IVA ${AZIENDA.piva} - SDI ${AZIENDA.sdi}`;
-const COLS = ["clienti","impianti","interventi","preventivi","fatture","magazzino","listino","dico"];
+const COLS = ["clienti","impianti","interventi","preventivi","fatture","magazzino","listino","dico","commesse"];
 let LISTINO = [];
 const DEFAULT_LAVORI = [
   "Pulizia filtri unità interna","Sanificazione batteria / evaporatore","Pulizia unità esterna / condensatore",
@@ -351,7 +361,7 @@ function openForm(o){
     const opts = typeof f.options === "function" ? f.options(vals) : (f.options || []);
     const optHtml = () => opts.map(op => { const [val, txt] = Array.isArray(op) ? op : [op, op]; return `<option value="${esc(val)}" ${String(v ?? "") === String(val) ? "selected" : ""}>${esc(txt)}</option>`; }).join("");
     switch (f.type) {
-      case "select": return `${lb}<select data-k="${f.k}">${optHtml()}</select>`;
+      case "select": return `${lb}${f.search ? `<input class="search fsearch" data-s="${f.k}" placeholder="🔍 Scrivi le prime lettere per cercare…" autocomplete="off" autocapitalize="none" spellcheck="false"><div class="smatch" data-sm="${f.k}"></div>` : ""}<select data-k="${f.k}">${optHtml()}</select>`;
       case "textarea": return `${lb}<textarea data-k="${f.k}" placeholder="${esc(f.ph || "")}">${esc(v)}</textarea>`;
       case "checkbox": return `<label class="cb"><input type="checkbox" data-k="${f.k}" ${v ? "checked" : ""}> ${esc(f.label)}</label>`;
       case "time": return `${lb}<div class="tnow"><input type="time" data-k="${f.k}" value="${esc(v)}"><button type="button" class="btn sm" data-now="${f.k}">Adesso</button></div>`;
@@ -403,8 +413,19 @@ function openForm(o){
   const rerender = () => { const a = document.activeElement; const key = a && (a.dataset.k || ""); fb.innerHTML = body(); initSigs(); if (key) { const el = fb.querySelector(`[data-k="${key}"]`); if (el && el.type !== "checkbox") { el.focus(); try { const L = el.value.length; el.setSelectionRange && el.setSelectionRange(L, L); } catch(e){} } } };
   const refreshInfo = () => o.fields.filter(f => f.type === "info").forEach(f => { const w = fb.querySelector(`[data-f="${f.k}"] .info`); if (w) w.innerHTML = f.html(vals); });
   initSigs();
-  fb.addEventListener("input", () => { readAll(); if (o.onInput) o.onInput(vals); refreshInfo(); });
+  const normS = t => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const showMatches = inp => {
+    const k = inp.dataset.s, f = o.fields.find(x => x.k === k), box = fb.querySelector(`[data-sm="${k}"]`); if (!f || !box) return;
+    const q = normS(inp.value).trim(); if (!q) { box.innerHTML = ""; return; }
+    const opts = (typeof f.options === "function" ? f.options(vals) : f.options || []).map(op => Array.isArray(op) ? op : [op, op]).filter(([v]) => v !== "");
+    const words = t => normS(t).split(/[\s·.,'’\-\/]+/);
+    const rank = t => normS(t).startsWith(q) ? 0 : words(t).some(w => w.startsWith(q)) ? 1 : normS(t).includes(q) ? 2 : 9;
+    const res = opts.map(o => [o, rank(o[1])]).filter(([, r]) => r < 9).sort((a, b) => a[1] - b[1]).map(([o]) => o).slice(0, 8);
+    box.innerHTML = res.length ? res.map(([v, t]) => `<button type="button" class="smi" data-pick="${esc(k)}" data-v="${esc(v)}">${esc(t)}</button>`).join("") : `<div class="m" style="padding:6px 2px">Nessun risultato per "${esc(inp.value)}"</div>`;
+  };
+  fb.addEventListener("input", e => { if (e.target.dataset && e.target.dataset.s) { showMatches(e.target); return; } readAll(); if (o.onInput) o.onInput(vals); refreshInfo(); });
   fb.addEventListener("change", e => {
+    if (e.target.dataset && e.target.dataset.s) return;
     readAll();
     const k = e.target.dataset.k || e.target.dataset.ck || e.target.closest("[data-f]")?.dataset.f;
     const f = o.fields.find(x => x.k === k);
@@ -414,6 +435,17 @@ function openForm(o){
   });
   ov.addEventListener("click", async e => {
     const t = e.target;
+    if (t.closest && t.closest("[data-pick]")) {
+      const b = t.closest("[data-pick]"), k = b.dataset.pick, f = o.fields.find(x => x.k === k);
+      readAll(); vals[k] = b.dataset.v;
+      const sel = fb.querySelector(`select[data-k="${k}"]`); if (sel) sel.value = b.dataset.v;
+      const inp = fb.querySelector(`[data-s="${k}"]`); if (inp) inp.value = "";
+      const box = fb.querySelector(`[data-sm="${k}"]`); if (box) box.innerHTML = "";
+      if (f && f.onChange) f.onChange(vals);
+      if (o.onChange) o.onChange(vals, k);
+      if (f && f.rerender) rerender(); else refreshInfo();
+      return;
+    }
     if (t.dataset.sigclr) { vals[t.dataset.sigclr] = ""; rerender(); return; }
     if (t.dataset.now) { readAll(); vals[t.dataset.now] = nowTime(); rerender(); return; }
     if (t.dataset.add) { readAll(); const f = o.fields.find(x => x.k === t.dataset.add); (vals[f.k] = vals[f.k] || []).push(f.newRow ? f.newRow() : {}); rerender(); return; }
@@ -456,7 +488,7 @@ function formCliente(c = {}){
 function formImpianto(i = {}){
   openForm({ title: i.id ? "Modifica impianto" : "Nuovo impianto", values: i,
     fields: [
-      {k:"clienteId", label:"Cliente", type:"select", options:() => cliOpts(), req:true},
+      {k:"clienteId", label:"Cliente", type:"select", search:true, options:() => cliOpts(), req:true},
       {k:"tipo", label:"Tipo", type:"select", options:TIPI_IMP, def:"Split", half:true},
       {k:"ubicazione", label:"Ubicazione", ph:"es. Soggiorno, Tetto", half:true},
       {k:"marca", label:"Marca", half:true}, {k:"modello", label:"Modello", half:true},
@@ -477,7 +509,7 @@ function formImpianto(i = {}){
 function formIntervento(x = {}){
   openForm({ title: x.id ? "Modifica intervento" : "Nuovo intervento", values: x,
     fields: [
-      {k:"clienteId", label:"Cliente", type:"select", options:() => cliOpts(), req:true, rerender:true, onChange: v => { v.impiantoId = ""; }},
+      {k:"clienteId", label:"Cliente", type:"select", search:true, options:() => cliOpts(), req:true, rerender:true, onChange: v => { v.impiantoId = ""; }},
       {k:"impiantoId", label:"Impianto", type:"select", options: v => impOpts(v.clienteId)},
       {k:"data", label:"Data", type:"date", def: today, req:true, half:true},
       {k:"ora", label:"Ora", type:"time", half:true},
@@ -499,7 +531,7 @@ function formRapportino(x){
     lavori: r.lavori || [], altro: r.altro || "", materiali: r.materiali || [], esito: r.esito || "Risolto",
     note: r.note || "", firmatoDa: r.firmatoDa || "", firma: r.firma || "", clienteAssente: !!r.clienteAssente, emailCliente: r.emailCliente || byId("clienti", x.clienteId)?.email || "", aggiornaMan: imp ? (x.tipo === "Manutenzione") : false};
   openForm({ title: "Rapportino · " + cliName(x.clienteId),
-    intro: `<p class="m" style="margin-top:-6px">${esc(fdl(x.data))}${imp ? " · " + esc(impName(imp)) : ""}</p>${mediaBox(x)}`,
+    intro: `<p class="m" style="margin-top:-6px">${esc(fdl(x.data))}${imp ? " · " + esc(impName(imp)) : ""}</p>${commVisibili(x.clienteId).length ? commBox(x.clienteId) : ""}${mediaBox(x)}`,
     values: v0, saveLabel: "Invia all'ufficio",
     fields: [
       {k:"inizio", label:"Inizio lavoro", type:"time", req:true, half:true},
@@ -546,7 +578,7 @@ function formPreventivo(p = {}){
   const nextN = () => { const ns = S.preventivi.map(q => String(q.numero || "")).filter(n => n.endsWith("/" + y)).map(n => parseInt(n)); return (ns.length ? Math.max(...ns) + 1 : 1) + "/" + y; };
   openForm({ title: p.id ? "Preventivo " + (p.numero || "") : "Nuovo preventivo", values: p,
     fields: [
-      {k:"clienteId", label:"Cliente", type:"select", options:() => cliOpts(), req:true},
+      {k:"clienteId", label:"Cliente", type:"select", search:true, options:() => cliOpts(), req:true},
       {k:"numero", label:"Numero", def: nextN, half:true}, {k:"data", label:"Data", type:"date", def: today, half:true},
       {k:"oggetto", label:"Oggetto", ph:"es. Fornitura e posa climatizzatore dual split"},
       {k:"righe", label:"Voci", type:"rows", addLabel:"Aggiungi voce", def: () => [{descrizione:"", qta:1, prezzo:""}], newRow: () => ({descrizione:"", qta:1, prezzo:""}),
@@ -568,7 +600,7 @@ function formFattura(f = {}){
   openForm({ title: f.id ? "Fattura " + (f.numero || "") : "Nuova fattura", values: f,
     intro: `<div class="banner info">Registro di fatture e incassi. La fattura elettronica va comunque trasmessa allo SdI con il tuo software o commercialista.</div>`,
     fields: [
-      {k:"clienteId", label:"Cliente", type:"select", options:() => cliOpts(), req:true},
+      {k:"clienteId", label:"Cliente", type:"select", search:true, options:() => cliOpts(), req:true},
       {k:"numero", label:"Numero", def: nextN, half:true}, {k:"data", label:"Data", type:"date", def: today, half:true},
       {k:"descrizione", label:"Descrizione"},
       {k:"imponibile", label:"Imponibile €", type:"number", req:true, half:true},
@@ -634,15 +666,199 @@ function formImpostazioni(){
 }
 
 
+// ---------- commesse ----------
+// commesse/{id} = {clienteId, numero, titolo, stato, indirizzo, descrizione (solo ufficio), notaTecnici,
+//   documenti: [{id, url, nome, tipo: "pdf"|"foto"|"file", categoria, condiviso, da, il, note: [{id, testo, da, il}]}]}
+// L'ufficio decide documento per documento cosa vedono i tecnici ("condiviso").
+const STATI_COMM = ["Aperta", "In corso", "Chiusa"];
+const CAT_DOC = ["Planimetria", "Progetto / schema", "Foto", "Contratto / offerta", "Certificazione", "Altro"];
+const isUff = () => ui.modo === "ufficio";
+const chiSono = () => ui.modo === "ufficio" ? (ui.uff || "Ufficio") : ui.modo === "tecnico" ? ui.tecnico : (ui.comm || "");
+const commOf = cid => S.commesse.filter(c => c.clienteId === cid).sort((a, b) => (b.numero || "").localeCompare(a.numero || ""));
+const docVisibili = c => ((c && c.documenti) || []).filter(d => isUff() || d.condiviso);
+const commVisibili = cid => commOf(cid).filter(c => isUff() || (c.stato !== "Chiusa" && (docVisibili(c).length || c.notaTecnici)));
+const statoCommChip = st => `<span class="chip ${st === "Chiusa" ? "" : st === "In corso" ? "warn" : "pri"}">${esc(st || "Aperta")}</span>`;
+function nextCommNum(){
+  const y = String(new Date().getFullYear());
+  const n = S.commesse.map(c => String(c.numero || "")).filter(x => x.startsWith(y + "/")).map(x => parseInt(x.split("/")[1], 10) || 0);
+  return y + "/" + String((n.length ? Math.max(...n) : 0) + 1).padStart(3, "0");
+}
+function formCommessa(c = {}){
+  openForm({ title: c.id ? "Modifica commessa" : "Nuova commessa", values: {...c, numero: c.numero || nextCommNum()},
+    fields: [
+      {k:"clienteId", label:"Cliente", type:"select", search:true, options:() => cliOpts(), req:true},
+      {k:"titolo", label:"Titolo della commessa", req:true, ph:"es. Impianto multisplit villa Rossi"},
+      {k:"numero", label:"Numero", half:true},
+      {k:"stato", label:"Stato", type:"select", options:STATI_COMM, def:"Aperta", half:true},
+      {k:"indirizzo", label:"Indirizzo del cantiere (se diverso da quello del cliente)"},
+      {k:"notaTecnici", label:"Indicazioni per i tecnici (le vedono i tecnici)", type:"textarea"},
+      {k:"descrizione", label:"Note interne (solo ufficio)", type:"textarea"}
+    ],
+    onSave: async v => {
+      const id = await save("commesse", c.id || null, {...c, ...v, documenti: c.documenti || []});
+      toast("Commessa salvata"); setTimeout(() => viewComm(id), 400);
+    },
+    onDelete: c.id ? async () => {
+      for (const d of (c.documenti || [])) { try { await assetsNS?.delete(d.id); } catch(e){} }
+      await remove("commesse", c.id); toast("Commessa eliminata"); setTimeout(refreshComm, 300);
+    } : null
+  });
+}
+const docIcon = d => d.tipo === "foto" ? `<img src="${esc(d.url)}" loading="lazy" alt="">` : `<span class="ft">${d.tipo === "pdf" ? "PDF" : esc(((d.ext || "file") + "").toUpperCase().slice(0, 4))}</span>`;
+function docRow(c, d){
+  const nn = (d.note || []).length;
+  return `<div class="pli"><button type="button" class="open" data-docview="${c.id}" data-did="${esc(d.id)}">${docIcon(d)}<span style="min-width:0"><span class="t" style="display:block;overflow:hidden;text-overflow:ellipsis">${esc(d.nome || "Documento")}</span><span class="m">${esc(d.categoria || "Altro")}${nn ? ` · 💬 ${nn}` : ""}</span></span></button>
+    ${isUff() ? `<button type="button" class="sh ${d.condiviso ? "on" : ""}" data-docsh="${c.id}" data-did="${esc(d.id)}" aria-pressed="${d.condiviso ? "true" : "false"}" title="Visibile ai tecnici">👷 ${d.condiviso ? "Sì" : "No"}</button>` : ""}</div>`;
+}
+function commInner(cid){
+  const l = commVisibili(cid);
+  if (isUff()) return `<div class="row"><b style="font-size:14px">📁 Commesse (${l.length})</b><span class="sp"></span><button type="button" class="btn sm" data-commnew="${cid}">+ Commessa</button></div>
+    ${l.length ? `<div class="plist">${l.map(c => { const n = (c.documenti || []).length, sh = (c.documenti || []).filter(d => d.condiviso).length;
+      return `<button type="button" class="pli" data-commview="${c.id}" style="cursor:pointer"><span style="flex:1;min-width:0"><span class="t" style="display:block">${esc(c.titolo || "Commessa")}</span><span class="m">N. ${esc(c.numero || "")} · ${n} document${n === 1 ? "o" : "i"}${n ? ` · ${sh} visibil${sh === 1 ? "e" : "i"} ai tecnici` : ""}</span></span>${statoCommChip(c.stato)}</button>`; }).join("")}</div>`
+      : `<div class="m" style="margin-top:4px">Nessuna commessa. Creane una per caricare planimetrie, progetti e documenti.</div>`}`;
+  return `<div class="row"><b style="font-size:14px">📁 Documenti delle commesse</b></div>
+    ${l.length ? l.map(c => `<div style="margin-top:10px"><div class="t">${esc(c.titolo || "Commessa")}</div>
+      ${c.indirizzo ? `<div class="m">📍 ${esc(c.indirizzo)}</div>` : ""}
+      ${c.notaTecnici ? `<div class="info" style="margin-top:6px">${esc(c.notaTecnici)}</div>` : ""}
+      ${docVisibili(c).length ? `<div class="plist">${docVisibili(c).map(d => docRow(c, d)).join("")}</div>` : ""}</div>`).join("")
+      : `<div class="m" style="margin-top:4px">Nessun documento condiviso dall'ufficio.</div>`}`;
+}
+const commBox = cid => cid ? `<div class="card" style="margin-top:12px" data-cmg="${cid}">${commInner(cid)}</div>` : "";
+function refreshComm(){
+  document.querySelectorAll("[data-cmg]").forEach(el => { el.innerHTML = commInner(el.dataset.cmg); });
+  const v = document.querySelector(".ov.commov"); if (v) viewComm(v.dataset.id, true);
+  const d = document.querySelector(".ov.docov"); if (d) viewDoc(d.dataset.cid, d.dataset.did, true);
+}
+async function saveDoc(cid, did, fn){
+  const c = byId("commesse", cid); if (!c) return;
+  const list = (c.documenti || []).map(d => d.id === did ? fn(JSON.parse(JSON.stringify(d))) : d).filter(Boolean);
+  await patch("commesse", cid, {documenti: list});
+  setTimeout(refreshComm, 250);
+}
+function viewComm(id, keepScroll){
+  const c = byId("commesse", id); if (!c) return;
+  const old = document.querySelector(".ov.commov"), top = keepScroll && old ? old.querySelector(".dlg").scrollTop : 0;
+  if (old) old.remove();
+  const uff = isUff(), docs = docVisibili(c), cli = byId("clienti", c.clienteId);
+  const ov = document.createElement("div"); ov.className = "ov commov"; ov.dataset.id = id; ov.style.zIndex = 60;
+  ov.innerHTML = `<div class="dlg">
+    <div class="row"><h2 style="flex:1;margin-bottom:2px">📁 ${esc(c.titolo || "Commessa")}</h2>${statoCommChip(c.stato)}</div>
+    <div class="m">N. ${esc(c.numero || "")} · ${esc(cliName(c.clienteId))}</div>
+    ${c.indirizzo || addr(cli) ? `<div class="m">📍 ${esc(c.indirizzo || addr(cli))}</div>` : ""}
+    ${c.notaTecnici ? `<h3>Indicazioni per i tecnici</h3><div class="info">${esc(c.notaTecnici)}</div>` : ""}
+    ${uff && c.descrizione ? `<h3>Note interne (solo ufficio)</h3><div class="info">${esc(c.descrizione)}</div>` : ""}
+    <div class="row" style="margin-top:14px"><h3 style="margin:0;flex:1">Documenti (${docs.length})</h3>${uff && assetsNS ? `<button type="button" class="btn sm pri" data-docup="${id}">+ Carica documenti</button>` : ""}</div>
+    ${uff ? `<p class="m" style="margin:4px 0 0">Con <b>👷 Sì</b> il documento lo vedono anche i tecnici; con <b>👷 No</b> resta solo all'ufficio. Tocca per cambiare.</p>` : ""}
+    ${docs.length ? `<div class="plist">${docs.map(d => docRow(c, d)).join("")}</div>` : `<div class="m" style="margin-top:6px">${uff ? "Nessun documento: carica planimetrie, progetti, foto, contratti…" : "Nessun documento condiviso."}</div>`}
+    <div class="acts">${uff ? `<button class="btn" data-x="edit">Modifica commessa</button>` : ""}<span class="sp"></span><button class="btn" data-x="close">Chiudi</button></div></div>`;
+  ov.addEventListener("click", e => {
+    const a = e.target.closest("[data-x]")?.dataset.x;
+    if (e.target === ov || a === "close") ov.remove();
+    if (a === "edit") formCommessa(byId("commesse", id));
+  });
+  document.body.appendChild(ov);
+  if (top) ov.querySelector(".dlg").scrollTop = top;
+}
+const docIn = document.createElement("input");
+docIn.type = "file"; docIn.accept = "image/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.zip"; docIn.multiple = true; docIn.hidden = true;
+document.body.appendChild(docIn);
+function addDocs(cid){
+  if (!assetsNS) { toast("Il caricamento dei file non è attivo per il tuo account. Controlla la connessione o chiedi al titolare.", 4500); return; }
+  docIn.value = "";
+  docIn.onchange = async () => {
+    const files = [...docIn.files]; if (!files.length) return;
+    const added = []; let i = 0;
+    for (const f of files) {
+      i++; toast(`Caricamento ${i} di ${files.length}…`, 120000);
+      const ext = ((f.name || "").match(/\.([a-z0-9]+)$/i) || [, ""])[1].toLowerCase();
+      const isPdf = f.type === "application/pdf" || ext === "pdf", isImg = !isPdf && (f.type || "").startsWith("image/");
+      let blob = f, type = isPdf ? "application/pdf" : (f.type || "application/octet-stream");
+      if (isImg && !(/^image\/(jpeg|png|webp)$/.test(f.type) && f.size <= MAX_MB * 1048576)) {
+        const r = await shrinkImage(f, 4096); if (!r) { clearToasts(); toast(`Formato non supportato: ${f.name}`, 4500); continue; } blob = r.blob; type = r.type;
+      }
+      if (blob.size > 45 * 1048576) { clearToasts(); toast(`File troppo grande: ${f.name} (massimo 45 MB)`, 4500); continue; }
+      try {
+        const up = await assetsNS.upload(blob, {type});
+        const nome = String(f.name || "Documento").replace(/\.[a-z0-9]+$/i, "");
+        added.push({id: up.id, url: up.url, nome, ext, tipo: isPdf ? "pdf" : isImg ? "foto" : "file", categoria: /plan|pianta|piano/i.test(nome) ? "Planimetria" : isImg ? "Foto" : "Altro", condiviso: false, da: chiSono(), il: new Date().toISOString(), note: []});
+      } catch(e) {
+        clearToasts();
+        toast(`Non riesco a caricare "${f.name}". Se succede con PDF o altri documenti, va aggiornata una regola in Firebase: chiedi a Claude.`, 6000);
+      }
+    }
+    clearToasts();
+    if (!added.length) return;
+    const c = byId("commesse", cid);
+    try { await patch("commesse", cid, {documenti: [...((c && c.documenti) || []), ...added]}); toast(`📁 ${added.length} document${added.length === 1 ? "o caricato" : "i caricati"}. Scegli quali far vedere ai tecnici (👷).`, 4500); } catch(e){}
+    setTimeout(refreshComm, 300);
+  };
+  docIn.click();
+}
+function viewDoc(cid, did, keepScroll){
+  const c = byId("commesse", cid); const d = c && (c.documenti || []).find(x => x.id === did);
+  const old = document.querySelector(".ov.docov"), top = keepScroll && old ? old.querySelector(".dlg").scrollTop : 0;
+  if (old) old.remove();
+  if (!d || (!isUff() && !d.condiviso)) return;
+  const me = chiSono(), uff = isUff();
+  const ov = document.createElement("div"); ov.className = "ov docov"; ov.dataset.cid = cid; ov.dataset.did = did; ov.style.zIndex = 70;
+  ov.innerHTML = `<div class="dlg viewer" style="text-align:left">
+    <h2 style="margin-bottom:4px">${esc(d.nome || "Documento")}</h2>
+    <div class="m" style="margin-bottom:10px">${esc(d.categoria || "Altro")} · ${esc(c.titolo || "Commessa")}${d.da ? " · caricato da " + esc(d.da) : ""}${d.il ? " · " + esc(fdt(d.il)) : ""}</div>
+    ${d.tipo === "foto" ? `<a href="${esc(d.url)}" target="_blank" rel="noopener"><img class="planimg" src="${esc(d.url)}" alt="${esc(d.nome || "")}"></a><p class="m" style="margin:4px 0 0">Tocca l’immagine per aprirla a schermo intero e ingrandirla con due dita.</p>`
+      : `<a class="btn pri big" style="display:block;text-align:center;text-decoration:none" href="${esc(d.url)}" target="_blank" rel="noopener">📄 Apri il documento${d.tipo === "pdf" ? " (PDF)" : ""}</a>`}
+    ${uff ? `<div class="card" style="margin-top:12px"><label class="cb"><input type="checkbox" data-x="share" ${d.condiviso ? "checked" : ""}> 👷 Visibile ai tecnici</label>
+      <label class="lb" for="doccat" style="margin-top:8px;display:block">Tipo di documento</label><select id="doccat" data-x="cat">${CAT_DOC.map(k => `<option ${k === d.categoria ? "selected" : ""}>${esc(k)}</option>`).join("")}</select></div>` : ""}
+    <h3 style="margin-top:16px">Note (${(d.note || []).length})</h3>
+    ${(d.note || []).length ? (d.note || []).map(n => `<div class="pnote"><div>${esc(n.testo)}</div><div class="row m"><span>${esc(n.da || "")} · ${esc(fdt(n.il))}</span><span class="sp"></span>${uff || sameTec(n.da, me) ? `<button class="btn sm" data-x="delnota" data-nid="${esc(n.id)}">Elimina</button>` : ""}</div></div>`).join("") : `<div class="m">Ancora nessuna nota.</div>`}
+    <label class="lb" for="docnota" style="margin-top:10px;display:block">Aggiungi una nota</label>
+    <textarea id="docnota" placeholder="Es. passaggio tubi dal controsoffitto del corridoio, unità esterna sul balcone lato cucina…"></textarea>
+    <button class="btn pri big" data-x="nota" style="width:100%;margin-top:8px">Salva nota</button>
+    <div class="acts">${uff ? `<button class="btn bad" data-x="del">Elimina</button><button class="btn" data-x="ren">Rinomina</button>` : ""}<span class="sp"></span><button class="btn" data-x="close">Chiudi</button></div></div>`;
+  ov.addEventListener("change", async e => {
+    const a = e.target.dataset.x;
+    if (a === "share") { const v = e.target.checked; try { await saveDoc(cid, did, x => { x.condiviso = v; return x; }); toast(v ? "👷 Ora lo vedono anche i tecnici" : "Visibile solo all'ufficio"); } catch(err){} }
+    if (a === "cat") { const v = e.target.value; try { await saveDoc(cid, did, x => { x.categoria = v; return x; }); } catch(err){} }
+  });
+  ov.addEventListener("click", async e => {
+    const b = e.target.closest("[data-x]"); const a = b && b.dataset.x;
+    if (e.target === ov || a === "close") { ov.remove(); return; }
+    if (a === "nota") {
+      const testo = ov.querySelector("#docnota").value.trim(); if (!testo) { toast("Scrivi prima la nota"); return; }
+      b.disabled = true;
+      try { await saveDoc(cid, did, x => { x.note = [...(x.note || []), {id: Date.now().toString(36), testo, da: me, il: new Date().toISOString()}]; return x; }); toast("💬 Nota salvata"); } catch(err) { b.disabled = false; }
+    }
+    if (a === "delnota") { if (!(await askTop("Eliminare questa nota?"))) return; try { await saveDoc(cid, did, x => { x.note = (x.note || []).filter(n => n.id !== b.dataset.nid); return x; }); } catch(err){} }
+    if (a === "ren") {
+      const nome = ov.querySelector("#docren");
+      if (!nome) { b.insertAdjacentHTML("beforebegin", `<input id="docren" value="${esc(d.nome || "")}" style="flex:1;min-width:140px"><button class="btn pri" data-x="rensave">Salva nome</button>`); b.remove(); }
+    }
+    if (a === "rensave") { const v = ov.querySelector("#docren").value.trim(); if (!v) return; try { await saveDoc(cid, did, x => { x.nome = v; return x; }); toast("Nome salvato"); } catch(err){} }
+    if (a === "del") { if (!(await askTop("Eliminare questo documento e le sue note?"))) return; ov.remove(); try { await saveDoc(cid, did, () => null); try { await assetsNS?.delete(did); } catch(err){} toast("Documento eliminato"); } catch(err){} }
+  });
+  document.body.appendChild(ov);
+  if (top) ov.querySelector(".dlg").scrollTop = top;
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-commnew],[data-commview],[data-docup],[data-docview],[data-docsh],[data-commcli]"); if (!b) return;
+  e.stopPropagation();
+  const ds = b.dataset;
+  if (ds.commnew) formCommessa({clienteId: ds.commnew, stato: "Aperta"});
+  else if (ds.commview) viewComm(ds.commview);
+  else if (ds.docup) addDocs(ds.docup);
+  else if (ds.docview) viewDoc(ds.docview, ds.did);
+  else if (ds.docsh) { const c = byId("commesse", ds.docsh), d = c && (c.documenti || []).find(x => x.id === ds.did); if (!d) return; try { await saveDoc(ds.docsh, ds.did, x => { x.condiviso = !x.condiviso; return x; }); toast(!d.condiviso ? "👷 Ora lo vedono anche i tecnici" : "Visibile solo all'ufficio"); } catch(err){} }
+  else if (ds.commcli) modal(`<h2>Documenti · ${esc(cliName(ds.commcli))}</h2>${commBox(ds.commcli)}<div class="acts"><span class="sp"></span><button class="btn" data-mclose="1">Chiudi</button></div>`).addEventListener("click", ev => { if (ev.target.dataset.mclose) ev.target.closest(".ov").remove(); });
+}, true);
+
 // ---------- foto e video ----------
 const MAX_MB = 20;
 const fileIn = document.createElement("input");
 fileIn.type = "file"; fileIn.accept = "image/*,video/*"; fileIn.multiple = true; fileIn.hidden = true;
 document.body.appendChild(fileIn);
-async function shrinkImage(file){
+async function shrinkImage(file, maxSide = 1920){
   try {
     const bmp = await createImageBitmap(file);
-    const k = Math.min(1, 1920 / Math.max(bmp.width, bmp.height));
+    const k = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
     const cv = document.createElement("canvas"); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
     cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height);
     const b = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.82));
@@ -917,7 +1133,7 @@ function formDico(d = {}){
   openForm({ title: d.id ? "DiCo n. " + d.numero : "Nuova dichiarazione di conformità", values: d,
     fields: [
       {k:"numero", label:"Numero", def: nextN, half:true}, {k:"data", label:"Data", type:"date", def: today, half:true},
-      {k:"clienteId", label:"Committente", type:"select", options:() => cliOpts(), req:true, rerender:true, onChange: v => { const c = byId("clienti", v.clienteId); if (c) { v.comune = v.comune || c.citta || ""; v.via = v.via || c.indirizzo || ""; v.proprietario = v.proprietario || c.nome; } }},
+      {k:"clienteId", label:"Committente", type:"select", search:true, options:() => cliOpts(), req:true, rerender:true, onChange: v => { const c = byId("clienti", v.clienteId); if (c) { v.comune = v.comune || c.citta || ""; v.via = v.via || c.indirizzo || ""; v.proprietario = v.proprietario || c.nome; } }},
       {k:"lettere", label:"Tipo di impianto (art. 1 c. 2)", type:"checks", options: DICO_LETTERE.map(l => l[0]), def: () => ["c) riscaldamento e climatizzazione"], onChange: v => { v.respTecnico = respFor(v.lettere); }},
       {k:"abil", type:"info", html: v => { const no = (v.lettere || []).filter(l => !(CFG.abilitazioni || []).includes(l)); const refr = /refrigeraz/i.test(v.descrizione || "") && (v.lettere || []).includes("c) riscaldamento e climatizzazione") ? `<br><b style="color:var(--warn)">Nota:</b> la lettera C dell'impresa esclude gli impianti di refrigerazione.` : "";
         return (no.length ? `<b style="color:var(--bad)">⚠ Attenzione:</b> dalla visura l'impresa è abilitata solo per ${esc((CFG.abilitazioni || []).join(", "))}. Per <b>${esc(no.join(", "))}</b> la DiCo non può essere firmata da ${esc(AZIENDA.ragione)} finché l'abilitazione non è registrata in Camera di Commercio.` : `Abilitazioni dell'impresa: ${esc((CFG.abilitazioni || []).join(", "))} ✓`) + refr; }},
@@ -1085,6 +1301,7 @@ function detIntervento(x){
     </div>
     ${x.descrizione ? `<div class="info" style="margin-top:10px">${esc(x.descrizione)}</div>` : ""}
     ${rapportinoHtml(x)}
+    ${commVisibili(x.clienteId).length ? commBox(x.clienteId) : ""}
     ${mediaBox(x)}
     ${x.verificato ? `<p class="m" style="margin-top:8px">✔ Verificato da ${esc(x.verificatoDa || "ufficio")} il ${esc(fdt(x.verificatoIl))}</p>` : ""}
     ${storico.length ? `<h3>Interventi precedenti su questo impianto</h3>${storico.map(s => `<div class="m">• ${esc(fd(s.data))} · ${esc(s.tipo)} · ${esc((s.rapportino.lavori || []).slice(0,3).join(", "))}</div>`).join("")}` : ""}
@@ -1228,6 +1445,7 @@ function vCliente(c){
     ${c.referente ? `<span class="k">Referente</span><span>${esc(c.referente)}</span>` : ""}
     ${c.note ? `<span class="k">Note</span><span>${esc(c.note)}</span>` : ""}
   </div><div class="acts"><button class="btn sm" data-a="editcli">Modifica</button><button class="btn sm" data-a="cliimp">+ Impianto</button><button class="btn sm" data-a="cliint">+ Intervento</button><button class="btn sm" data-a="cliprev">+ Preventivo</button></div></div>
+  ${commBox(c.id)}
   <h3>Impianti (${imps.length})</h3>
   ${imps.length ? imps.map(i => { const tc = tco2(i); return `<div class="card tap" data-imp="${i.id}"><div class="row"><span class="t">${esc(impName(i) || "Impianto")}</span><span class="sp"></span>${i.prossimaManutenzione ? `<span class="chip ${i.prossimaManutenzione < t ? "bad" : i.prossimaManutenzione <= addDays(t, 30) ? "warn" : "ok"}">Manut. ${esc(fd(i.prossimaManutenzione))}</span>` : ""}</div><div class="m">${esc([i.matricola && "Matr. " + i.matricola, i.potenza, i.gas && i.gas + (i.caricaKg ? " " + i.caricaKg + " kg" : ""), tc != null && tc.toFixed(2) + " t CO₂eq", i.garanziaFino && (i.garanziaFino >= t ? "in garanzia fino al " : "garanzia scaduta il ") + fd(i.garanziaFino)].filter(Boolean).join(" · "))}</div></div>`; }).join("") : empty("Nessun impianto registrato.")}
   <h3>Storico interventi (${ints.length})</h3>
@@ -2012,15 +2230,28 @@ function vcardTesto(d){
   const L = ["BEGIN:VCARD", "VERSION:3.0", `N:${e(cognome)};${e(nome)};;;`, `FN:${e(d.nome)}`, "ORG:iTeam", `TITLE:${e(d.ruolo)}`];
   if (d.tel) L.push("TEL;TYPE=CELL:" + d.tel.replace(/[^\d+]/g, ""));
   AZIENDA.tel.split(/\s+-\s+/).filter(Boolean).forEach(n => L.push("TEL;TYPE=WORK:" + n.replace(/[^\d+]/g, "")));
+  if (d.foto) L.push(...foldV("PHOTO;ENCODING=b;TYPE=JPEG:" + d.foto));
   L.push("EMAIL;TYPE=WORK:" + BIGLIETTO.email, `ADR;TYPE=WORK:;;${e(BIGLIETTO.via)};${e(BIGLIETTO.citta)};${BIGLIETTO.prov};${BIGLIETTO.cap};Italia`, "NOTE:" + e(BIGLIETTO.servizi), "END:VCARD");
   return L.join("\r\n");
 }
+// Foto del contatto: il logo iTeam piccolo (deve stare dentro al QR, quindi pochi byte)
+const foldV = line => { const out = []; for (let i = 0; i < line.length; i += 74) out.push((i ? " " : "") + line.slice(i, i + 74)); return out; };
+let logoFotoP = null;
+function logoFoto(){
+  if (!logoFotoP) logoFotoP = new Promise(res => {
+    const im = new Image();
+    im.onload = () => { try { const cv = document.createElement("canvas"); cv.width = cv.height = 48; const g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, 48, 48); g.drawImage(im, 0, 0, 48, 48); res(cv.toDataURL("image/jpeg", 0.6).split(",")[1] || ""); } catch(e) { res(""); } };
+    im.onerror = () => res(""); im.src = "icons/icon-192.png";
+  });
+  return logoFotoP;
+}
 async function vBiglietto(){
   const d = bigliettoDati();
+  d.foto = await logoFoto();
   try { await loadQR(); } catch(e) { toast("Non riesco a creare il QR: controlla la connessione e riprova", 4000); return; }
   const ov = modal(`<div class="qrcard"><img class="logo" src="${LOGO}" alt="iTeam" style="margin:0 auto 8px">
     <div class="qn">${esc(d.nome)}</div><div class="qr">${esc(d.ruolo)}</div>
-    ${window.iteamQRsvg(vcardTesto(d), "M")}
+    ${window.iteamQRsvg(vcardTesto(d), d.foto ? "L" : "M")}
     <p class="qh">Fai inquadrare al cliente con la fotocamera: si salva il contatto in rubrica</p>
     ${d.tel ? `<p class="m" style="margin:0">Cellulare: ${esc(d.tel)}</p>` : `<p class="m" style="margin:0">Il tuo cellulare non è inserito: chiedi all’ufficio di aggiungerlo (👷 Tecnici).</p>`}
     <div class="qu"><b>Ufficio iTeam</b>Tel. ${esc(AZIENDA.tel)}<br>${esc(BIGLIETTO.email)}<br>${esc(AZIENDA.legale)}</div>
@@ -2042,7 +2273,7 @@ function vTecnico(){
   const list = F[ui.tecF] || [];
   const act = x => {
     if (x.stato === "Completato") return `<div class="m" style="margin-top:6px">${x.verificato ? "✔ Verificato dall'ufficio" : "📨 Inviato all'ufficio"}</div>`;
-    return `<div class="row" style="margin-top:10px;gap:8px">${x.stato === "Programmato" ? `<button class="btn" style="flex:1" data-start="${x.id}">▶ Inizia</button>` : `<span class="chip warn">Iniziato ${esc(x.inizioReale || x.rapportino?.inizio || "")}</span>`}${assetsNS ? `<button class="btn" style="flex:none" data-media="${x.id}" title="Foto e video">📷${(x.media || []).length ? " " + x.media.length : ""}</button>` : ""}<button class="btn pri" style="flex:2" data-rap="${x.id}">Compila rapportino</button></div>`;
+    return `<div class="row" style="margin-top:10px;gap:8px">${x.stato === "Programmato" ? `<button class="btn" style="flex:1" data-start="${x.id}">▶ Inizia</button>` : `<span class="chip warn">Iniziato ${esc(x.inizioReale || x.rapportino?.inizio || "")}</span>`}${commVisibili(x.clienteId).length ? `<button class="btn" style="flex:none" data-commcli="${x.clienteId}" title="Documenti della commessa" aria-label="Documenti della commessa">📁 ${commVisibili(x.clienteId).reduce((n, c) => n + docVisibili(c).length, 0)}</button>` : ""}${assetsNS ? `<button class="btn" style="flex:none" data-media="${x.id}" title="Foto e video">📷${(x.media || []).length ? " " + x.media.length : ""}</button>` : ""}<button class="btn pri" style="flex:2" data-rap="${x.id}">Compila rapportino</button></div>`;
   };
   return `<h2>Ciao ${esc(me)}</h2>
   ${boxNotifiche()}
@@ -2069,6 +2300,7 @@ function detTecCliente(id){
     ${c.email ? `<span class="k">Email</span><span>${esc(c.email)}</span>` : ""}
     ${addr(c) ? `<span class="k">Indirizzo</span><span>${esc(addr(c))}<br>${mapLink(c)}</span>` : ""}
     ${c.note ? `<span class="k">Note</span><span>${esc(c.note)}</span>` : ""}</div>
+    ${commBox(id)}
     <h3>Impianti (${imps.length})</h3>
     ${imps.length ? imps.map(i => `<div class="card tap" data-a="imp" data-id="${i.id}"><div class="t">${esc(impName(i) || "Impianto")}</div><div class="m">${esc([i.matricola && "Matr. " + i.matricola, i.gas && i.gas + (i.caricaKg ? " " + i.caricaKg + " kg" : "")].filter(Boolean).join(" · "))}</div></div>`).join("") : `<div class="m">Nessun impianto registrato.</div>`}
     <div class="acts"><button class="btn" data-a="edit">Modifica</button><button class="btn" data-a="newimp">+ Impianto</button><span class="sp"></span>${ui.modo === "comm" ? `<button class="btn pri" data-a="prev">+ Preventivo</button>` : `<button class="btn pri" data-a="job">+ Lavoro qui</button>`}</div>`);
@@ -2085,7 +2317,7 @@ function formTecNew(pre = {}){
   openForm({ title: "Lavoro non programmato", values: pre,
     intro: `<p class="m" style="margin-top:-6px">Per chiamate urgenti o lavori aggiunti sul posto. Se il cliente non è in elenco, inseriscilo qui sotto.</p>`,
     fields: [
-      {k:"clienteId", label:"Cliente", type:"select", options:() => cliOpts("— Nuovo cliente —"), rerender:true, onChange: v => { v.impiantoId = ""; }},
+      {k:"clienteId", label:"Cliente", type:"select", search:true, options:() => cliOpts("— Nuovo cliente —"), rerender:true, onChange: v => { v.impiantoId = ""; }},
       {k:"nuovoNome", label:"Nome nuovo cliente", show: v => !v.clienteId, req:true},
       {k:"nuovoInd", label:"Indirizzo", show: v => !v.clienteId},
       {k:"nuovoCitta", label:"Città", show: v => !v.clienteId, half:true}, {k:"nuovoCap", label:"CAP", show: v => !v.clienteId, half:true},

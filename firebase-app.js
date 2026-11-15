@@ -312,7 +312,7 @@ function openAccount(){
   });
 }
 function confirmBox(m){ return window.confirm(m); }
-const COLLEZIONI = ["clienti","impianti","interventi","preventivi","fatture","magazzino","listino","dico","config"];
+const COLLEZIONI = ["clienti","impianti","interventi","preventivi","fatture","magazzino","listino","dico","commesse","config"];
 async function backup(){
   toastMsg("Preparo il backup…");
   const out = {app: "iteam-gestionale", creato: new Date().toISOString(), collections: {}};

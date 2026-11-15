@@ -1,5 +1,5 @@
 rules_version = '2';
-// Regole per foto e video dei rapportini e del magazzino.
+// Regole per foto e video dei rapportini, del magazzino e documenti delle commesse.
 // Da incollare in Firebase → Storage → Regole → Pubblica.
 service firebase.storage {
   match /b/{bucket}/o {
@@ -10,8 +10,8 @@ service firebase.storage {
     }
     match /media/{file} {
       allow read, delete: if active();
-      allow create: if active() && request.resource.size < 50 * 1024 * 1024
-        && (request.resource.contentType.matches('image/.*') || request.resource.contentType.matches('video/.*'));
+      // foto, video e documenti delle commesse (PDF, Word, Excel, DWG…), fino a 50 MB
+      allow create: if active() && request.resource.size < 50 * 1024 * 1024;
     }
   }
 }
