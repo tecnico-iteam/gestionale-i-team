@@ -5,6 +5,11 @@
 "use strict";
 const OWNER = "carone.t46@gmail.com";
 const RUOLI = [["admin", "Amministratore"], ["ufficio", "Ufficio"], ["tecnico", "Tecnico"], ["preventivatore", "Preventivatore"]];
+// Chi non ha un'email accede con un semplice nome utente (es. "maurizio"):
+// dietro le quinte diventa "maurizio@utenti.iteamservice.it" (nessuna email viene inviata lì).
+const DOMINIO_UTENTI = "utenti.iteamservice.it";
+const toEmail = v => { v = String(v || "").trim().toLowerCase(); return !v ? "" : v.includes("@") ? v : v.replace(/\s+/g, ".") + "@" + DOMINIO_UTENTI; };
+const showName = e => String(e || "").replace("@" + DOMINIO_UTENTI, "");
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const cfg = window.FIREBASE_CONFIG || {};
 const configured = !!(cfg.apiKey && !String(cfg.apiKey).includes("INSERIRE"));
@@ -37,6 +42,7 @@ header.top .who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-
 @media(min-width:700px){#uacc .dlg{border-radius:16px}}
 #uacc .u{border:1px solid #e1e7ec;border-radius:10px;padding:10px;margin-bottom:8px}
 #uacc select{padding:7px;border:1px solid #cfd8df;border-radius:8px;font:inherit}
+#uacc input{padding:10px 11px;border:1px solid #cfd8df;border-radius:8px;font:inherit;box-sizing:border-box}
 `;
 document.head.appendChild(st);
 
@@ -52,8 +58,9 @@ function hideGate(){ document.getElementById("gate")?.remove(); }
 const ERR = {
   "auth/invalid-credential": "Email o password non corretti",
   "auth/wrong-password": "Password non corretta",
-  "auth/user-not-found": "Nessun account con questa email",
-  "auth/email-already-in-use": "Esiste già un account con questa email: usa «Accedi»",
+  "auth/user-not-found": "Nessun account con questo nome",
+  "auth/requires-recent-login": "Per sicurezza esci e rientra, poi riprova",
+  "auth/email-already-in-use": "Esiste già un account con questo nome utente o email",
   "auth/weak-password": "La password deve avere almeno 6 caratteri",
   "auth/invalid-email": "Email non valida",
   "auth/popup-closed-by-user": "Accesso annullato",
@@ -68,7 +75,7 @@ function showLogin(msg = ""){
     <button class="g" id="gGoogle"><svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Accedi con Google</button>
     <div class="or">oppure con email</div>
     <input id="gNome" placeholder="Nome e cognome (solo per nuovo account)" autocomplete="name" hidden>
-    <input id="gEmail" type="email" placeholder="Email" autocomplete="email">
+    <input id="gEmail" type="text" placeholder="Nome utente o email" autocomplete="username" autocapitalize="none" spellcheck="false">
     <input id="gPass" type="password" placeholder="Password" autocomplete="current-password">
     <button class="p" id="gLogin">Accedi</button>
     <button class="lk" id="gNew">Non hai un account? Registrati</button><br>
@@ -79,15 +86,15 @@ function showLogin(msg = ""){
   $("gGoogle").onclick = async () => { err(""); try { await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); } catch(e) { if (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment") { try { await auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider()); } catch(e2) { err(errMsg(e2)); } } else err(errMsg(e)); } };
   $("gNew").onclick = () => { reg = !reg; $("gNome").hidden = !reg; $("gLogin").textContent = reg ? "Crea account" : "Accedi"; $("gNew").textContent = reg ? "Hai già un account? Accedi" : "Non hai un account? Registrati"; $("gPass").autocomplete = reg ? "new-password" : "current-password"; };
   $("gLogin").onclick = async () => {
-    err(""); const em = $("gEmail").value.trim(), pw = $("gPass").value;
-    if (!em || !pw) return err("Inserisci email e password");
+    err(""); const em = toEmail($("gEmail").value), pw = $("gPass").value;
+    if (!em || !pw) return err("Inserisci nome utente e password");
     try {
       if (reg) { if (!$("gNome").value.trim()) return err("Scrivi nome e cognome"); sessionStorage.setItem("iteamNome", $("gNome").value.trim()); const c = await auth.createUserWithEmailAndPassword(em, pw); try { await c.user.updateProfile({displayName: $("gNome").value.trim()}); await c.user.sendEmailVerification(); } catch(e){} }
       else await auth.signInWithEmailAndPassword(em, pw);
     } catch(e) { err(errMsg(e)); }
   };
   $("gPass").onkeydown = e => { if (e.key === "Enter") $("gLogin").click(); };
-  $("gReset").onclick = async () => { const em = $("gEmail").value.trim(); if (!em) return err("Scrivi prima la tua email"); try { await auth.sendPasswordResetEmail(em); err("Ti abbiamo inviato un'email per reimpostare la password"); } catch(e) { err(errMsg(e)); } };
+  $("gReset").onclick = async () => { const em = toEmail($("gEmail").value); if (!em) return err("Scrivi prima la tua email"); if (em.endsWith("@" + DOMINIO_UTENTI)) return err("Chiedi al titolare di reimpostare la tua password"); try { await auth.sendPasswordResetEmail(em); err("Ti abbiamo inviato un'email per reimpostare la password"); } catch(e) { err(errMsg(e)); } };
 }
 
 function showWaiting(u){
@@ -192,17 +199,58 @@ function toastMsg(m){ const t = document.createElement("div"); t.className = "to
 function openAccount(){
   const u = auth.currentUser, admin = isOwner || profilo?.ruolo === "admin";
   const ov = panel(`<h2 style="margin-top:0">Account</h2>
-    <div class="info" style="margin-bottom:10px"><b>${esc(profilo?.nome || u.displayName || "")}</b><br><span class="m">${esc(u.email)} · ${esc((RUOLI.find(r => r[0] === profilo?.ruolo) || ["", profilo?.ruolo || ""])[1])}</span></div>
-    ${admin ? `<h3>Utenti</h3><div id="ulist" class="m">Caricamento…</div>
+    <div class="info" style="margin-bottom:10px"><b>${esc(profilo?.nome || u.displayName || "")}</b><br><span class="m">${esc(showName(u.email))} · ${esc((RUOLI.find(r => r[0] === profilo?.ruolo) || ["", profilo?.ruolo || ""])[1])}</span></div>
+    ${(u.providerData || []).some(p => p && p.providerId === "password") ? `<details style="margin-bottom:10px"><summary class="m" style="cursor:pointer">🔑 Cambia la mia password</summary>
+      <div style="margin-top:8px"><input id="pOld" type="password" placeholder="Password attuale" autocomplete="current-password" style="width:100%;margin-bottom:6px">
+      <input id="pNew" type="password" placeholder="Nuova password (almeno 6 caratteri)" autocomplete="new-password" style="width:100%;margin-bottom:6px">
+      <button class="btn" id="pSave">Salva nuova password</button></div></details>` : ""}
+    ${admin ? `<h3>Utenti</h3>
+    <details id="nuDet" class="u" style="background:#f7fafc"><summary style="cursor:pointer;font-weight:650">➕ Crea nuovo account</summary>
+      <div style="margin-top:10px">
+        <input id="nuNome" placeholder="Nome (es. Maurizio)" style="width:100%;margin-bottom:6px">
+        <input id="nuUser" placeholder="Nome utente per entrare (es. maurizio) o email" autocapitalize="none" spellcheck="false" style="width:100%;margin-bottom:6px">
+        <input id="nuPass" type="text" placeholder="Password scelta da te (almeno 6 caratteri)" autocapitalize="none" spellcheck="false" autocomplete="off" style="width:100%;margin-bottom:6px">
+        <div class="row wrap" style="gap:8px"><select id="nuRuolo">${RUOLI.map(([k, l]) => `<option value="${k}" ${k === "tecnico" ? "selected" : ""}>${l}</option>`).join("")}</select>
+        <button class="btn pri" id="nuCrea">Crea account</button></div>
+        <p class="m" style="margin:8px 0 0">L'account è subito attivo: comunica alla persona nome utente e password.</p>
+      </div></details>
+    <div id="ulist" class="m">Caricamento…</div>
     <h3>Dati</h3><p class="m">Scarica una copia di tutti i dati (consigliato una volta al mese) o importa i dati del vecchio gestionale.</p>
     <div class="row wrap" style="gap:8px"><button class="btn" id="aBk">⬇️ Scarica backup</button><button class="btn" id="aImp">⬆️ Importa dati</button></div>` : ""}
     <div class="acts"><button class="btn bad" id="aOut">Esci dall'account</button><span class="sp"></span><button class="btn pri" data-close>Chiudi</button></div>`);
   ov.querySelector("#aOut").onclick = () => auth.signOut();
+  const ps = ov.querySelector("#pSave");
+  if (ps) ps.onclick = async () => {
+    const o = ov.querySelector("#pOld").value, n = ov.querySelector("#pNew").value;
+    if (!o || !n) return toastMsg("Scrivi la password attuale e quella nuova");
+    if (n.length < 6) return toastMsg("La nuova password deve avere almeno 6 caratteri");
+    try { await u.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(u.email, o)); await u.updatePassword(n); toastMsg("✅ Password cambiata"); ov.querySelector("#pOld").value = ov.querySelector("#pNew").value = ""; }
+    catch(e) { toastMsg(e && (e.code === "auth/invalid-credential" || e.code === "auth/wrong-password") ? "La password attuale non è corretta" : errMsg(e)); }
+  };
   if (!admin) return;
+  ov.querySelector("#nuCrea").onclick = async () => {
+    const nome = ov.querySelector("#nuNome").value.trim(), em = toEmail(ov.querySelector("#nuUser").value), pw = ov.querySelector("#nuPass").value, ruolo = ov.querySelector("#nuRuolo").value;
+    if (!nome) return toastMsg("Scrivi il nome");
+    if (!em) return toastMsg("Scrivi il nome utente");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return toastMsg("Nome utente non valido: usa solo lettere, numeri e punti");
+    if (pw.length < 6) return toastMsg("La password deve avere almeno 6 caratteri");
+    const btn = ov.querySelector("#nuCrea"); btn.disabled = true; btn.textContent = "Creo…";
+    try {
+      // seconda istanza di Firebase: crea l'account senza far uscire l'amministratore
+      const sec = firebase.apps.find(a => a.name === "creaUtenti") || firebase.initializeApp(cfg, "creaUtenti");
+      const c = await sec.auth().createUserWithEmailAndPassword(em, pw);
+      try { await c.user.updateProfile({displayName: nome}); } catch(e){}
+      await db.collection("utenti").doc(c.user.uid).set({email: em, nome, ruolo, attivo: true, creato: new Date().toISOString(), creatoDa: u.email});
+      try { await sec.auth().signOut(); } catch(e){}
+      toastMsg(`✅ Account di ${nome} creato`);
+      ["#nuNome", "#nuUser", "#nuPass"].forEach(k => ov.querySelector(k).value = "");
+    } catch(e) { toastMsg(errMsg(e)); }
+    btn.disabled = false; btn.textContent = "Crea account";
+  };
   const un = db.collection("utenti").onSnapshot(s => {
     const el = ov.querySelector("#ulist"); if (!el) return un();
     const L = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a, b) => (a.attivo - b.attivo) || (a.nome || a.email || "").localeCompare(b.nome || b.email || ""));
-    el.innerHTML = L.length ? L.map(x => { const me = x.id === u.uid; return `<div class="u"><div class="row"><b>${esc(x.nome || "—")}</b>${!x.attivo ? `<span class="chip bad" style="margin-left:6px">Da attivare</span>` : ""}<span class="sp"></span>${me ? `<span class="chip pri">Tu</span>` : ""}</div><div class="m">${esc(x.email)}</div>
+    el.innerHTML = L.length ? L.map(x => { const me = x.id === u.uid; return `<div class="u"><div class="row"><b>${esc(x.nome || "—")}</b>${!x.attivo ? `<span class="chip bad" style="margin-left:6px">Da attivare</span>` : ""}<span class="sp"></span>${me ? `<span class="chip pri">Tu</span>` : ""}</div><div class="m">${x.email && x.email.endsWith("@" + DOMINIO_UTENTI) ? "Nome utente: <b>" + esc(showName(x.email)) + "</b>" : esc(x.email)}</div>
       ${me ? "" : `<div class="row wrap" style="gap:8px;margin-top:8px"><select data-ruolo="${x.id}">${(x.ruolo === "nuovo" ? [["nuovo", "— Scegli ruolo —"]] : []).concat(RUOLI).map(([k, l]) => `<option value="${k}" ${x.ruolo === k ? "selected" : ""}>${l}</option>`).join("")}</select>
       <button class="btn sm ${x.attivo ? "" : "ok"}" data-att="${x.id}" data-v="${x.attivo ? 0 : 1}">${x.attivo ? "Disattiva" : "✓ Attiva"}</button><button class="btn sm bad" data-udel="${x.id}">Elimina</button></div>`}</div>`; }).join("") : "Nessun utente.";
   }, () => {});
