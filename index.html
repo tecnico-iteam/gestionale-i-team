@@ -1200,7 +1200,7 @@ function vClienti(){
   if (ui.cliente) { const c = byId("clienti", ui.cliente); if (c) return vCliente(c); ui.cliente = null; }
   const q = ui.q.toLowerCase();
   const list = S.clienti.filter(c => !q || [c.nome, c.citta, c.telefono, c.indirizzo, c.referente].join(" ").toLowerCase().includes(q)).sort((a,b) => (a.nome||"").localeCompare(b.nome||""));
-  return `<h2>Clienti</h2><input class="search" placeholder="Cerca per nome, città, telefono…" value="${esc(ui.q)}" data-q>
+  return `<div class="row" style="align-items:center"><h2 style="flex:1">Clienti</h2>${ui.modo === "ufficio" ? `<button class="btn sm" data-a="impcli">⬆ Importa rubrica</button>` : ""}</div><input class="search" placeholder="Cerca per nome, città, telefono…" value="${esc(ui.q)}" data-q>
   ${list.length ? list.map(c => { const n = S.impianti.filter(i => i.clienteId === c.id).length; return `<div class="card tap" data-cli="${c.id}"><div class="row"><span class="t">${esc(c.nome)}</span><span class="sp"></span><span class="chip">${n} impiant${n === 1 ? "o" : "i"}</span></div><div class="m">${esc([c.citta, c.telefono, c.tipo].filter(Boolean).join(" · "))}</div></div>`; }).join("") : empty(S.clienti.length ? "Nessun cliente trovato." : "Nessun cliente ancora.", `<button class="btn pri sm" data-a="newcli">+ Nuovo cliente</button>`)}`;
 }
 function vCliente(c){
@@ -1583,6 +1583,120 @@ function mapImport(sheets, fname){
         for (let i = 0, k = 0; i < items.length; i += 250, k++) await save("listino", base + "_" + String(k).padStart(3, "0"), {items: items.slice(i, i + 250)});
         clearToasts(); toast(`✅ Listino importato: ${items.length} articoli`, 4000);
       } catch(e) { clearToasts(); throw e; }
+    }
+  });
+}
+// ---------- importa rubrica (contatti del telefono .vcf, Excel o CSV) nei clienti ----------
+const telKey = t => { let d = String(t || "").replace(/[^\d+]/g, ""); if (d.startsWith("+39")) d = d.slice(3); else if (d.startsWith("0039")) d = d.slice(4); return d.replace(/\D/g, ""); };
+function parseVcf(txt){
+  const out = [];
+  const lines = txt.replace(/\r\n?/g, "\n").replace(/\n[ \t]/g, "").replace(/=\n/g, "").split("\n");
+  let c = null;
+  const unesc = v => v.replace(/\\n/gi, "\n").replace(/\\([,;\\])/g, "$1").trim();
+  const qp = v => { try { return decodeURIComponent(v.replace(/=([0-9A-F]{2})/gi, "%$1")); } catch(e) { return v; } };
+  for (const raw of lines) {
+    const i = raw.indexOf(":"); if (i < 0) continue;
+    const head = raw.slice(0, i), up = head.toUpperCase(); let val = raw.slice(i + 1);
+    const prop = up.split(";")[0].replace(/^ITEM\d+\./, "");
+    if (/QUOTED-PRINTABLE/.test(up)) val = qp(val);
+    if (prop === "BEGIN" && /VCARD/i.test(val)) { c = {tel: [], email: [], adr: null}; continue; }
+    if (prop === "END" && c) { out.push(c); c = null; continue; }
+    if (!c) continue;
+    if (prop === "FN") c.fn = unesc(val);
+    else if (prop === "N") { const p = val.split(";").map(unesc); c.n = [p[1], p[2], p[0]].filter(Boolean).join(" "); }
+    else if (prop === "ORG") c.org = unesc(val.split(";")[0]);
+    else if (prop === "TEL") c.tel[/CELL|MOBILE|IPHONE/.test(up) ? "unshift" : "push"](unesc(val).replace(/^tel:/i, ""));
+    else if (prop === "EMAIL") c.email.push(unesc(val));
+    else if (prop === "ADR" && !c.adr) { const p = val.split(";").map(unesc); c.adr = {indirizzo: [p[1], p[2]].filter(Boolean).join(" ").replace(/\n/g, " "), citta: p[3] || "", cap: p[5] || ""}; }
+    else if (prop === "NOTE") c.note = unesc(val);
+  }
+  return out.map(c => {
+    const persona = c.n || (c.fn && c.fn !== c.org ? c.fn : "");
+    return {tipo: c.org && !persona ? "Azienda" : "Privato", nome: (persona || c.fn || c.org || "").trim(), referente: "", telefono: c.tel[0] || "", email: c.email[0] || "",
+      indirizzo: c.adr?.indirizzo || "", citta: c.adr?.citta || "", cap: c.adr?.cap || "", note: [c.org && persona ? "Azienda: " + c.org : "", c.tel.slice(1).length ? "Altri numeri: " + c.tel.slice(1).join(", ") : "", c.note || ""].filter(Boolean).join("\n")};
+  });
+}
+function tabellaContatti(rows){
+  let hr = -1, col = {};
+  const K = {nome: /^(nome|name|first ?name|given ?name|nome e cognome|nominativo|cliente|contatto|display ?name|full ?name)$/i, cognome: /^(cognome|last ?name|family ?name|surname)$/i,
+    rs: /ragione|azienda|societ|company|organi[sz]|ditta|denominaz/i, telefono: /tel|cell|mobile|phone|numero/i, email: /e-?mail/i, indirizzo: /indirizzo|^via|address|street|strada/i,
+    citta: /citt|comune|city|localit/i, cap: /^cap$|zip|postal|postcode|c\.a\.p/i, piva: /p\.? ?iva|partita|vat|fiscale|^cf$|c\.f\./i, referente: /referente/i, note: /^note|notes/i};
+  for (let r = 0; r < Math.min(15, rows.length); r++) {
+    const h = rows[r].map(x => String(x || "").trim()); const c = {};
+    h.forEach((t, i) => { if (!t) return; for (const k of Object.keys(K)) if (c[k] === undefined && K[k].test(t) && !(k === "telefono" && /type|tipo|label|etichetta/i.test(t)) && !(k === "nome" && /phone|mail/i.test(t))) { c[k] = i; break; } });
+    if ((c.nome !== undefined || c.rs !== undefined || c.cognome !== undefined) && Object.keys(c).length >= 2) { hr = r; col = c; break; }
+  }
+  if (hr < 0) return null;
+  const g = (r, k) => col[k] === undefined ? "" : String(r[col[k]] ?? "").trim();
+  return rows.slice(hr + 1).map(r => {
+    const persona = [g(r, "nome"), g(r, "cognome")].filter(Boolean).join(" "), rs = g(r, "rs");
+    return {tipo: rs && !persona ? "Azienda" : rs ? "Azienda" : "Privato", nome: rs || persona, referente: rs && persona ? persona : g(r, "referente"), telefono: g(r, "telefono"), email: g(r, "email"),
+      indirizzo: g(r, "indirizzo"), citta: g(r, "citta"), cap: g(r, "cap"), piva: g(r, "piva"), note: g(r, "note")};
+  });
+}
+const rubIn = document.createElement("input"); rubIn.type = "file"; rubIn.accept = ".vcf,.vcard,text/vcard,text/x-vcard,.xlsx,.xls,.csv,.txt"; rubIn.hidden = true; document.body.appendChild(rubIn);
+function importaRubrica(){
+  const ov = modal(`<h2>Importa rubrica</h2>
+    <p>Puoi caricare i <b>contatti del telefono</b> oppure un file <b>Excel / CSV</b>. Prima di salvare scegli tu quali contatti diventano clienti.</p>
+    <details class="info" style="margin-bottom:8px"><summary><b>📱 Come prendere i contatti dall'iPhone</b></summary><ol style="margin:8px 0 0;padding-left:20px">
+      <li>Apri l'app <b>Contatti</b> e tocca <b>‹ Liste</b> in alto a sinistra.</li>
+      <li>Tieni premuto su <b>Tutti i contatti</b> (o su una lista) e scegli <b>Esporta</b>.</li>
+      <li>Scegli <b>Salva su File</b> e poi torna qui e tocca il pulsante sotto.</li></ol>
+      <p class="m" style="margin:6px 0 0">Su Android: app Contatti → ☰ → Gestisci contatti → Esporta in file .vcf.</p></details>
+    <div class="acts"><button class="btn" data-a="x">Annulla</button><span class="sp"></span><button class="btn pri" data-a="file">Scegli il file</button></div>`);
+  ov.addEventListener("click", e => { const a = e.target.closest("[data-a]")?.dataset.a; if (a === "x") closeModal(); if (a === "file") { rubIn.value = ""; rubIn.click(); } });
+  rubIn.onchange = async () => {
+    const f = rubIn.files[0]; if (!f) return;
+    toast("Leggo il file…", 20000);
+    let list = null;
+    try {
+      if (/\.(xlsx|xls)$/i.test(f.name)) { const X = await loadXLSX(); const wb = X.read(await f.arrayBuffer(), {type: "array"}); for (const n of wb.SheetNames) { list = tabellaContatti(X.utils.sheet_to_json(wb.Sheets[n], {header: 1, raw: false, defval: ""})); if (list && list.length) break; } }
+      else { const txt = await f.text(); list = /BEGIN:VCARD/i.test(txt) ? parseVcf(txt) : tabellaContatti(parseCSV(txt)); }
+    } catch(e) { list = null; }
+    clearToasts();
+    if (!list) return toast("Non trovo i contatti nel file: serve una riga di intestazione con almeno «Nome» e «Telefono»", 5000);
+    list = list.filter(c => c.nome);
+    if (!list.length) return toast("Nel file non ci sono contatti con un nome", 4000);
+    sceltaRubrica(list);
+  };
+}
+function sceltaRubrica(list){
+  const telSet = new Set(S.clienti.map(c => telKey(c.telefono)).filter(t => t.length >= 6)), nomeSet = new Set(S.clienti.map(c => (c.nome || "").trim().toLowerCase()));
+  const visti = new Set();
+  list.forEach(c => { const t = telKey(c.telefono), n = c.nome.trim().toLowerCase(); c._dup = (t.length >= 6 && telSet.has(t)) || nomeSet.has(n) ? "già nei clienti" : visti.has(n + "|" + t) ? "doppio nel file" : ""; visti.add(n + "|" + t); c._sel = !c._dup; });
+  list.sort((a, b) => a.nome.localeCompare(b.nome));
+  let q = "";
+  const ov = modal(`<h2>Scegli i contatti</h2><p class="m" style="margin-top:-4px">Trovati <b>${list.length}</b> contatti. Togli la spunta a quelli che non sono clienti (amici, fornitori…).</p>
+    <input class="search" id="rbq" placeholder="Cerca nome o numero…">
+    <div class="row wrap" style="gap:6px;margin-bottom:8px"><button class="btn sm" data-a="all">Seleziona tutti</button><button class="btn sm" data-a="none">Nessuno</button></div>
+    <div id="rbl" style="max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:10px"></div>
+    <div class="acts"><button class="btn" data-a="x">Annulla</button><span class="sp"></span><button class="btn pri" data-a="go" id="rbgo"></button></div>`);
+  const dlg = ov.querySelector(".dlg"), L = dlg.querySelector("#rbl");
+  const draw = () => {
+    const ql = q.toLowerCase();
+    L.innerHTML = list.map((c, i) => (!ql || (c.nome + " " + c.telefono + " " + c.citta).toLowerCase().includes(ql)) ? `<label style="display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border-bottom:1px solid var(--line);cursor:pointer"><input type="checkbox" data-i="${i}" ${c._sel ? "checked" : ""} style="margin-top:3px;width:20px;height:20px;flex:none"><span style="min-width:0"><b>${esc(c.nome)}</b>${c.tipo === "Azienda" ? ' <span class="chip">Azienda</span>' : ""}${c._dup ? ` <span class="chip warn">${c._dup}</span>` : ""}<br><span class="m">${esc([c.telefono, c.email, [c.indirizzo, c.citta].filter(Boolean).join(", ")].filter(Boolean).join(" · ") || "—")}</span></span></label>` : "").join("") || `<div class="m" style="padding:12px">Nessun contatto trovato.</div>`;
+    const n = list.filter(c => c._sel).length; const b = dlg.querySelector("#rbgo"); b.textContent = n ? `Importa ${n} client${n === 1 ? "e" : "i"}` : "Importa"; b.disabled = !n;
+  };
+  draw();
+  dlg.querySelector("#rbq").addEventListener("input", e => { q = e.target.value; draw(); });
+  L.addEventListener("change", e => { const i = e.target.dataset.i; if (i !== undefined) { list[+i]._sel = e.target.checked; draw(); } });
+  ov.addEventListener("click", async e => {
+    const a = e.target.closest("[data-a]")?.dataset.a; if (!a) return;
+    const vis = c => !q || (c.nome + " " + c.telefono + " " + c.citta).toLowerCase().includes(q.toLowerCase());
+    if (a === "all") { list.forEach(c => { if (vis(c)) c._sel = true; }); draw(); }
+    if (a === "none") { list.forEach(c => { if (vis(c)) c._sel = false; }); draw(); }
+    if (a === "x") closeModal();
+    if (a === "go") {
+      const sel = list.filter(c => c._sel); if (!sel.length) return;
+      const b = dlg.querySelector("#rbgo"); b.disabled = true;
+      const da = ui.uff || "Ufficio"; let ok = 0;
+      try {
+        for (let i = 0; i < sel.length; i += 20) {
+          await Promise.all(sel.slice(i, i + 20).map(({_dup, _sel, ...c}) => save("clienti", null, {...Object.fromEntries(Object.entries(c).filter(([, v]) => v)), tipo: c.tipo || "Privato", creatoDa: da, importatoIl: today()})));
+          ok = Math.min(sel.length, i + 20); b.textContent = `Salvo ${ok} di ${sel.length}…`;
+        }
+        closeModal(); toast(`✅ Importati ${ok} clienti`, 4000); render();
+      } catch(err) { b.disabled = false; toast(`Importati ${ok} clienti, poi si è interrotto. Riprova: quelli già importati risulteranno «già nei clienti».`, 6000); }
     }
   });
 }
@@ -2062,6 +2176,7 @@ document.addEventListener("click", async e => {
   if (d.scroll) { document.getElementById(d.scroll)?.scrollIntoView({behavior: "smooth"}); return; }
   const a = d.a;
   if (a === "newcli") formCliente();
+  if (a === "impcli") importaRubrica();
   if (a === "editcli") formCliente(byId("clienti", ui.cliente));
   if (a === "back") { ui.cliente = null; render(); }
   if (a === "newint") formIntervento();
