@@ -127,6 +127,8 @@ function start(){
     if (isOwner) {
       try { const s = await ref.get(); if (!s.exists || s.data().ruolo !== "admin" || !s.data().attivo) await ref.set({email: u.email, nome: u.displayName || "Titolare", ruolo: "admin", attivo: true, creato: new Date().toISOString()}, {merge: true}); } catch(e){}
       profilo = {email: u.email, nome: u.displayName || "Titolare", ruolo: "admin", attivo: true};
+      try { const s = await ref.get(); if (s.exists) profilo = {...s.data(), email: u.email, ruolo: "admin", attivo: true}; } catch(e){}
+      unsubProf = ref.onSnapshot(s => { if (s.exists) { profilo = {...s.data(), email: u.email, ruolo: "admin", attivo: true}; if (started) window.dispatchEvent(new Event("iteam-profilo")); } }, () => {});
       return enter();
     }
     unsubProf = ref.onSnapshot(async s => {
@@ -136,6 +138,7 @@ function start(){
       }
       profilo = s.data();
       if (!profilo.attivo) { if (started) location.reload(); else showWaiting(u); return; }
+      if (started) window.dispatchEvent(new Event("iteam-profilo"));
       enter();
     }, () => showWaiting(u));
   });
@@ -292,11 +295,14 @@ function openAccount(){
   const un = db.collection("utenti").onSnapshot(s => {
     const el = ov.querySelector("#ulist"); if (!el) return un();
     const L = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a, b) => (a.attivo - b.attivo) || (a.nome || a.email || "").localeCompare(b.nome || b.email || ""));
+    const O = (window.ITEAM_OPZIONI && window.ITEAM_OPZIONI()) || {postazioni: [], tecnici: []};
+    const sel = (x, campo, lista, label) => `<label class="m" style="display:flex;align-items:center;gap:6px;margin-top:6px">${label}<select data-link="${x.id}" data-campo="${campo}" style="flex:1;min-width:0"><option value="">Automatico (dal nome)</option>${lista.map(n => `<option ${x[campo] === n ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label>`;
+    const links = x => (["admin", "ufficio", "ufficio_tecnico"].includes(x.ruolo) || (x.id === u.uid && isOwner) ? sel(x, "postazione", O.postazioni, "🏢 Postazione") : "") + (["admin", "ufficio_tecnico", "tecnico"].includes(x.ruolo) || (x.id === u.uid && isOwner) ? sel(x, "tecnico", O.tecnici, "🔧 Tecnico") : "");
     el.innerHTML = L.length ? L.map(x => { const me = x.id === u.uid; return `<div class="u"><div class="row"><b>${esc(x.nome || "—")}</b>${!x.attivo ? `<span class="chip bad" style="margin-left:6px">Da attivare</span>` : ""}<span class="sp"></span>${me ? `<span class="chip pri">Tu</span>` : ""}</div><div class="m">${x.email && x.email.endsWith("@" + DOMINIO_UTENTI) ? "Nome utente: <b>" + esc(showName(x.email)) + "</b>" : esc(x.email)}</div>
       ${me ? "" : `<div class="row wrap" style="gap:8px;margin-top:8px"><select data-ruolo="${x.id}">${(x.ruolo === "nuovo" ? [["nuovo", "— Scegli ruolo —"]] : []).concat(RUOLI).map(([k, l]) => `<option value="${k}" ${x.ruolo === k ? "selected" : ""}>${l}</option>`).join("")}</select>
-      <button class="btn sm ${x.attivo ? "" : "ok"}" data-att="${x.id}" data-v="${x.attivo ? 0 : 1}">${x.attivo ? "Disattiva" : "✓ Attiva"}</button><button class="btn sm bad" data-udel="${x.id}">Elimina</button></div>`}</div>`; }).join("") : "Nessun utente.";
+      <button class="btn sm ${x.attivo ? "" : "ok"}" data-att="${x.id}" data-v="${x.attivo ? 0 : 1}">${x.attivo ? "Disattiva" : "✓ Attiva"}</button><button class="btn sm bad" data-udel="${x.id}">Elimina</button></div>`}${links(x)}</div>`; }).join("") : "Nessun utente.";
   }, () => {});
-  ov.addEventListener("change", async e => { const id = e.target.dataset.ruolo; if (id) { try { await db.collection("utenti").doc(id).update({ruolo: e.target.value}); toastMsg("Ruolo aggiornato"); } catch(err) { toastMsg("Non riuscito"); } } });
+  ov.addEventListener("change", async e => { if (e.target.dataset.link) { try { await db.collection("utenti").doc(e.target.dataset.link).update({[e.target.dataset.campo]: e.target.value}); toastMsg("Collegamento salvato"); } catch(err) { toastMsg("Non riuscito"); } return; } const id = e.target.dataset.ruolo; if (id) { try { await db.collection("utenti").doc(id).update({ruolo: e.target.value}); toastMsg("Ruolo aggiornato"); } catch(err) { toastMsg("Non riuscito"); } } });
   ov.addEventListener("click", async e => {
     const t = e.target;
     if (t.dataset.att) { const sel = ov.querySelector(`[data-ruolo="${t.dataset.att}"]`); if (t.dataset.v === "1" && sel && sel.value === "nuovo") return toastMsg("Scegli prima il ruolo"); try { await db.collection("utenti").doc(t.dataset.att).update({attivo: t.dataset.v === "1"}); toastMsg(t.dataset.v === "1" ? "Account attivato" : "Account disattivato"); } catch(err) { toastMsg("Non riuscito"); } }

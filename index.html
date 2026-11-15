@@ -2069,8 +2069,39 @@ function modiConsentiti(){
   const r = window.ITEAM && window.ITEAM.profilo && window.ITEAM.profilo() ? window.ITEAM.profilo().ruolo : "";
   return ({tecnico: ["tecnico"], ufficio: ["ufficio"], ufficio_tecnico: ["ufficio", "tecnico"], preventivatore: ["comm"]})[r] || ["ufficio", "tecnico", "comm"];
 }
+// Con l'account ognuno entra come se stesso: postazione e tecnico collegati (👤 → Utenti) o ricavati dal nome.
+const mioAccount = () => (window.ITEAM && window.ITEAM.profilo && window.ITEAM.profilo()) || null;
+const primoNome = v => String(v || "").trim().split(/\s+/)[0];
+function mioTecnico(){
+  const p = mioAccount(); if (!p) return null;
+  const T = TEC(), n = p.nome || "";
+  if (p.tecnico && (!T.length || T.some(t => sameTec(t.nome, p.tecnico)))) return p.tecnico;
+  const m = T.find(t => sameTec(t.nome, n)) || T.find(t => sameTec(primoNome(t.nome), primoNome(n)));
+  return m ? m.nome : (T.length ? "" : n);
+}
+function miaPostazione(){
+  const p = mioAccount(); if (!p) return null;
+  const P = CFG.postazioni || [];
+  return p.postazione || P.find(x => sameTec(x, p.nome)) || P.find(x => sameTec(primoNome(x), primoNome(p.nome))) || p.nome || "Ufficio";
+}
+window.ITEAM_OPZIONI = () => ({postazioni: (CFG.postazioni || []).slice(), tecnici: TEC().map(t => t.nome)});
+window.addEventListener("iteam-profilo", () => { try { render(); } catch(e){} });
+function entraModo(m){
+  const p = mioAccount();
+  if (m === "ufficio") { ui.uff = miaPostazione(); ls.set("uff", ui.uff); }
+  if (m === "tecnico") { ui.tecnico = mioTecnico(); ls.set("tecnico", ui.tecnico); }
+  if (m === "comm") { ui.comm = p.nome || ui.comm || "Preventivatore"; ls.set("comm", ui.comm); }
+  ui.modo = m; ui.q = ""; ls.set("modo", m);
+}
 function vChoose(){
-  const tl = tecnici(), mc = modiConsentiti();
+  const tl = tecnici(), mc = modiConsentiti(), acc = mioAccount();
+  if (acc) {
+    const mt = mioTecnico();
+    return `<div class="choose"><img class="logo-big" src="${LOGO}" alt="iTeam"><h2>Ciao ${esc(primoNome(acc.nome) || "")}</h2><p class="m">Dove vuoi entrare?</p>
+    ${mc.includes("ufficio") ? `<div class="card"><b>🏢 Ufficio</b><p class="m" style="margin:4px 0 10px">Clienti, impianti, pianificazione, rapportini in arrivo, preventivi, fatture, magazzino.</p><button class="btn pri big" data-mode="ufficio">Entra in ufficio come ${esc(miaPostazione())}</button></div>` : ""}
+    ${mc.includes("tecnico") ? `<div class="card"><b>🔧 Tecnico in campo</b><p class="m" style="margin:4px 0 10px">I tuoi lavori, orari, lavori eseguiti e materiali, rapportini.</p>${mt ? `<button class="btn big" data-mode="tecnico">Entra come tecnico: ${esc(mt)}</button>` : `<div class="banner warn" style="margin:0">Il tuo account non è ancora collegato a un tecnico dell'elenco. Il titolare lo collega da 👤 → Utenti.</div>`}</div>` : ""}
+    ${mc.includes("comm") ? `<div class="card"><b>📋 Preventivatore</b><p class="m" style="margin:4px 0 10px">Preventivi dal listino General Fujitsu e i tuoi clienti.</p><button class="btn big" data-mode="comm">Entra come preventivatore</button></div>` : ""}</div>`;
+  }
   return `<div class="choose"><img class="logo-big" src="${LOGO}" alt="iTeam"><h2>Chi sta usando il gestionale?</h2><p class="m">La scelta resta salvata su questo dispositivo. Puoi cambiarla in alto con "Cambia".</p>
   ${mc.includes("ufficio") ? `<div class="card"><b>🏢 Ufficio</b><div class="row" style="gap:8px;margin-top:10px">${(CFG.postazioni || ["Tommy", "Irene", "Alessandro"]).map(n => `<button class="btn pri big" style="flex:1" data-mode="ufficio" data-uff="${esc(n)}">${esc(n)}</button>`).join("")}</div><p class="m" style="margin:8px 0 0">Clienti, impianti, pianificazione, rapportini in arrivo, preventivi, fatture, magazzino.</p></div>` : ""}
   ${mc.includes("tecnico") ? `<div class="card"><b>🔧 Tecnico in campo</b><p class="m" style="margin:4px 0 10px">Vedi i tuoi lavori, segni orari, lavori eseguiti e materiali, invii il rapportino.</p>
@@ -2085,7 +2116,14 @@ function vChoose(){
 function go(tab){ ui.tab = tab; ui.q = ""; if (tab !== "clienti") ui.cliente = null; location.hash = tab; render(); window.scrollTo(0, 0); }
 function render(){
   if (ui.modo && !modiConsentiti().includes(ui.modo)) { ui.modo = ""; ls.set("modo", ""); }
-  if (ui.modo === "ufficio" && CFG.pinUfficio && ls.get("uffPin", "") !== CFG.pinUfficio) { ui.modo = ""; ls.set("modo", ""); }
+  const acc = mioAccount();
+  if (acc) {
+    // con l'account: identità sempre quella dell'account, e se c'è una sola area si entra direttamente
+    if (ui.modo === "tecnico" && !mioTecnico()) { ui.modo = ""; ls.set("modo", ""); }
+    if (ui.modo) entraModo(ui.modo);
+    else { const mc = modiConsentiti(); if (mc.length === 1 && (mc[0] !== "tecnico" || mioTecnico())) entraModo(mc[0]); }
+  }
+  if (!acc && ui.modo === "ufficio" && CFG.pinUfficio && ls.get("uffPin", "") !== CFG.pinUfficio) { ui.modo = ""; ls.set("modo", ""); }
   if (ui.modo === "tecnico" && TEC().length && !TEC().some(t => sameTec(t.nome, ui.tecnico))) { ui.modo = ""; ls.set("modo", ""); toast("Il tuo profilo tecnico è cambiato: rientra con il tuo codice", 4000); }
   const app = $("#app"), nav = $("#nav"), fab = $("#fabwrap");
   const focusQ = document.activeElement && document.activeElement.hasAttribute("data-q");
@@ -2095,7 +2133,7 @@ function render(){
   else if (ui.stale) banner = `<div class="banner warn">${navigator.onLine ? "Connessione lenta" : "Sei offline"}: stai vedendo i dati salvati sul dispositivo, le modifiche verranno inviate appena torna la connessione.</div>`;
   if (!canWrite && !readOnlyNoted) banner += `<div class="banner warn">Hai accesso in sola lettura. Per inserire dati chiedi al titolare di attivare il tuo account (👤 → Utenti).</div>`;
   $("#hset").hidden = ui.modo !== "ufficio"; $("#htec").hidden = ui.modo !== "ufficio";
-  $("#hmode").hidden = !ui.modo;
+  $("#hmode").hidden = !ui.modo || (!!acc && modiConsentiti().length === 1);
   $("#hwho").textContent = ui.modo === "tecnico" ? "🔧 " + ui.tecnico : ui.modo === "comm" ? "📋 " + ui.comm : ui.modo === "ufficio" ? "🏢 " + (ui.uff || "Ufficio") : "";
   if (!ui.modo) { nav.hidden = true; fab.innerHTML = ""; app.innerHTML = banner + vChoose(); return; }
   if (ui.modo === "comm") { nav.hidden = true; fab.innerHTML = ""; app.innerHTML = banner + vComm(); if (focusQ) { const el = app.querySelector("[data-q]"); if (el) { el.focus(); try { el.setSelectionRange(caret, caret); } catch(e){} } } return; }
@@ -2127,6 +2165,7 @@ document.addEventListener("click", async e => {
   if (d.tab) return go(d.tab);
   if (d.mode) {
     if (!modiConsentiti().includes(d.mode)) { toast("Il tuo account non ha accesso a questa area"); return; }
+    if (mioAccount()) { if (d.mode === "tecnico" && !mioTecnico()) return toast("Account non collegato a un tecnico"); entraModo(d.mode); return render(); }
     if (d.mode === "ufficio") {
       const enter = () => { ui.modo = "ufficio"; ui.uff = d.uff || ""; ls.set("modo", "ufficio"); ls.set("uff", ui.uff); ls.set("uffPin", CFG.pinUfficio || ""); render(); };
       if (!CFG.pinUfficio || ls.get("uffPin", "") === CFG.pinUfficio) return enter();
