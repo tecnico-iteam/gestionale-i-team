@@ -617,7 +617,7 @@ function formFattura(f = {}){
 }
 function formArticolo(a = {}){
   openForm({ title: a.id ? "Modifica articolo" : "Nuovo articolo", values: a,
-    intro: a.id ? `<div class="row" style="gap:12px;margin:-4px 0 12px">${magImg(a) ? `<img src="${esc(magImg(a))}" data-zoom="${esc(magImg(a))}" data-zl="${esc(a.descrizione)}" style="width:120px;height:90px;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:zoom-in">` : `<img src="${iconFor(a.descrizione)}" style="width:120px;height:90px;border-radius:10px">`}<div><div class="t">${num(a.prezzoVendita) ? "Cliente " + eur(a.prezzoVendita) : ""}</div><div class="m">${num(a.prezzoListino) ? "Listino " + eur(a.prezzoListino) : ""}</div><button type="button" class="btn sm" style="margin-top:6px" data-magfoto="${a.id}">📷 ${magImg(a) ? "Cambia foto" : "Aggiungi foto"}</button></div></div>` : "",
+    intro: !a.id && a.fotoUrl ? `<div style="margin:-4px 0 12px"><img src="${esc(a.fotoUrl)}" alt="Foto dell'articolo" style="width:100%;max-height:240px;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#fff"><p class="m" style="margin:4px 0 0">Foto salvata: ora scrivi descrizione, codice, quantità e prezzi.</p></div>` : a.id ? `<div class="row" style="gap:12px;margin:-4px 0 12px">${magImg(a) ? `<img src="${esc(magImg(a))}" data-zoom="${esc(magImg(a))}" data-zl="${esc(a.descrizione)}" style="width:120px;height:90px;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:zoom-in">` : `<img src="${iconFor(a.descrizione)}" style="width:120px;height:90px;border-radius:10px">`}<div><div class="t">${num(a.prezzoVendita) ? "Cliente " + eur(a.prezzoVendita) : ""}</div><div class="m">${num(a.prezzoListino) ? "Listino " + eur(a.prezzoListino) : ""}</div><button type="button" class="btn sm" style="margin-top:6px" data-magfoto="${a.id}">📷 ${magImg(a) ? "Cambia foto" : "Aggiungi foto"}</button></div></div>` : "",
     fields: [
       {k:"descrizione", label:"Descrizione", req:true},
       {k:"codice", label:"Codice", half:true}, {k:"categoria", label:"Categoria", type:"select", options:CAT_MAG, def:"Ricambi", half:true},
@@ -1697,6 +1697,7 @@ function vMagazzino(){
   return `<h2>Magazzino</h2>
   <div class="tiles" style="margin-bottom:10px"><div class="tile"><div class="n">${S.magazzino.length}</div><div class="l">Articoli</div></div><div class="tile" data-a="low"><div class="n" style="color:${nLow ? "var(--bad)" : "inherit"}">${nLow}</div><div class="l">Sotto scorta</div></div><div class="tile"><div class="n money" style="font-size:19px">${eur(val)}</div><div class="l">Valore a costo</div></div></div>
   <div class="row wrap" style="gap:8px;margin-bottom:10px"><button class="btn pri" data-a="magimp">⬆ Importa cataloghi</button><button class="btn" data-a="magsc">% Sconto</button><select class="search" style="margin:0;flex:1;min-width:150px" data-magforn><option value="">Tutti i fornitori</option>${[...new Set(S.magazzino.map(m => m.fornitore).filter(Boolean))].sort().map(f => `<option ${ui.magForn === f ? "selected" : ""}>${esc(f)}</option>`).join("")}</select></div>
+  <button class="btn pri big" data-a="artfoto" style="width:100%;margin-bottom:10px">${isDesktop() ? "📱 Fotografa con il telefono e aggiungi articolo" : "📷 Fotografa e aggiungi articolo"}</button>
   <input class="search" placeholder="Cerca articolo, codice, serie, fornitore…" value="${esc(ui.q)}" data-q>
   <div class="seg"><button class="${!ui.magCat && !ui.magLow ? "on" : ""}" data-cat="">Tutti</button>${CAT_MAG.map(c => `<button class="${ui.magCat === c ? "on" : ""}" data-cat="${esc(c)}">${esc(c)}</button>`).join("")}<button class="${ui.magLow ? "on" : ""}" data-a="low">Sotto scorta</button></div>
   ${l.length > 120 ? `<div class="m" style="margin:0 2px 8px">${l.length} articoli: ne mostro 120, usa ricerca o filtri.</div>` : ""}
@@ -2185,6 +2186,19 @@ const rankSearch = (list, q, fields) => {
     if (magImg(it) || imgOf(it)) sc += 1; return [sc, it]; }).sort((a, b) => b[0] - a[0] || (a[1].descrizione || "").localeCompare(b[1].descrizione || "")).map(x => x[1]);
 };
 const magImg = m => m ? (m.foto ? (m.fotoUrl || "/_blob/" + m.foto) : (m.img || IMGMAP[m.codice] || "")) : "";
+// Nuovo articolo partendo da una foto: fotocamera sul telefono, richiesta al telefono dal PC
+async function nuovoArtFoto(){
+  if (!assetsNS) { toast("Il caricamento foto non è attivo per il tuo account", 4000); return; }
+  if (isDesktop()) { const up = await chiediFotoTelefono("Nuovo articolo per il magazzino"); if (up) formArticolo({foto: up.id, fotoUrl: up.url}); return; }
+  camIn.value = "";
+  camIn.onchange = async () => {
+    const f = camIn.files[0]; if (!f) return;
+    toast("Salvo la foto…", 60000);
+    try { const r = await shrinkImage(f); if (!r) throw {code: "unsupported_type"}; const up = await assetsNS.upload(r.blob, {type: r.type}); clearToasts(); formArticolo({foto: up.id, fotoUrl: up.url}); }
+    catch(e) { clearToasts(); toast("Foto non caricata, riprova.", 3500); }
+  };
+  camIn.click();
+}
 async function magFoto(id, daFile){
   if (!assetsNS) { toast("Il caricamento foto non è attivo per il tuo account", 4000); return; }
   if (isDesktop() && !daFile) {
@@ -2644,6 +2658,7 @@ document.addEventListener("click", async e => {
   if (a === "newprev") formPreventivo();
   if (a === "newfat") formFattura();
   if (a === "newart") formArticolo();
+  if (a === "artfoto") nuovoArtFoto();
   if (a === "low") { ui.magLow = !ui.magLow; ui.magCat = ""; render(); }
   if (a === "set") formImpostazioni();
   if (a === "tecnew") formTecNew();
