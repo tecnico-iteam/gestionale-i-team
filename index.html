@@ -1590,7 +1590,12 @@ function mapImport(sheets, fname){
 const telKey = t => { let d = String(t || "").replace(/[^\d+]/g, ""); if (d.startsWith("+39")) d = d.slice(3); else if (d.startsWith("0039")) d = d.slice(4); return d.replace(/\D/g, ""); };
 function parseVcf(txt){
   const out = [];
-  const lines = txt.replace(/\r\n?/g, "\n").replace(/\n[ \t]/g, "").replace(/=\n/g, "").split("\n");
+  const lines = [];
+  for (const l of txt.replace(/\r\n?/g, "\n").replace(/\n[ \t]/g, "").split("\n")) {
+    const prev = lines[lines.length - 1];
+    // testo "quoted-printable" spezzato su più righe (finisce con "=")
+    if (prev !== undefined && /QUOTED-PRINTABLE/i.test(prev.split(":")[0]) && /=$/.test(prev)) lines[lines.length - 1] = prev.slice(0, -1) + l; else lines.push(l);
+  }
   let c = null;
   const unesc = v => v.replace(/\\n/gi, "\n").replace(/\\([,;\\])/g, "$1").trim();
   const qp = v => { try { return decodeURIComponent(v.replace(/=([0-9A-F]{2})/gi, "%$1")); } catch(e) { return v; } };
