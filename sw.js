@@ -1,6 +1,6 @@
 // Service worker: l'app si apre anche senza connessione e si aggiorna da sola.
 // Cambiare VERSIONE quando si vuole svuotare la cache sui dispositivi.
-const VERSIONE = "iteam-v2";
+const VERSIONE = "iteam-v3";
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", e => e.waitUntil(
   caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSIONE).map(k => caches.delete(k)))).then(() => self.clients.claim())
@@ -16,7 +16,8 @@ self.addEventListener("fetch", e => {
     return;
   }
   // pagina, script e listini: prima la rete (così gli aggiornamenti arrivano subito), poi la cache se offline
-  e.respondWith(fetch(req).then(r => { if (r.ok) { const cl = r.clone(); caches.open(VERSIONE).then(ca => ca.put(req, cl)); } return r; }).catch(() => caches.match(req, {ignoreSearch: true})));
+  // "no-cache": chiede sempre al server se c'è una versione nuova (GitHub Pages altrimenti tiene la vecchia fino a 10 minuti)
+  e.respondWith(fetch(req, {cache: "no-cache"}).then(r => { if (r.ok) { const cl = r.clone(); caches.open(VERSIONE).then(ca => ca.put(req, cl)); } return r; }).catch(() => caches.match(req, {ignoreSearch: true})));
 });
 
 // Notifiche degli appuntamenti (inviate dal controllo automatico, scripts/avvisi.js)
