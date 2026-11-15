@@ -35,6 +35,7 @@ header.top{position:sticky;top:0;z-index:20;background:#fff;color:var(--ink);bor
 header.top h1{font-size:17px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:650;letter-spacing:.2px}
 header.top .who{font-size:13px;color:var(--mute)}
 .logo{height:38px;width:auto;display:block}
+.btn.wa{background:#e7f7ee;color:#0f6b3a;border-color:#bfe5cf;text-decoration:none;text-align:center;font-weight:600;min-height:44px;display:flex;align-items:center;justify-content:center}
 .fsearch{margin-bottom:6px}.smatch{display:flex;flex-direction:column;gap:4px;margin-bottom:6px}.smatch:empty{display:none}
 .smi{text-align:left;background:var(--pri-2);border:0;border-radius:10px;padding:12px;font-weight:600;cursor:pointer;min-height:44px}
 .plist{display:flex;flex-direction:column;gap:6px;margin-top:8px}.pli{display:flex;align-items:center;gap:10px;border:1px solid var(--line,#e3e7ee);border-radius:10px;padding:8px;background:#fff;text-align:left;width:100%}
@@ -306,7 +307,7 @@ async function initDb(){
   });
   db.doc("config/impostazioni").onSnapshot(s => {
     const d = s.exists ? s.data() : {};
-    CFG = {pinUfficio: d.pinUfficio || "", postazioni: Array.isArray(d.postazioni) && d.postazioni.length ? d.postazioni : ["Tommy", "Irene", "Alessandro"], tecnici: Array.isArray(d.tecnici) ? d.tecnici.map(t => typeof t === "string" ? {nome: t, codice: ""} : t) : [], lavori: Array.isArray(d.lavori) && d.lavori.length ? d.lavori : DEFAULT_LAVORI.slice(),
+    CFG = {waUfficio: d.waUfficio || "", pinUfficio: d.pinUfficio || "", postazioni: Array.isArray(d.postazioni) && d.postazioni.length ? d.postazioni : ["Tommy", "Irene", "Alessandro"], tecnici: Array.isArray(d.tecnici) ? d.tecnici.map(t => typeof t === "string" ? {nome: t, codice: ""} : t) : [], lavori: Array.isArray(d.lavori) && d.lavori.length ? d.lavori : DEFAULT_LAVORI.slice(),
       scontoAcquisto: num(d.scontoAcquisto), scontoCliente: d.scontoCliente === undefined || d.scontoCliente === "" ? 0 : num(d.scontoCliente),
       manodopera: Array.isArray(d.manodopera) && d.manodopera.length ? d.manodopera : DEFAULT_MANODOPERA.map(x => ({...x})),
       costoOra: d.costoOra === undefined || d.costoOra === "" ? 45 : num(d.costoOra), costoGiornata: d.costoGiornata === undefined || d.costoGiornata === "" ? 300 : num(d.costoGiornata),
@@ -634,11 +635,12 @@ function formArticolo(a = {}){
   });
 }
 function formImpostazioni(){
-  openForm({ title: "Impostazioni", values: {pinUfficio: CFG.pinUfficio || "", postazioni: (CFG.postazioni || []).join("\n"), lavori: CFG.lavori.join("\n"), scontoAcquisto: CFG.scontoAcquisto || "", scontoCliente: CFG.scontoCliente || "", costoOra: CFG.costoOra, costoGiornata: CFG.costoGiornata, titolare: CFG.titolare || "", respAB: CFG.respAB || "", respCE: CFG.respCE || "", fgas: CFG.fgas || "", cciaa: CFG.cciaa || "Torino", rea: CFG.rea || "", alboArt: CFG.alboArt || "", abilitazioni: CFG.abilitazioni || [], manodopera: CFG.manodopera.map(m => m.descrizione + " | " + (num(m.prezzo) ? String(m.prezzo).replace(".", ",") : "")).join("\n")},
+  openForm({ title: "Impostazioni", values: {waUfficio: CFG.waUfficio || "", pinUfficio: CFG.pinUfficio || "", postazioni: (CFG.postazioni || []).join("\n"), lavori: CFG.lavori.join("\n"), scontoAcquisto: CFG.scontoAcquisto || "", scontoCliente: CFG.scontoCliente || "", costoOra: CFG.costoOra, costoGiornata: CFG.costoGiornata, titolare: CFG.titolare || "", respAB: CFG.respAB || "", respCE: CFG.respCE || "", fgas: CFG.fgas || "", cciaa: CFG.cciaa || "Torino", rea: CFG.rea || "", alboArt: CFG.alboArt || "", abilitazioni: CFG.abilitazioni || [], manodopera: CFG.manodopera.map(m => m.descrizione + " | " + (num(m.prezzo) ? String(m.prezzo).replace(".", ",") : "")).join("\n")},
     fields: [
       {k:"tecinfo", type:"info", label:"Tecnici", html: () => `${TEC().length} tecnici registrati · si gestiscono dal pulsante 👷 in alto`},
       {k:"exp", type:"info", label:"Esporta dati (backup in Excel)", html: () => `<div class="row wrap" style="gap:6px"><button type="button" class="btn sm" data-exp="expcli">Clienti</button><button type="button" class="btn sm" data-exp="expint">Interventi</button><button type="button" class="btn sm" data-exp="expmag">Magazzino</button><button type="button" class="btn sm" data-exp="expfat">Fatture</button></div>`},
       {k:"postazioni", label:"Postazioni ufficio (una per riga)", type:"textarea"},
+      {k:"waUfficio", label:"WhatsApp dell'ufficio (per i messaggi dei tecnici)", type:"tel", ph:"es. +39 392 3585899", half:true},
       {k:"pinUfficio", label:"PIN per entrare in Ufficio (vuoto = nessun PIN)", ph:"es. 2580", half:true},
       {k:"lavori", label:"Elenco lavori selezionabili dai tecnici (uno per riga)", type:"textarea"},
       {k:"titolare", label:"DiCo: titolare / legale rappresentante", half:true},
@@ -658,7 +660,7 @@ function formImpostazioni(){
       const split = s => s.split("\n").map(x => x.trim()).filter(Boolean);
       const mano = split(v.manodopera).map(l => { const [d, pr] = l.split("|"); return {descrizione: (d || "").trim(), prezzo: num(pr)}; }).filter(m => m.descrizione);
       ls.set("uffPin", String(v.pinUfficio || "").trim());
-      try { await db.doc("config/impostazioni").set({tecnici: CFG.tecnici, pinUfficio: String(v.pinUfficio || "").trim(), postazioni: split(v.postazioni).length ? split(v.postazioni) : ["Tommy", "Irene", "Alessandro"], lavori: split(v.lavori), scontoAcquisto: num(v.scontoAcquisto), scontoCliente: num(v.scontoCliente), costoOra: num(v.costoOra), costoGiornata: num(v.costoGiornata), titolare: v.titolare || "", respAB: v.respAB || "", respCE: v.respCE || "", fgas: v.fgas || "", abilVer: 2, cciaa: v.cciaa || "", rea: v.rea || "", alboArt: v.alboArt || "", abilitazioni: v.abilitazioni || [], manodopera: mano}); toast("Impostazioni salvate"); }
+      try { await db.doc("config/impostazioni").set({tecnici: CFG.tecnici, waUfficio: String(v.waUfficio || "").trim(), pinUfficio: String(v.pinUfficio || "").trim(), postazioni: split(v.postazioni).length ? split(v.postazioni) : ["Tommy", "Irene", "Alessandro"], lavori: split(v.lavori), scontoAcquisto: num(v.scontoAcquisto), scontoCliente: num(v.scontoCliente), costoOra: num(v.costoOra), costoGiornata: num(v.costoGiornata), titolare: v.titolare || "", respAB: v.respAB || "", respCE: v.respCE || "", fgas: v.fgas || "", abilVer: 2, cciaa: v.cciaa || "", rea: v.rea || "", alboArt: v.alboArt || "", abilitazioni: v.abilitazioni || [], manodopera: mano}); toast("Impostazioni salvate"); }
       catch(e){ writeErr(e); throw e; }
     }
   });
@@ -1200,6 +1202,15 @@ function fatturaDaRapportino(x){
 // ---------- WhatsApp, CSV, immagini ----------
 const waNum = tel => { let d = String(tel || "").replace(/[^\d+]/g, ""); if (d.startsWith("+")) return d.slice(1); if (d.startsWith("00")) return d.slice(2); if (/^3\d{8,9}$/.test(d) || /^0\d{5,10}$/.test(d)) return "39" + d; return d; };
 const waLink = (tel, txt) => `https://wa.me/${waNum(tel)}?text=${encodeURIComponent(txt)}`;
+// numero WhatsApp dell'ufficio: quello delle Impostazioni, altrimenti il primo numero dell'azienda
+const waUff = () => CFG.waUfficio || String(AZIENDA.tel).split(/\s+-\s+/)[0];
+function waTecnico(x){
+  const c = byId("clienti", x.clienteId) || {};
+  const dove = [c.nome, addr(c)].filter(Boolean).join(", ");
+  const msgUff = `Ciao, sono ${ui.tecnico || ""}. Sono da ${dove || "cliente"}${x.tipo ? " (" + x.tipo + ")" : ""}. `;
+  const msgCli = `Buongiorno, sono ${ui.tecnico || ""} di iTeam. `;
+  return `<div class="row" style="gap:8px;margin-top:8px"><a class="btn wa" style="flex:1" href="${esc(waLink(waUff(), msgUff))}" target="_blank" rel="noopener">💬 WhatsApp ufficio</a>${c.telefono ? `<a class="btn wa" style="flex:1" href="${esc(waLink(c.telefono, msgCli))}" target="_blank" rel="noopener">💬 WhatsApp cliente</a>` : ""}</div>`;
+}
 const waBtn = (tel, txt, label = "💬 WhatsApp") => tel ? `<a class="btn sm" style="text-decoration:none;color:#128c4a;border-color:#bfe5cf" href="${esc(waLink(tel, txt))}" target="_blank" rel="noopener">${label}</a>` : "";
 const csvCell = v => { const t = String(v ?? ""); return /[";\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
 async function saveCsv(name, header, rows){
@@ -1421,6 +1432,7 @@ function detIntervento(x){
       ${imp ? `<span class="k">Impianto</span><span>${esc(impName(imp))}${imp.matricola ? `<br><span class="m">Matr. ${esc(imp.matricola)}</span>` : ""}${imp.gas ? `<br><span class="m">${esc(imp.gas)}${imp.caricaKg ? " · " + esc(imp.caricaKg) + " kg" : ""}</span>` : ""}</span>` : ""}
     </div>
     ${x.descrizione ? `<div class="info" style="margin-top:10px">${esc(x.descrizione)}</div>` : ""}
+    ${tec && x.stato !== "Programmato" && x.stato !== "Completato" && x.stato !== "Annullato" ? waTecnico(x) : ""}
     ${rapportinoHtml(x)}
     ${commVisibili(x.clienteId).length ? commBox(x.clienteId) : ""}
     ${mediaBox(x)}
@@ -2426,7 +2438,7 @@ function vTecnico(){
   const list = F[ui.tecF] || [];
   const act = x => {
     if (x.stato === "Completato") return `<div class="m" style="margin-top:6px">${x.verificato ? "✔ Verificato dall'ufficio" : "📨 Inviato all'ufficio"}</div>`;
-    return `<div class="row" style="margin-top:10px;gap:8px">${x.stato === "Programmato" ? `<button class="btn" style="flex:1" data-start="${x.id}">▶ Inizia</button>` : `<span class="chip warn">Iniziato ${esc(x.inizioReale || x.rapportino?.inizio || "")}</span>`}${commVisibili(x.clienteId).length ? `<button class="btn" style="flex:none" data-commcli="${x.clienteId}" title="Documenti della commessa" aria-label="Documenti della commessa">📁 ${commVisibili(x.clienteId).reduce((n, c) => n + docVisibili(c).length, 0)}</button>` : ""}${assetsNS ? `<button class="btn" style="flex:none" data-media="${x.id}" title="Foto e video">📷${(x.media || []).length ? " " + x.media.length : ""}</button>` : ""}<button class="btn pri" style="flex:2" data-rap="${x.id}">Compila rapportino</button></div>`;
+    return `<div class="row" style="margin-top:10px;gap:8px">${x.stato === "Programmato" ? `<button class="btn" style="flex:1" data-start="${x.id}">▶ Inizia</button>` : `<span class="chip warn">Iniziato ${esc(x.inizioReale || x.rapportino?.inizio || "")}</span>`}${commVisibili(x.clienteId).length ? `<button class="btn" style="flex:none" data-commcli="${x.clienteId}" title="Documenti della commessa" aria-label="Documenti della commessa">📁 ${commVisibili(x.clienteId).reduce((n, c) => n + docVisibili(c).length, 0)}</button>` : ""}${assetsNS ? `<button class="btn" style="flex:none" data-media="${x.id}" title="Foto e video">📷${(x.media || []).length ? " " + x.media.length : ""}</button>` : ""}<button class="btn pri" style="flex:2" data-rap="${x.id}">Compila rapportino</button></div>` + (x.stato !== "Programmato" ? waTecnico(x) : "");
   };
   return `<h2>Ciao ${esc(me)}</h2>
   ${boxNotifiche()}
