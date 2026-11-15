@@ -720,7 +720,8 @@ function commInner(cid){
     ${l.length ? l.map(c => `<div style="margin-top:10px"><div class="t">${esc(c.titolo || "Commessa")}</div>
       ${c.indirizzo ? `<div class="m">📍 ${esc(c.indirizzo)}</div>` : ""}
       ${c.notaTecnici ? `<div class="info" style="margin-top:6px">${esc(c.notaTecnici)}</div>` : ""}
-      ${docVisibili(c).length ? `<div class="plist">${docVisibili(c).map(d => docRow(c, d)).join("")}</div>` : ""}</div>`).join("")
+      ${docVisibili(c).length ? `<div class="plist">${docVisibili(c).map(d => docRow(c, d)).join("")}</div>` : ""}
+</div>`).join("")
       : `<div class="m" style="margin-top:4px">Nessun documento condiviso dall'ufficio.</div>`}`;
 }
 const commBox = cid => cid ? `<div class="card" style="margin-top:12px" data-cmg="${cid}">${commInner(cid)}</div>` : "";
@@ -747,7 +748,8 @@ function viewComm(id, keepScroll){
     ${c.indirizzo || addr(cli) ? `<div class="m">📍 ${esc(c.indirizzo || addr(cli))}</div>` : ""}
     ${c.notaTecnici ? `<h3>Indicazioni per i tecnici</h3><div class="info">${esc(c.notaTecnici)}</div>` : ""}
     ${uff && c.descrizione ? `<h3>Note interne (solo ufficio)</h3><div class="info">${esc(c.descrizione)}</div>` : ""}
-    <div class="row" style="margin-top:14px"><h3 style="margin:0;flex:1">Documenti (${docs.length})</h3>${uff && assetsNS ? `<button type="button" class="btn sm pri" data-docup="${id}">+ Carica documenti</button>` : ""}</div>
+    <div class="row" style="margin-top:14px"><h3 style="margin:0;flex:1">Documenti (${docs.length})</h3></div>
+    ${uff && assetsNS ? `<div class="row" style="gap:8px;margin-top:8px"><button type="button" class="btn pri" style="flex:1;min-height:44px" data-docfoto="${id}">📷 Fotografa documento</button><button type="button" class="btn" style="flex:1;min-height:44px" data-docup="${id}">+ Carica file</button></div>` : ""}
     ${uff ? `<p class="m" style="margin:4px 0 0">Con <b>👷 Sì</b> il documento lo vedono anche i tecnici; con <b>👷 No</b> resta solo all'ufficio. Tocca per cambiare.</p>` : ""}
     ${docs.length ? `<div class="plist">${docs.map(d => docRow(c, d)).join("")}</div>` : `<div class="m" style="margin-top:6px">${uff ? "Nessun documento: carica planimetrie, progetti, foto, contratti…" : "Nessun documento condiviso."}</div>`}
     <div class="acts">${uff ? `<button class="btn" data-x="edit">Modifica commessa</button>` : ""}<span class="sp"></span><button class="btn" data-x="close">Chiudi</button></div></div>`;
@@ -762,6 +764,30 @@ function viewComm(id, keepScroll){
 const docIn = document.createElement("input");
 docIn.type = "file"; docIn.accept = "image/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.zip"; docIn.multiple = true; docIn.hidden = true;
 document.body.appendChild(docIn);
+// Foto di un documento con la fotocamera del telefono (capture: si apre direttamente la fotocamera)
+const camIn = document.createElement("input");
+camIn.type = "file"; camIn.accept = "image/*"; camIn.setAttribute("capture", "environment"); camIn.hidden = true;
+document.body.appendChild(camIn);
+function fotoDoc(cid){
+  if (!isUff()) return; // solo l'ufficio
+  if (!assetsNS) { toast("Il caricamento dei file non è attivo per il tuo account. Controlla la connessione o chiedi al titolare.", 4500); return; }
+  camIn.value = "";
+  camIn.onchange = async () => {
+    const f = camIn.files[0]; if (!f) return;
+    toast("Salvo la foto del documento…", 60000);
+    try {
+      const r = await shrinkImage(f, 2600); if (!r) throw {code: "unsupported_type"};
+      const up = await assetsNS.upload(r.blob, {type: r.type});
+      const c = byId("commesse", cid), n = ((c && c.documenti) || []).filter(d => d.fotografato).length + 1;
+      const doc = {id: up.id, url: up.url, nome: `Documento fotografato ${n} (${new Date().toLocaleDateString("it-IT")})`, ext: "jpg", tipo: "foto", categoria: "Altro", fotografato: true,
+        condiviso: false, da: chiSono(), il: new Date().toISOString(), note: []};
+      await patch("commesse", cid, {documenti: [...((c && c.documenti) || []), doc]});
+      clearToasts(); toast("📄 Documento salvato. Tocca di nuovo 📷 per un'altra pagina.", 3500);
+    } catch(e) { clearToasts(); toast("Non sono riuscito a salvare la foto, riprova.", 4000); }
+    setTimeout(refreshComm, 300);
+  };
+  camIn.click();
+}
 function addDocs(cid){
   if (!assetsNS) { toast("Il caricamento dei file non è attivo per il tuo account. Controlla la connessione o chiedi al titolare.", 4500); return; }
   docIn.value = "";
@@ -839,12 +865,13 @@ function viewDoc(cid, did, keepScroll){
   if (top) ov.querySelector(".dlg").scrollTop = top;
 }
 document.addEventListener("click", async e => {
-  const b = e.target.closest("[data-commnew],[data-commview],[data-docup],[data-docview],[data-docsh],[data-commcli]"); if (!b) return;
+  const b = e.target.closest("[data-commnew],[data-commview],[data-docup],[data-docfoto],[data-docview],[data-docsh],[data-commcli]"); if (!b) return;
   e.stopPropagation();
   const ds = b.dataset;
   if (ds.commnew) formCommessa({clienteId: ds.commnew, stato: "Aperta"});
   else if (ds.commview) viewComm(ds.commview);
   else if (ds.docup) addDocs(ds.docup);
+  else if (ds.docfoto) fotoDoc(ds.docfoto);
   else if (ds.docview) viewDoc(ds.docview, ds.did);
   else if (ds.docsh) { const c = byId("commesse", ds.docsh), d = c && (c.documenti || []).find(x => x.id === ds.did); if (!d) return; try { await saveDoc(ds.docsh, ds.did, x => { x.condiviso = !x.condiviso; return x; }); toast(!d.condiviso ? "👷 Ora lo vedono anche i tecnici" : "Visibile solo all'ufficio"); } catch(err){} }
   else if (ds.commcli) modal(`<h2>Documenti · ${esc(cliName(ds.commcli))}</h2>${commBox(ds.commcli)}<div class="acts"><span class="sp"></span><button class="btn" data-mclose="1">Chiudi</button></div>`).addEventListener("click", ev => { if (ev.target.dataset.mclose) ev.target.closest(".ov").remove(); });
