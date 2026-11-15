@@ -18,6 +18,14 @@ in italiano semplice, senza gergo tecnico.
 - `manifest.json`, `icons/` – installazione come app.
 - `listino-*.json`, `img/` – listini e foto prodotti caricati nel magazzino/preventivatore.
 
+- Avvisi appuntamenti: il tecnico attiva le notifiche (firebase-app.js → `ITEAM.notifiche`, chiave `vapidKey` in
+  firebase-config.js); il codice del telefono va in `dispositivi/{token}` = {tecnico,…}. `.github/workflows/avvisi.yml`
+  esegue `scripts/avvisi.js` ogni 10 min (segreto GitHub `FIREBASE_SERVICE_ACCOUNT`): "nuovo/spostato" e promemoria
+  ~1 ora prima; lo stato inviato sta in `avvisi/{idIntervento}`, `config/avvisi` segna il primo avvio. Il `push` lo mostra `sw.js`.
+  Il tecnico può anche salvare gli appuntamenti nel calendario del telefono (.ics con avviso 1 ora prima).
+- Account: l'amministratore li crea da 👤 (nome utente → `nome@utenti.iteamservice.it`). Ruoli: admin, ufficio,
+  ufficio_tecnico, tecnico, preventivatore; ogni ruolo vede solo le sue aree (`modiConsentiti()` in index.html).
+
 ## Dati (Firestore)
 Collezioni: clienti, impianti, interventi, preventivi, fatture, magazzino, listino, dico, config/impostazioni,
 utenti/{uid} = {email, nome, ruolo: admin|ufficio|tecnico|preventivatore|nuovo, attivo}.

@@ -1,0 +1,26 @@
+# Controlla gli appuntamenti ogni 10 minuti e manda le notifiche ai tecnici (scripts/avvisi.js).
+name: Avvisi appuntamenti
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+concurrency:
+  group: avvisi
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  avvisi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Installa il collegamento a Firebase
+        run: npm install --prefix scripts --no-save --no-audit --no-fund firebase-admin@12
+      - name: Manda gli avvisi
+        run: node scripts/avvisi.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

@@ -6,5 +6,8 @@ window.FIREBASE_CONFIG = {
   projectId: "gestionale-i-team",
   storageBucket: "gestionale-i-team.firebasestorage.app",
   messagingSenderId: "13537841574",
-  appId: "1:13537841574:web:a6fc04055489dd2a197f67"
+  appId: "1:13537841574:web:a6fc04055489dd2a197f67",
+  // Chiave pubblica per le notifiche (Impostazioni progetto → Cloud Messaging → Certificati push web).
+  // Finché è vuota il pulsante «Attiva notifiche» non compare.
+  vapidKey: ""
 };

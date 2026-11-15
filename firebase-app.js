@@ -180,7 +180,49 @@ const user = {
   me: async () => ({id: auth?.currentUser?.uid, name: profilo?.nome || auth?.currentUser?.displayName || "", email: auth?.currentUser?.email || ""})
 };
 window.claude = { use: async name => { await ready; return {db, assets: storage ? assets : null, downloads, user}[name] || null; } };
-window.ITEAM = { profilo: () => profilo, logout: () => auth && auth.signOut() };
+// ---------- notifiche push (avvisi appuntamenti ai tecnici) ----------
+// Il telefono riceve un "codice dispositivo" che salviamo in dispositivi/{codice} insieme al nome del tecnico.
+// L'invio degli avvisi lo fa il controllo automatico su GitHub (scripts/avvisi.js).
+const notifiche = (() => {
+  const LS = "iteamPush", iOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const standalone = () => (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+  const mem = () => { try { return JSON.parse(localStorage.getItem(LS) || "null"); } catch(e) { return null; } };
+  const setMem = v => { try { localStorage.setItem(LS, JSON.stringify(v)); } catch(e){} };
+  let refreshed = false;
+  async function token(){
+    const reg = await navigator.serviceWorker.register("sw.js");
+    await navigator.serviceWorker.ready;
+    return firebase.messaging().getToken({vapidKey: cfg.vapidKey, serviceWorkerRegistration: reg});
+  }
+  async function salva(tk, tecnico){
+    await db.collection("dispositivi").doc(tk).set({tecnico: tecnico || "", uid: auth.currentUser?.uid || "", utente: profilo?.nome || "", dispositivo: iOS ? "iPhone" : /Android/i.test(navigator.userAgent) ? "Android" : "Computer", aggiornato: new Date().toISOString()});
+    setMem({token: tk, tecnico: tecnico || ""});
+  }
+  return {
+    disponibili: () => configured && !!cfg.vapidKey && "serviceWorker" in navigator && location.protocol === "https:" && !!(firebase && firebase.messaging),
+    stato(){
+      if (iOS && !standalone()) return "serve-home";
+      if (!("Notification" in window) || !("PushManager" in window)) return "non-supportate";
+      if (Notification.permission === "denied") return "bloccate";
+      if (Notification.permission === "granted" && mem()?.token) return "attive";
+      return "da-attivare";
+    },
+    async attiva(tecnico){
+      if (!("Notification" in window)) throw new Error("Questo telefono non supporta le notifiche");
+      const p = await Notification.requestPermission();
+      if (p !== "granted") throw new Error("Notifiche non consentite: riattivale dalle impostazioni del telefono");
+      let tk; try { tk = await token(); } catch(e) { throw new Error("Non riesco ad attivare le notifiche. Riprova tra poco."); }
+      if (!tk) throw new Error("Non riesco ad attivare le notifiche. Riprova tra poco.");
+      await salva(tk, tecnico);
+    },
+    async collega(tecnico){
+      const m = mem(); if (!m || !m.token || !("Notification" in window) || Notification.permission !== "granted") return;
+      if (!refreshed) { refreshed = true; try { const tk = await token(); if (tk && tk !== m.token) { try { await db.collection("dispositivi").doc(m.token).delete(); } catch(e){} return salva(tk, tecnico); } } catch(e){} }
+      if ((m.tecnico || "") !== (tecnico || "")) salva(m.token, tecnico).catch(() => {});
+    }
+  };
+})();
+window.ITEAM = { profilo: () => profilo, logout: () => auth && auth.signOut(), notifiche };
 
 // ---------- pulsante account, utenti, backup ----------
 function addAccountButton(){
