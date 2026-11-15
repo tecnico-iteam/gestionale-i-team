@@ -290,7 +290,7 @@ function writeErr(e){
 }
 async function initDb(){
   try { db = await claude.use("db"); } catch(e){ db = null; }
-  claude.use("assets").then(a => { assetsNS = a; render(); refreshMedia(); }).catch(() => {});
+  claude.use("assets").then(a => { assetsNS = a; render(); refreshMedia(); avviaAscoltoScansioni(); }).catch(() => {});
   try { const u = await claude.use("user"); if (u) { const c = await u.can("data.write"); if (c === false) canWrite = false; } } catch(e){}
   if (!db) { ui.stale = "nodb"; render(); return; }
   const timer = setTimeout(() => { if (loaded.size < COLS.length) { ui.stale = true; render(); } }, 10000);
@@ -749,7 +749,7 @@ function viewComm(id, keepScroll){
     ${c.notaTecnici ? `<h3>Indicazioni per i tecnici</h3><div class="info">${esc(c.notaTecnici)}</div>` : ""}
     ${uff && c.descrizione ? `<h3>Note interne (solo ufficio)</h3><div class="info">${esc(c.descrizione)}</div>` : ""}
     <div class="row" style="margin-top:14px"><h3 style="margin:0;flex:1">Documenti (${docs.length})</h3></div>
-    ${uff && assetsNS ? `<div class="row" style="gap:8px;margin-top:8px"><button type="button" class="btn pri" style="flex:1;min-height:44px" data-docfoto="${id}">📷 Fotografa documento</button><button type="button" class="btn" style="flex:1;min-height:44px" data-docup="${id}">+ Carica file</button></div>` : ""}
+    ${uff && assetsNS ? `<div class="row" style="gap:8px;margin-top:8px"><button type="button" class="btn pri" style="flex:1;min-height:44px" data-docfoto="${id}">${isDesktop() ? "📱 Fotografa con il telefono" : "📷 Fotografa documento"}</button><button type="button" class="btn" style="flex:1;min-height:44px" data-docup="${id}">+ Carica file</button></div>` : ""}
     ${uff ? `<p class="m" style="margin:4px 0 0">Con <b>👷 Sì</b> il documento lo vedono anche i tecnici; con <b>👷 No</b> resta solo all'ufficio. Tocca per cambiare.</p>` : ""}
     ${docs.length ? `<div class="plist">${docs.map(d => docRow(c, d)).join("")}</div>` : `<div class="m" style="margin-top:6px">${uff ? "Nessun documento: carica planimetrie, progetti, foto, contratti…" : "Nessun documento condiviso."}</div>`}
     <div class="acts">${uff ? `<button class="btn" data-x="edit">Modifica commessa</button>` : ""}<span class="sp"></span><button class="btn" data-x="close">Chiudi</button></div></div>`;
@@ -768,9 +768,22 @@ document.body.appendChild(docIn);
 const camIn = document.createElement("input");
 camIn.type = "file"; camIn.accept = "image/*"; camIn.setAttribute("capture", "environment"); camIn.hidden = true;
 document.body.appendChild(camIn);
-function fotoDoc(cid){
+async function fotoDoc(cid){
   if (!isUff()) return; // solo l'ufficio
   if (!assetsNS) { toast("Il caricamento dei file non è attivo per il tuo account. Controlla la connessione o chiedi al titolare.", 4500); return; }
+  const salva = async up => {
+    const c = byId("commesse", cid), n = ((c && c.documenti) || []).filter(d => d.fotografato).length + 1;
+    const doc = {id: up.id, url: up.url, nome: `Documento fotografato ${n} (${new Date().toLocaleDateString("it-IT")})`, ext: "jpg", tipo: "foto", categoria: "Altro", fotografato: true,
+      condiviso: false, da: chiSono(), il: new Date().toISOString(), note: []};
+    await patch("commesse", cid, {documenti: [...((c && c.documenti) || []), doc]});
+    setTimeout(refreshComm, 300);
+  };
+  if (isDesktop()) {
+    const c = byId("commesse", cid);
+    const up = await chiediFotoTelefono(`Documento per la commessa ${(c && c.numero) || ""} · ${cliName(c && c.clienteId)}`);
+    if (up) { try { await salva(up); toast("📄 Documento salvato nella commessa", 3000); } catch(e){} }
+    return;
+  }
   camIn.value = "";
   camIn.onchange = async () => {
     const f = camIn.files[0]; if (!f) return;
@@ -778,16 +791,97 @@ function fotoDoc(cid){
     try {
       const r = await shrinkImage(f, 2600); if (!r) throw {code: "unsupported_type"};
       const up = await assetsNS.upload(r.blob, {type: r.type});
-      const c = byId("commesse", cid), n = ((c && c.documenti) || []).filter(d => d.fotografato).length + 1;
-      const doc = {id: up.id, url: up.url, nome: `Documento fotografato ${n} (${new Date().toLocaleDateString("it-IT")})`, ext: "jpg", tipo: "foto", categoria: "Altro", fotografato: true,
-        condiviso: false, da: chiSono(), il: new Date().toISOString(), note: []};
-      await patch("commesse", cid, {documenti: [...((c && c.documenti) || []), doc]});
+      await salva(up);
       clearToasts(); toast("📄 Documento salvato. Tocca di nuovo 📷 per un'altra pagina.", 3500);
     } catch(e) { clearToasts(); toast("Non sono riuscito a salvare la foto, riprova.", 4000); }
-    setTimeout(refreshComm, 300);
   };
   camIn.click();
 }
+// ---------- foto dal telefono al PC ----------
+// Il PC crea scansioni/{token} = {stato: "attesa", uid, etichetta, creato}; il telefono (stesso account, o chi inquadra il QR)
+// scatta la foto, la carica e scrive {stato: "fatto", url, assetId}; il PC la riceve subito.
+const isDesktop = () => !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !(navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+const mioUid = () => { try { return (window.firebase && firebase.auth().currentUser && firebase.auth().currentUser.uid) || ""; } catch(e) { return ""; } };
+const scanMie = new Set();
+function chiediFotoTelefono(etichetta){
+  return new Promise(async resolve => {
+    if (!db) { toast("Dati non raggiungibili"); return resolve(null); }
+    const token = Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+    scanMie.add(token);
+    const ref = db.collection("scansioni").doc(token);
+    try { await ref.set({stato: "attesa", uid: mioUid(), etichetta: etichetta || "Foto", da: chiSono(), creato: new Date().toISOString()}); }
+    catch(e) { writeErr(e); return resolve(null); }
+    try { await loadQR(); } catch(e){}
+    const link = location.origin + location.pathname + "#scan-" + token;
+    const ov = document.createElement("div"); ov.className = "ov"; ov.style.zIndex = 80;
+    ov.innerHTML = `<div class="dlg" style="text-align:center;max-width:460px">
+      <h2>📱 Scatta la foto con il telefono</h2>
+      <p style="margin:0 0 6px"><b>${esc(etichetta || "")}</b></p>
+      <p class="m" style="margin-top:0">Apri il gestionale sul telefono: comparirà da solo il pulsante per scattare la foto.<br>Oppure inquadra questo QR con la fotocamera del telefono.</p>
+      ${window.iteamQRsvg ? `<div style="max-width:220px;margin:0 auto">${window.iteamQRsvg(link, "M")}</div>` : ""}
+      <p class="m" id="scst" style="font-weight:600;margin-top:10px">⏳ In attesa della foto…</p>
+      <div class="acts"><span class="sp"></span><button class="btn" data-x="no">Annulla</button></div></div>`;
+    document.body.appendChild(ov);
+    let fatto = false;
+    const stop = ref.onSnapshot(s => {
+      const d = s.exists ? s.data() : null; if (!d || fatto) return;
+      if (d.stato === "scatto") { const st = ov.querySelector("#scst"); if (st) st.textContent = "📷 Il telefono sta caricando la foto…"; }
+      if (d.stato === "fatto" && d.url) { fatto = true; stop(); ov.remove(); toast("✅ Foto arrivata dal telefono"); resolve({id: d.assetId, url: d.url}); ref.delete().catch(() => {}); }
+    }, () => {});
+    ov.addEventListener("click", e => {
+      if (e.target.dataset.x === "no") { fatto = true; try { stop(); } catch(err){} ov.remove(); ref.set({stato: "annullata"}, {merge: true}).catch(() => {}); resolve(null); }
+    });
+  });
+}
+// Sul telefono: richieste in attesa (dal QR o per lo stesso account)
+let scanAperta = "";
+function mostraRichiestaFoto(token, d){
+  if (!token || scanAperta === token || scanMie.has(token) || isDesktop()) return;
+  if (d && (d.stato !== "attesa" || Date.now() - new Date(d.creato).getTime() > 15 * 60000)) return;
+  scanAperta = token;
+  const ov = document.createElement("div"); ov.className = "ov"; ov.style.zIndex = 90;
+  ov.innerHTML = `<div class="dlg" style="text-align:center">
+    <h2>💻 Il PC ti chiede una foto</h2>
+    <p><b>${esc((d && d.etichetta) || "Foto")}</b>${d && d.da ? `<br><span class="m">richiesta da ${esc(d.da)}</span>` : ""}</p>
+    <button class="btn pri big" data-x="scatta" style="width:100%">📷 Apri la fotocamera</button>
+    <div class="acts"><span class="sp"></span><button class="btn" data-x="no">Non ora</button></div></div>`;
+  document.body.appendChild(ov);
+  const ref = db.collection("scansioni").doc(token);
+  ov.addEventListener("click", e => {
+    const a = e.target.closest("[data-x]")?.dataset.x; if (!a) return;
+    if (a === "no") { ov.remove(); return; }
+    if (a === "scatta") {
+      camIn.value = "";
+      camIn.onchange = async () => {
+        const f = camIn.files[0]; if (!f) return;
+        ov.remove(); toast("Invio la foto al PC…", 60000);
+        try {
+          await ref.set({stato: "scatto"}, {merge: true});
+          const r = await shrinkImage(f, 2600); if (!r) throw {code: "unsupported_type"};
+          const up = await assetsNS.upload(r.blob, {type: r.type});
+          await ref.set({stato: "fatto", url: up.url, assetId: up.id}, {merge: true});
+          clearToasts(); toast("✅ Foto inviata al PC", 3000);
+        } catch(err) { clearToasts(); toast("Foto non inviata, riprova dal PC.", 4000); }
+        if (location.hash.startsWith("#scan-")) history.replaceState(null, "", location.pathname);
+      };
+      camIn.click();
+    }
+  });
+}
+function avviaAscoltoScansioni(){
+  if (!db || isDesktop()) return;
+  const h = location.hash.match(/^#scan-([a-z0-9]+)$/);
+  if (h) db.collection("scansioni").doc(h[1]).get().then(s => { if (s.exists) mostraRichiestaFoto(h[1], s.data()); else toast("Richiesta di foto scaduta o già completata"); }).catch(() => {});
+  const uid = mioUid(); if (!uid || avviaAscoltoScansioni.on) return;
+  try {
+    avviaAscoltoScansioni.on = true;
+    db.collection("scansioni").where("uid", "==", uid).where("stato", "==", "attesa").onSnapshot(q => {
+      q.docs.forEach(s => mostraRichiestaFoto(s.id, s.data()));
+    }, () => { avviaAscoltoScansioni.on = false; });
+  } catch(e) { avviaAscoltoScansioni.on = false; }
+}
+window.addEventListener("hashchange", () => { if (location.hash.startsWith("#scan-")) avviaAscoltoScansioni(); });
+
 function addDocs(cid){
   if (!assetsNS) { toast("Il caricamento dei file non è attivo per il tuo account. Controlla la connessione o chiedi al titolare.", 4500); return; }
   docIn.value = "";
@@ -2091,8 +2185,22 @@ const rankSearch = (list, q, fields) => {
     if (magImg(it) || imgOf(it)) sc += 1; return [sc, it]; }).sort((a, b) => b[0] - a[0] || (a[1].descrizione || "").localeCompare(b[1].descrizione || "")).map(x => x[1]);
 };
 const magImg = m => m ? (m.foto ? (m.fotoUrl || "/_blob/" + m.foto) : (m.img || IMGMAP[m.codice] || "")) : "";
-function magFoto(id){
+async function magFoto(id, daFile){
   if (!assetsNS) { toast("Il caricamento foto non è attivo per il tuo account", 4000); return; }
+  if (isDesktop() && !daFile) {
+    const ov = document.createElement("div"); ov.className = "ov"; ov.style.zIndex = 75;
+    ov.innerHTML = `<div class="dlg" style="max-width:460px"><h2>Foto dell'articolo</h2><p class="m" style="margin-top:0">${esc((byId("magazzino", id) || {}).nome || (byId("magazzino", id) || {}).descrizione || "")}</p>
+      <button class="btn pri big" data-x="tel" style="width:100%">📱 Scatta con il telefono</button>
+      <button class="btn big" data-x="file" style="width:100%;margin-top:8px">💻 Scegli un file dal PC</button>
+      <div class="acts"><span class="sp"></span><button class="btn" data-x="no">Annulla</button></div></div>`;
+    ov.addEventListener("click", async e => {
+      const a = e.target.closest("[data-x]")?.dataset.x; if (!a && e.target !== ov) return;
+      ov.remove();
+      if (a === "file") magFoto(id, true);
+      if (a === "tel") { const m = byId("magazzino", id) || {}; const up = await chiediFotoTelefono("Foto articolo: " + (m.nome || m.descrizione || m.codice || "")); if (up) { try { await patch("magazzino", id, {foto: up.id, fotoUrl: up.url}); toast("📷 Foto dell'articolo salvata"); } catch(err){} } }
+    });
+    document.body.appendChild(ov); return;
+  }
   const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*";
   inp.onchange = async () => {
     const f = inp.files[0]; if (!f) return; toast("Carico la foto…", 30000);
@@ -2226,6 +2334,7 @@ function formTecnico(t = {}, idx = -1){
       {k:"codice", label:"Codice tecnico", req:true, half:true, ph:"es. T01"},
       {k:"telefono", label:"Telefono", type:"tel", half:true},
       {k:"ruolo", label:"Ruolo sul biglietto da visita", half:true, ph:"es. Tecnico installatore"},
+      {k:"email", label:"Email aziendale (sul biglietto)", type:"email", half:true, ph:"es. nome@iteamservice.it"},
       {k:"patentino", label:"N. patentino F-gas", half:true, ph:"es. FGAS-P…"},
       {k:"patScad", label:"Scadenza patentino", type:"date", half:true},
       {k:"note", label:"Note (furgone, altre abilitazioni…)", type:"textarea"}
@@ -2233,7 +2342,7 @@ function formTecnico(t = {}, idx = -1){
     onSave: async v => {
       const code = String(v.codice).trim().toUpperCase();
       if (TEC().some((x, i) => i !== idx && (x.codice || "").toUpperCase() === code)) { toast("Codice già usato da un altro tecnico"); throw new Error("dup"); }
-      const list = TEC().slice(); const item = {nome: v.nome.trim(), codice: code, telefono: v.telefono || "", ruolo: v.ruolo || "", patentino: v.patentino || "", patScad: v.patScad || "", note: v.note || ""};
+      const list = TEC().slice(); const item = {nome: v.nome.trim(), codice: code, telefono: v.telefono || "", ruolo: v.ruolo || "", email: String(v.email || "").trim().toLowerCase(), patentino: v.patentino || "", patScad: v.patScad || "", note: v.note || ""};
       if (idx >= 0) { const old = list[idx]; list[idx] = item; if (old.nome !== item.nome) { for (const x of S.interventi.filter(x => sameTec(x.tecnico, old.nome))) { try { await patch("interventi", x.id, {tecnico: item.nome}); } catch(e){} } } }
       else list.push(item);
       await saveTecnici(list); toast(`Tecnico salvato · codice ${code}`); setTimeout(vTecnici, 300);
@@ -2247,9 +2356,11 @@ let qrP = null;
 function loadQR(){ if (window.iteamQRsvg) return Promise.resolve(); if (!qrP) qrP = new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = "qrcode.js"; sc.onload = () => res(); sc.onerror = () => { qrP = null; rej(new Error("load")); }; document.head.appendChild(sc); }); return qrP; }
 function bigliettoDati(){
   const acc = mioAccount();
-  if (ui.modo === "tecnico") { const t = TEC().find(x => sameTec(x.nome, ui.tecnico)) || {}; return {nome: ui.tecnico || (acc && acc.nome) || "", ruolo: t.ruolo || "Tecnico", tel: t.telefono || ""}; }
-  if (ui.modo === "ufficio") { const t = TEC().find(x => sameTec(x.nome, (acc && acc.nome) || ui.uff) || sameTec(primoNome(x.nome), primoNome(ui.uff))) || {}; return {nome: (acc && acc.nome) || ui.uff || "Ufficio", ruolo: t.ruolo || "Ufficio", tel: t.telefono || ""}; }
-  return {nome: (acc && acc.nome) || ui.comm || "", ruolo: "Preventivi", tel: ""};
+  // email personale: quella scritta nella scheda (👷 Tecnici) oppure quella dell'account, se è un indirizzo vero
+  const emailAcc = acc && acc.email && !/@utenti\.iteamservice\.it$/i.test(acc.email) && !/@gmail\.com$/i.test(acc.email) ? acc.email : "";
+  if (ui.modo === "tecnico") { const t = TEC().find(x => sameTec(x.nome, ui.tecnico)) || {}; return {nome: ui.tecnico || (acc && acc.nome) || "", ruolo: t.ruolo || "Tecnico", tel: t.telefono || "", email: t.email || emailAcc}; }
+  if (ui.modo === "ufficio") { const t = TEC().find(x => sameTec(x.nome, (acc && acc.nome) || ui.uff) || sameTec(primoNome(x.nome), primoNome(ui.uff))) || {}; return {nome: (acc && acc.nome) || ui.uff || "Ufficio", ruolo: t.ruolo || "Ufficio", tel: t.telefono || "", email: t.email || emailAcc}; }
+  return {nome: (acc && acc.nome) || ui.comm || "", ruolo: "Preventivi", tel: "", email: emailAcc};
 }
 function vcardTesto(d){
   const e = v => String(v || "").replace(/\\/g, "\\\\").replace(/([,;])/g, "\\$1").replace(/\r?\n/g, " ");
@@ -2258,6 +2369,7 @@ function vcardTesto(d){
   if (d.tel) L.push("TEL;TYPE=CELL:" + d.tel.replace(/[^\d+]/g, ""));
   AZIENDA.tel.split(/\s+-\s+/).filter(Boolean).forEach(n => L.push("TEL;TYPE=WORK:" + n.replace(/[^\d+]/g, "")));
   if (d.foto) L.push(...foldV("PHOTO;ENCODING=b;TYPE=JPEG:" + d.foto));
+  if (d.email && d.email.toLowerCase() !== BIGLIETTO.email) L.push("EMAIL;TYPE=WORK,pref:" + d.email);
   L.push("EMAIL;TYPE=WORK:" + BIGLIETTO.email, `ADR;TYPE=WORK:;;${e(BIGLIETTO.via)};${e(BIGLIETTO.citta)};${BIGLIETTO.prov};${BIGLIETTO.cap};Italia`, "NOTE:" + e(BIGLIETTO.servizi), "END:VCARD");
   return L.join("\r\n");
 }
@@ -2280,7 +2392,7 @@ async function vBiglietto(){
     <div class="qn">${esc(d.nome)}</div><div class="qr">${esc(d.ruolo)}</div>
     ${window.iteamQRsvg(vcardTesto(d), d.foto ? "L" : "M")}
     <p class="qh">Fai inquadrare al cliente con la fotocamera: si salva il contatto in rubrica</p>
-    ${d.tel ? `<p class="m" style="margin:0">Cellulare: ${esc(d.tel)}</p>` : `<p class="m" style="margin:0">Il tuo cellulare non è inserito: chiedi all’ufficio di aggiungerlo (👷 Tecnici).</p>`}
+    ${d.email ? `<p class="m" style="margin:0 0 2px">Email: ${esc(d.email)}</p>` : ""}${d.tel ? `<p class="m" style="margin:0">Cellulare: ${esc(d.tel)}</p>` : `<p class="m" style="margin:0">Il tuo cellulare non è inserito: chiedi all’ufficio di aggiungerlo (👷 Tecnici).</p>`}
     <div class="qu"><b>Ufficio iTeam</b>Tel. ${esc(AZIENDA.tel)}<br>${esc(BIGLIETTO.email)}<br>${esc(AZIENDA.legale)}</div>
     <div class="acts"><span class="sp"></span><button class="btn pri big" data-a="close" style="flex:1">Chiudi</button></div></div>`);
   ov.addEventListener("click", e => { if (e.target.closest("[data-a=close]")) ov.remove(); });

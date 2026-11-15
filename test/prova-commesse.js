@@ -10,7 +10,7 @@ const {chromium} = require('playwright');
     const oggi = new Date().toISOString().slice(0, 10);
     window.__nextUser = {uid:'u1', email:'carone.t46@gmail.com', emailVerified:true, displayName:'Tommaso Carone'};
     Object.assign(window.__store, {
-      config: {impostazioni: {tecnici: [{nome:'Tommaso Carone', codice:'T01', telefono:'+39 300 0000000', ruolo:'Titolare'}]}},
+      config: {impostazioni: {tecnici: [{nome:'Tommaso Carone', codice:'T01', telefono:'+39 300 0000000', ruolo:'Titolare', email:'tommaso@iteamservice.it'}]}},
       clienti: {c1: {nome:'Rossi Mario', citta:'Torino', indirizzo:'Via Roma 1'}, c2: {nome:'Bianchi Anna', citta:'Moncalieri'}, c3: {nome:'Condominio Rosa', citta:'Vinovo'}},
       interventi: {i1: {clienteId:'c1', data: oggi, ora:'09:00', tipo:'Installazione', tecnico:'Tommaso Carone', stato:'Programmato'}}
     });
@@ -38,12 +38,16 @@ const {chromium} = require('playwright');
   const [fc] = await Promise.all([p.waitForEvent('filechooser'), p.click('[data-docup]')]);
   await fc.setFiles(['/tmp/planimetria-piano-terra.png', '/tmp/progetto.pdf']); await p.waitForTimeout(1500);
   await p.click('.commov [data-docsh] >> nth=0'); await p.waitForTimeout(800);
-  const [fc2] = await Promise.all([p.waitForEvent('filechooser'), p.click('.commov [data-docfoto]')]);
-  console.log('fotocamera: capture =', await fc2.element().getAttribute('capture'));
-  await fc2.setFiles(['/tmp/planimetria-piano-terra.png']); await p.waitForTimeout(1200);
-  console.log('documenti dopo foto:', await p.$$eval('.commov .pli .t', l => l.map(x => x.textContent)));
   await p.screenshot({path:'/tmp/t2-commessa-ufficio.png'});
   console.log('commesse:', JSON.stringify(await p.evaluate(() => Object.values(window.__store.commesse || {}).map(c => ({titolo: c.titolo, numero: c.numero, docs: c.documenti.map(d => [d.nome, d.tipo, d.categoria, d.condiviso])})))));
+  // foto dal telefono (il browser di prova è un PC)
+  await p.click('.commov [data-docfoto]'); await p.waitForTimeout(800);
+  await p.screenshot({path:'/tmp/t7-pc-attesa.png'});
+  const token = await p.evaluate(() => Object.keys(window.__store.scansioni || {})[0]);
+  console.log('richiesta creata:', !!token, JSON.stringify(await p.evaluate(t => window.__store.scansioni[t], token)));
+  await p.evaluate(t => firebase.firestore().collection('scansioni').doc(t).set({stato:'fatto', url:'https://example.test/dal-telefono.jpg', assetId:'dal-telefono.jpg'}, {merge:true}), token);
+  await p.waitForTimeout(1200);
+  console.log('documento arrivato nella commessa:', await p.evaluate(() => Object.values(window.__store.commesse)[0].documenti.some(d => d.url.includes('dal-telefono'))));
   await p.click('.commov [data-x="close"]'); await p.waitForTimeout(200);
   // 3. vista tecnico
   await p.click('#hmode'); await p.waitForTimeout(300);
@@ -63,6 +67,7 @@ const {chromium} = require('playwright');
   // 4. QR con logo
   await p.click('#hqr'); await p.waitForTimeout(800);
   await p.screenshot({path:'/tmp/t6-qr.png'});
+  console.log('email sul biglietto:', (await p.content()).includes('tommaso@iteamservice.it'));
   console.log('QR moduli:', await p.$eval('.qrimg', s => s.getAttribute('viewBox')));
   console.log('errors', errs); await b.close();
 })();
