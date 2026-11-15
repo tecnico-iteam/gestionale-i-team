@@ -4,7 +4,7 @@
 (() => {
 "use strict";
 const OWNER = "carone.t46@gmail.com";
-const RUOLI = [["admin", "Amministratore"], ["ufficio", "Ufficio"], ["tecnico", "Tecnico"], ["preventivatore", "Preventivatore"]];
+const RUOLI = [["admin", "Amministratore"], ["ufficio", "Ufficio"], ["ufficio_tecnico", "Ufficio + Tecnico"], ["tecnico", "Tecnico"], ["preventivatore", "Preventivatore"]];
 // Chi non ha un'email accede con un semplice nome utente (es. "maurizio"):
 // dietro le quinte diventa "maurizio@utenti.iteamservice.it" (nessuna email viene inviata lì).
 const DOMINIO_UTENTI = "utenti.iteamservice.it";
@@ -174,7 +174,7 @@ const downloads = {
 };
 const user = {
   isOwner: () => isOwner,
-  canEdit: () => !!profilo && (profilo.ruolo === "admin" || profilo.ruolo === "ufficio"),
+  canEdit: () => !!profilo && ["admin", "ufficio", "ufficio_tecnico"].includes(profilo.ruolo),
   can: async () => !!profilo && !!profilo.attivo,
   id: async () => auth?.currentUser?.uid || null,
   me: async () => ({id: auth?.currentUser?.uid, name: profilo?.nome || auth?.currentUser?.displayName || "", email: auth?.currentUser?.email || ""})

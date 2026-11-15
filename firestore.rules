@@ -12,7 +12,7 @@ service cloud.firestore {
     function prof() { return get(/databases/$(database)/documents/utenti/$(request.auth.uid)).data; }
     function active() { return owner() || (hasProfile() && prof().attivo == true); }
     function admin() { return owner() || (active() && prof().ruolo == 'admin'); }
-    function office() { return admin() || (active() && prof().ruolo == 'ufficio'); }
+    function office() { return admin() || (active() && prof().ruolo in ['ufficio', 'ufficio_tecnico']); }
 
     // Utenti: ognuno si registra "in attesa", solo l'amministratore attiva e assegna i ruoli
     match /utenti/{uid} {

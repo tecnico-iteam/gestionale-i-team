@@ -1895,21 +1895,27 @@ function formTecNew(pre = {}){
 }
 
 // ---------- scelta modalità ----------
+// Aree consentite in base al ruolo dell'account (👤 → Utenti). Senza account (prove) si vede tutto.
+function modiConsentiti(){
+  const r = window.ITEAM && window.ITEAM.profilo && window.ITEAM.profilo() ? window.ITEAM.profilo().ruolo : "";
+  return ({tecnico: ["tecnico"], ufficio: ["ufficio"], ufficio_tecnico: ["ufficio", "tecnico"], preventivatore: ["comm"]})[r] || ["ufficio", "tecnico", "comm"];
+}
 function vChoose(){
-  const tl = tecnici();
+  const tl = tecnici(), mc = modiConsentiti();
   return `<div class="choose"><img class="logo-big" src="${LOGO}" alt="iTeam"><h2>Chi sta usando il gestionale?</h2><p class="m">La scelta resta salvata su questo dispositivo. Puoi cambiarla in alto con "Cambia".</p>
-  <div class="card"><b>🏢 Ufficio</b><div class="row" style="gap:8px;margin-top:10px">${(CFG.postazioni || ["Tommy", "Irene", "Alessandro"]).map(n => `<button class="btn pri big" style="flex:1" data-mode="ufficio" data-uff="${esc(n)}">${esc(n)}</button>`).join("")}</div><p class="m" style="margin:8px 0 0">Clienti, impianti, pianificazione, rapportini in arrivo, preventivi, fatture, magazzino.</p></div>
-  <div class="card"><b>🔧 Tecnico in campo</b><p class="m" style="margin:4px 0 10px">Vedi i tuoi lavori, segni orari, lavori eseguiti e materiali, invii il rapportino.</p>
+  ${mc.includes("ufficio") ? `<div class="card"><b>🏢 Ufficio</b><div class="row" style="gap:8px;margin-top:10px">${(CFG.postazioni || ["Tommy", "Irene", "Alessandro"]).map(n => `<button class="btn pri big" style="flex:1" data-mode="ufficio" data-uff="${esc(n)}">${esc(n)}</button>`).join("")}</div><p class="m" style="margin:8px 0 0">Clienti, impianti, pianificazione, rapportini in arrivo, preventivi, fatture, magazzino.</p></div>` : ""}
+  ${mc.includes("tecnico") ? `<div class="card"><b>🔧 Tecnico in campo</b><p class="m" style="margin:4px 0 10px">Vedi i tuoi lavori, segni orari, lavori eseguiti e materiali, invii il rapportino.</p>
   ${TEC().some(t => t.codice) ? `<input class="search" id="teccode" placeholder="Il tuo codice tecnico (es. T01)" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase;letter-spacing:2px;font-weight:600">` : `<input class="search" id="tecnew" placeholder="Il tuo nome e cognome"><div class="m" style="margin:-4px 0 8px">L'ufficio non ha ancora creato i codici tecnico.</div>`}
-  <button class="btn big" data-mode="tecnico">Entra come tecnico</button></div>
-  <div class="card"><b>📋 Preventivatore</b><p class="m" style="margin:4px 0 10px">Prepari i preventivi dal listino General Fujitsu, crei i clienti e segui i tuoi preventivi.</p>
+  <button class="btn big" data-mode="tecnico">Entra come tecnico</button></div>` : ""}
+  ${mc.includes("comm") ? `<div class="card"><b>📋 Preventivatore</b><p class="m" style="margin:4px 0 10px">Prepari i preventivi dal listino General Fujitsu, crei i clienti e segui i tuoi preventivi.</p>
   <input class="search" id="commname" placeholder="Il tuo nome e cognome" value="${esc(ui.comm)}">
-  <button class="btn big" data-mode="comm">Entra come preventivatore</button></div></div>`;
+  <button class="btn big" data-mode="comm">Entra come preventivatore</button></div>` : ""}</div>`;
 }
 
 // ---------- render ----------
 function go(tab){ ui.tab = tab; ui.q = ""; if (tab !== "clienti") ui.cliente = null; location.hash = tab; render(); window.scrollTo(0, 0); }
 function render(){
+  if (ui.modo && !modiConsentiti().includes(ui.modo)) { ui.modo = ""; ls.set("modo", ""); }
   if (ui.modo === "ufficio" && CFG.pinUfficio && ls.get("uffPin", "") !== CFG.pinUfficio) { ui.modo = ""; ls.set("modo", ""); }
   if (ui.modo === "tecnico" && TEC().length && !TEC().some(t => sameTec(t.nome, ui.tecnico))) { ui.modo = ""; ls.set("modo", ""); toast("Il tuo profilo tecnico è cambiato: rientra con il tuo codice", 4000); }
   const app = $("#app"), nav = $("#nav"), fab = $("#fabwrap");
@@ -1951,6 +1957,7 @@ document.addEventListener("click", async e => {
   if (!el) return; const d = el.dataset;
   if (d.tab) return go(d.tab);
   if (d.mode) {
+    if (!modiConsentiti().includes(d.mode)) { toast("Il tuo account non ha accesso a questa area"); return; }
     if (d.mode === "ufficio") {
       const enter = () => { ui.modo = "ufficio"; ui.uff = d.uff || ""; ls.set("modo", "ufficio"); ls.set("uff", ui.uff); ls.set("uffPin", CFG.pinUfficio || ""); render(); };
       if (!CFG.pinUfficio || ls.get("uffPin", "") === CFG.pinUfficio) return enter();
