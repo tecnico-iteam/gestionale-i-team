@@ -34,6 +34,10 @@ in italiano semplice, senza gergo tecnico.
   gli altri non possono cambiare la propria. La nuova password va in `utenti/{uid}.nuovaPassword` (scrivibile solo da admin) e
   `scripts/password.js` (stesso workflow degli avvisi) la applica con firebase-admin e la cancella; esito in `passwordCambiata`/`passwordErrore`.
 
+- Foto da WhatsApp: `manifest.json` → `share_target` (POST `./condividi`, campo `media`): `sw.js` tiene i file nella cache
+  `iteam-condivisi` e apre `?condividi=N`; `controllaCondivisi()` in index.html fa scegliere l'intervento e usa `caricaFile()`.
+  Funziona solo su Android con l'app installata (iPhone non lo supporta: lì si salva in galleria e si usa 📷 Aggiungi).
+
 ## Dati (Firestore)
 Collezioni: clienti, impianti, interventi, preventivi, fatture, magazzino, listino, dico, config/impostazioni,
 utenti/{uid} = {email, nome, ruolo: admin|ufficio|tecnico|preventivatore|nuovo, attivo}.

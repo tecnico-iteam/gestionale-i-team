@@ -1023,8 +1023,11 @@ async function shrinkImage(file, maxSide = 1920){
 function addMedia(intId){
   if (!assetsNS) { toast("Il caricamento di foto e video non è attivo per il tuo account. Controlla la connessione o chiedi al titolare.", 4500); return; }
   fileIn.value = "";
-  fileIn.onchange = async () => {
-    const files = [...fileIn.files]; if (!files.length) return;
+  fileIn.onchange = () => caricaFile(intId, [...fileIn.files]);
+  fileIn.click();
+}
+async function caricaFile(intId, files){
+    if (!files.length) return 0;
     const added = []; let i = 0;
     for (const f of files) {
       i++; toast(`Caricamento ${i} di ${files.length}…`, 60000);
@@ -1048,12 +1051,46 @@ function addMedia(intId){
       }
     }
     clearToasts();
-    if (!added.length) return;
+    if (!added.length) return 0;
     const x = byId("interventi", intId);
     try { await patch("interventi", intId, {media: [...((x && x.media) || []), ...added]}); toast(`📷 ${added.length} file caricat${added.length === 1 ? "o" : "i"}`); } catch(e){}
     refreshMedia();
-  };
-  fileIn.click();
+    return added.length;
+}
+// ---------- foto condivise da WhatsApp (Condividi → iTeam, su Android) ----------
+// Il service worker (sw.js) tiene i file nella cache "iteam-condivisi" e apre ?condividi=N:
+// qui il tecnico (o l'ufficio) sceglie l'intervento e le foto vengono caricate come con 📷 Aggiungi.
+let condivisiVisto = false;
+async function leggiCondivisi(){
+  try { const c = await caches.open("iteam-condivisi"); const ks = await c.keys(); const out = [];
+    for (const k of ks) { const r = await c.match(k); if (!r) continue; const b = await r.blob(); out.push(new File([b], decodeURIComponent(r.headers.get("x-nome") || "") || "foto.jpg", {type: b.type || r.headers.get("content-type") || ""})); }
+    return out; } catch(e) { return []; }
+}
+async function svuotaCondivisi(){ try { await caches.delete("iteam-condivisi"); } catch(e){} }
+function controllaCondivisi(){
+  if (condivisiVisto || !/[?&]condividi=/.test(location.search)) return;
+  if (!ui.modo || !["tecnico", "ufficio"].includes(ui.modo) || !loaded.has("interventi") || !assetsNS) return;
+  condivisiVisto = true;
+  try { history.replaceState(null, "", location.pathname + location.hash); } catch(e){}
+  leggiCondivisi().then(files => {
+    if (!files.length) return toast("Nessuna foto ricevuta. Riprova a condividerla.", 4000);
+    const t = today(), da = addDays(t, -30), a = addDays(t, 14);
+    const L = S.interventi.filter(x => x.stato !== "Annullato" && x.data >= da && x.data <= a && (ui.modo === "ufficio" || haTec(x, ui.tecnico)))
+      .sort((p, q) => (p.data === t ? -1 : 0) - (q.data === t ? -1 : 0) || Math.abs(new Date(p.data) - new Date(t)) - Math.abs(new Date(q.data) - new Date(t)) || sortInt(p, q)).slice(0, 40);
+    const nf = files.length, cosa = nf === 1 ? (files[0].type.startsWith("video/") ? "il video" : "la foto") : `i ${nf} file`;
+    const ov = modal(`<h2>📲 Dove salvo ${cosa}?</h2>
+      <p class="m" style="margin-top:-6px">Scegli l'intervento: ${cosa} finisc${nf === 1 ? "e" : "ono"} in «Foto e video», come con 📷 Aggiungi.</p>
+      ${L.length ? L.map(x => `<button type="button" class="card tap" data-condint="${x.id}" style="display:block;width:100%;text-align:left;font:inherit"><div class="t">${esc(cliName(x.clienteId))}</div><div class="m">${x.data === t ? "<b>Oggi</b>" : esc(fdl(x.data))}${x.ora ? " · " + esc(x.ora) : ""}${x.tipo ? " · " + esc(x.tipo) : ""}</div></button>`).join("")
+        : `<div class="empty">Nessun intervento recente${ui.modo === "tecnico" ? " assegnato a te" : ""}. Le foto restano sul telefono: puoi aggiungerle dopo da 📷 Aggiungi.</div>`}
+      <div class="acts"><button class="btn" data-condno="1">Annulla</button></div>`);
+    ov.addEventListener("click", async e => {
+      if (e.target.closest("[data-condno]")) { svuotaCondivisi(); return closeModal(); }
+      const b = e.target.closest("[data-condint]"); if (!b) return;
+      closeModal();
+      const n = await caricaFile(b.dataset.condint, files);
+      if (n) svuotaCondivisi();
+    });
+  });
 }
 const blobUrl = f => f.url || "/_blob/" + f.id;
 function clearToasts(){ document.querySelectorAll(".toast").forEach(t => t.remove()); }
@@ -2695,6 +2732,7 @@ function vChoose(){
 // ---------- render ----------
 function go(tab){ ui.tab = tab; ui.q = ""; if (tab !== "clienti") ui.cliente = null; location.hash = tab; render(); window.scrollTo(0, 0); }
 function render(){
+  setTimeout(controllaCondivisi, 0);
   if (ui.modo && !modiConsentiti().includes(ui.modo)) { ui.modo = ""; ls.set("modo", ""); }
   const acc = mioAccount();
   if (acc) {

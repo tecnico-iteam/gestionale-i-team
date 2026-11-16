@@ -1,12 +1,28 @@
 // Service worker: l'app si apre anche senza connessione e si aggiorna da sola.
 // Cambiare VERSIONE quando si vuole svuotare la cache sui dispositivi.
-const VERSIONE = "iteam-v3";
+const VERSIONE = "iteam-v4";
+const CONDIVISI = "iteam-condivisi"; // foto/video arrivati da "Condividi" (es. WhatsApp), in attesa di essere salvati
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", e => e.waitUntil(
-  caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSIONE).map(k => caches.delete(k)))).then(() => self.clients.claim())
+  caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSIONE && k !== CONDIVISI).map(k => caches.delete(k)))).then(() => self.clients.claim())
 ));
 self.addEventListener("fetch", e => {
-  const req = e.request; if (req.method !== "GET") return;
+  const req = e.request;
+  // "Condividi → iTeam" dal telefono (es. foto di WhatsApp): teniamo da parte i file e apriamo il gestionale
+  if (req.method === "POST" && new URL(req.url).pathname.endsWith("/condividi")) {
+    e.respondWith((async () => {
+      let n = 0;
+      try {
+        const fd = await req.formData(), files = fd.getAll("media").filter(f => f && f.size);
+        const c = await caches.open(CONDIVISI);
+        for (const k of await c.keys()) await c.delete(k);
+        for (const f of files) await c.put(new Request("condivisi/" + Date.now() + "-" + (n++)), new Response(f, {headers: {"content-type": f.type || "application/octet-stream", "x-nome": encodeURIComponent(f.name || "")}}));
+      } catch(err) {}
+      return Response.redirect(new URL("./?condividi=" + n, self.registration.scope).href, 303);
+    })());
+    return;
+  }
+  if (req.method !== "GET") return;
   const u = new URL(req.url);
   const own = u.origin === location.origin, sdk = u.host === "www.gstatic.com" && u.pathname.startsWith("/firebasejs/");
   if (!own && !sdk) return; // dati Firebase e foto: gestiti da Firebase
