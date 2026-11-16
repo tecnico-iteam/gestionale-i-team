@@ -22,6 +22,8 @@ in italiano semplice, senza gergo tecnico.
   Stessa logica (`costo: true`, prefisso `pre`) per `listino-erredi-2026.json` ("er", da preventivi/fatture Erredi 2026, prezzo = netto
   dopo sconti, con `listinoFornitore`/`scontoFornitore`/`fonte`) e `listino-idrocentro-2026.json` ("ic"). L'importazione in magazzino
   crea da sola una spunta + ricarico per ogni listino `costo: true` di BUNDLES.
+  `n` in BUNDLES = numero articoli del file: se nel listino ce ne sono meno compare "Aggiorna". Foto prese dai cataloghi
+  dei fornitori in `img/fornitori/` (campo `img`); senza foto si usa un disegno di `ICONS`/`iconFor()` (regole `r0` per i fornitori).
 
 - Avvisi appuntamenti: il tecnico attiva le notifiche (firebase-app.js → `ITEAM.notifiche`, chiave `vapidKey` in
   firebase-config.js); il codice del telefono va in `dispositivi/{token}` = {tecnico,…}. `.github/workflows/avvisi.yml`

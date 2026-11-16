@@ -1,6 +1,195 @@
 {
-"nome": "Erredi (Moncalieri) - prezzi netti iTeam da preventivi e fatture 2026",
+"nome": "Erredi (Moncalieri) - prezzi netti iTeam da preventivi e fatture 2025-2026",
 "items": [
+{
+"codice": "ARS3069775",
+"descrizione": "Ariston Nuos Plus Wi-Fi 200 - pompa di calore per acqua calda",
+"categoria": "Acqua calda sanitaria (pompe di calore)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 2169.45,
+"listinoFornitore": 4821.0,
+"scontoFornitore": "55",
+"fonte": "Prev. 4.941 del 31/08/2026"
+},
+{
+"codice": "ARS877085",
+"descrizione": "Ariston gruppo di sicurezza idraulico 3/4\"",
+"categoria": "Acqua calda sanitaria (pompe di calore)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 24.5,
+"listinoFornitore": 49.0,
+"scontoFornitore": "50",
+"fonte": "Prev. 4.941 del 31/08/2026"
+},
+{
+"codice": "RRGER02100150",
+"descrizione": "Gree GRS-1.5Pd/TD200ANpA-K - pompa di calore per acqua calda 200 L",
+"categoria": "Acqua calda sanitaria (pompe di calore)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 1619.1,
+"listinoFornitore": 3598.0,
+"scontoFornitore": "55",
+"fonte": "Prev. 4.943 del 31/08/2026"
+},
+{
+"codice": "CHX877086",
+"descrizione": "Sifone 1\"",
+"categoria": "Acqua calda sanitaria (pompe di calore)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 7.0,
+"listinoFornitore": 14.0,
+"scontoFornitore": "50",
+"fonte": "Prev. 4.941 del 31/08/2026"
+},
+{
+"codice": "VR0007",
+"descrizione": "Vaso di espansione polivalente 25 L",
+"categoria": "Acqua calda sanitaria (pompe di calore)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 33.23,
+"listinoFornitore": 60.42,
+"scontoFornitore": "45",
+"fonte": "Prev. 4.941 del 31/08/2026"
+},
+{
+"codice": "AIZAZX6GTCFUJ",
+"descrizione": "Airzone - interfaccia di controllo 3.0 per Fujitsu/General",
+"categoria": "Airzone (zone e termostati)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 202.16,
+"listinoFornitore": 304.0,
+"scontoFornitore": "30+5",
+"fonte": "Prev. 10.920 del 14/11/2025"
+},
+{
+"codice": "AIZCPCC150MTE",
+"descrizione": "Airzone - serranda circolare motorizzata D.150",
+"categoria": "Airzone (zone e termostati)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 122.36,
+"listinoFornitore": 184.0,
+"scontoFornitore": "30+5",
+"fonte": "Prev. 10.920 del 14/11/2025"
+},
+{
+"codice": "AIZCPCC200MTE",
+"descrizione": "Airzone - serranda circolare motorizzata D.200",
+"categoria": "Airzone (zone e termostati)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 123.03,
+"listinoFornitore": 185.0,
+"scontoFornitore": "30+5",
+"fonte": "Prev. 10.920 del 14/11/2025"
+},
+{
+"codice": "AIZAZX6WSC5GER",
+"descrizione": "Airzone - webserver cloud Wi-Fi dual 2,4/5 GHz",
+"categoria": "Airzone (zone e termostati)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 172.24,
+"listinoFornitore": 259.0,
+"scontoFornitore": "30+5",
+"fonte": "Prev. 10.920 del 14/11/2025"
+},
+{
+"codice": "AIZAZCE8CB1MOT",
+"descrizione": "Airzone Flexa 3.0 - scheda centrale",
+"categoria": "Airzone (zone e termostati)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 246.72,
+"listinoFornitore": 371.0,
+"scontoFornitore": "30+5",
+"fonte": "Prev. 10.920 del 14/11/2025"
+},
+{
+"codice": "AIZAZCE6THINKRB",
+"descrizione": "Airzone Think - termostato radio monocromatico bianco",
+"categoria": "Airzone (zone e termostati)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 198.84,
+"listinoFornitore": 299.0,
+"scontoFornitore": "30+5",
+"fonte": "Prev. 10.920 del 14/11/2025"
+},
+{
+"codice": "AIZAZX6CABLEBUS100",
+"descrizione": "Airzone cavo bus (2x0,5+2x0,22) - bobina 100 m",
+"categoria": "Airzone (zone e termostati)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 85.8,
+"listinoFornitore": 129.0,
+"scontoFornitore": "30+5",
+"fonte": "Prev. 10.920 del 14/11/2025"
+},
+{
+"codice": "FSE50WH",
+"descrizione": "FläktGroup barriera - comando HMI digitale",
+"categoria": "Barriere a lama d'aria (FläktGroup)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 72.07,
+"listinoFornitore": 72.07,
+"scontoFornitore": "",
+"fonte": "Prev. 6.119 del 02/11/2026"
+},
+{
+"codice": "DC.MAG",
+"descrizione": "FläktGroup barriera - contatto porta magnetico",
+"categoria": "Barriere a lama d'aria (FläktGroup)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 57.28,
+"listinoFornitore": 57.28,
+"scontoFornitore": "",
+"fonte": "Prev. 6.119 del 02/11/2026"
+},
+{
+"codice": "ACLIA20CDR-SEC",
+"descrizione": "FläktGroup barriera - esecuzione RAL 9005 (nero)",
+"categoria": "Barriere a lama d'aria (FläktGroup)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 905.62,
+"listinoFornitore": 905.62,
+"scontoFornitore": "",
+"fonte": "Prev. 6.119 del 02/11/2026",
+"img": "img/fornitori/flakt-barriera.jpg"
+},
+{
+"codice": "WB.6",
+"descrizione": "FläktGroup barriera - staffe di fissaggio a parete",
+"categoria": "Barriere a lama d'aria (FläktGroup)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 289.21,
+"listinoFornitore": 289.21,
+"scontoFornitore": "",
+"fonte": "Prev. 6.119 del 02/11/2026"
+},
+{
+"codice": "ACLIM20A00-SEC",
+"descrizione": "FläktGroup barriera a lama d'aria",
+"categoria": "Barriere a lama d'aria (FläktGroup)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 2571.52,
+"listinoFornitore": 2571.52,
+"scontoFornitore": "",
+"fonte": "Prev. 6.119 del 02/11/2026",
+"img": "img/fornitori/flakt-barriera.jpg"
+},
 {
 "codice": "CARB90SET300",
 "descrizione": "Curva a settori B90° D.300",
@@ -10,7 +199,7 @@
 "prezzo": 19.24,
 "listinoFornitore": 39.67,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "CARB90SET400",
@@ -21,7 +210,29 @@
 "prezzo": 39.77,
 "listinoFornitore": 82.01,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
+},
+{
+"codice": "CARCZ90200",
+"descrizione": "Curva stampata 90° D.200 coibentata 6 mm",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 28.6,
+"listinoFornitore": 52.0,
+"scontoFornitore": "45",
+"fonte": "Prev. 10.920 del 14/11/2025"
+},
+{
+"codice": "CARTTD100",
+"descrizione": "Estrattore in linea in ABS TTD D.100",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 45.59,
+"listinoFornitore": 94.0,
+"scontoFornitore": "50+3",
+"fonte": "Prev. 6.044 del 28/10/2026"
 },
 {
 "codice": "CARSPS100280-355",
@@ -32,7 +243,7 @@
 "prezzo": 2.46,
 "listinoFornitore": 5.08,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "CARSPS100400-630",
@@ -43,7 +254,7 @@
 "prezzo": 2.46,
 "listinoFornitore": 5.08,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "CARSPS200280-315",
@@ -54,7 +265,7 @@
 "prezzo": 5.8,
 "listinoFornitore": 11.97,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "CARSPS200355-400",
@@ -65,7 +276,7 @@
 "prezzo": 5.8,
 "listinoFornitore": 11.97,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "CARSPS250355-400",
@@ -76,7 +287,40 @@
 "prezzo": 9.12,
 "listinoFornitore": 18.8,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
+},
+{
+"codice": "CARMF150",
+"descrizione": "Manicotto femmina MF D.150",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 1.59,
+"listinoFornitore": 3.18,
+"scontoFornitore": "50",
+"fonte": "Prev. 10.920 del 14/11/2025"
+},
+{
+"codice": "CARMF160",
+"descrizione": "Manicotto femmina MF D.160",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 1.75,
+"listinoFornitore": 3.18,
+"scontoFornitore": "45",
+"fonte": "Prev. 11.755 del 11/12/2025"
+},
+{
+"codice": "CANALIZZATO170",
+"descrizione": "Manicotto femmina MF D.200",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 2.04,
+"listinoFornitore": 3.71,
+"scontoFornitore": "45",
+"fonte": "Prev. 10.920 del 14/11/2025"
 },
 {
 "codice": "CARMF250",
@@ -98,7 +342,7 @@
 "prezzo": 4.62,
 "listinoFornitore": 9.53,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "CARNP300",
@@ -109,7 +353,7 @@
 "prezzo": 2.8,
 "listinoFornitore": 5.78,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "CARNP400",
@@ -120,7 +364,7 @@
 "prezzo": 4.62,
 "listinoFornitore": 9.52,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "",
@@ -131,7 +375,7 @@
 "prezzo": 78.75,
 "listinoFornitore": 78.75,
 "scontoFornitore": "",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "",
@@ -142,7 +386,29 @@
 "prezzo": 83.75,
 "listinoFornitore": 83.75,
 "scontoFornitore": "",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
+},
+{
+"codice": "CARRC200160",
+"descrizione": "Riduzione concentrica RC D.200/160",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 5.59,
+"listinoFornitore": 10.17,
+"scontoFornitore": "45",
+"fonte": "Prev. 11.755 del 11/12/2025"
+},
+{
+"codice": "CARRC250200",
+"descrizione": "Riduzione concentrica RC D.250/200",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 8.2,
+"listinoFornitore": 14.9,
+"scontoFornitore": "45",
+"fonte": "Prev. 11.755 del 11/12/2025"
 },
 {
 "codice": "CARRC400300",
@@ -153,7 +419,7 @@
 "prezzo": 18.88,
 "listinoFornitore": 38.92,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "CAREP300",
@@ -164,7 +430,7 @@
 "prezzo": 5.5,
 "listinoFornitore": 11.35,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "CAREP400",
@@ -175,7 +441,7 @@
 "prezzo": 6.25,
 "listinoFornitore": 12.89,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "CARTUBO200",
@@ -186,18 +452,32 @@
 "prezzo": 9.6,
 "listinoFornitore": 9.6,
 "scontoFornitore": "",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026",
+"img": "img/fornitori/aircar-spiro.jpg"
+},
+{
+"codice": "CARTUBO250",
+"descrizione": "Tubo spiro zincato TSZ D.250 coibentato 6 mm (al metro)",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 32.45,
+"listinoFornitore": 59.0,
+"scontoFornitore": "45",
+"fonte": "Prev. 10.920 del 14/11/2025",
+"img": "img/fornitori/aircar-spiro.jpg"
 },
 {
 "codice": "",
-"descrizione": "Tubo spiro zincato TSZ D.300 barra da 3 m",
+"descrizione": "Tubo spiro zincato TSZ D.300 - barra da 3 m",
 "categoria": "Canali spiro e raccordi",
 "potenza": "",
 "marca": "Erredi",
 "prezzo": 48.45,
 "listinoFornitore": 48.45,
 "scontoFornitore": "",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026",
+"img": "img/fornitori/aircar-spiro.jpg"
 },
 {
 "codice": "CARTUBO400",
@@ -208,95 +488,320 @@
 "prezzo": 26.04,
 "listinoFornitore": 53.69,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026",
+"img": "img/fornitori/aircar-spiro.jpg"
+},
+{
+"codice": "TECNO047",
+"descrizione": "Basi per unità esterna 450 mm (coppia)",
+"categoria": "Canaline, basi e nastri",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 19.73,
+"listinoFornitore": 31.95,
+"scontoFornitore": "35+5",
+"fonte": "Prev. 10.920 del 14/11/2025"
+},
+{
+"codice": "CANALINA001",
+"descrizione": "Canalina EVA per mono 65x50 - barra 2 m (al metro)",
+"categoria": "Canaline, basi e nastri",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 4.05,
+"listinoFornitore": 6.75,
+"scontoFornitore": "40",
+"fonte": "Prev. 1.386 del 10/02/2026"
+},
+{
+"codice": "CANALINA030",
+"descrizione": "Curva a muro canalina 65",
+"categoria": "Canaline, basi e nastri",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 2.79,
+"listinoFornitore": 4.65,
+"scontoFornitore": "40",
+"fonte": "Prev. 1.386 del 10/02/2026"
+},
+{
+"codice": "CANALINA020",
+"descrizione": "Curva piana canalina 65",
+"categoria": "Canaline, basi e nastri",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 2.52,
+"listinoFornitore": 4.2,
+"scontoFornitore": "40",
+"fonte": "Prev. 1.386 del 10/02/2026"
+},
+{
+"codice": "FIMI200",
+"descrizione": "Nastro alluminio adesivo 5 cm x 50 m",
+"categoria": "Canaline, basi e nastri",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 9.85,
+"listinoFornitore": 17.9,
+"scontoFornitore": "45",
+"fonte": "Prev. 10.920 del 14/11/2025"
+},
+{
+"codice": "FACOT037",
+"descrizione": "Nastro anticondensa",
+"categoria": "Canaline, basi e nastri",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 3.14,
+"listinoFornitore": 31.43,
+"scontoFornitore": "90",
+"fonte": "Prev. 10.920 del 14/11/2025"
+},
+{
+"codice": "DAITSU3NDA01635",
+"descrizione": "Daitsu Artic 12000 BTU - set mono (interna + esterna)",
+"categoria": "Climatizzatori",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 290.0,
+"listinoFornitore": 290.0,
+"scontoFornitore": "",
+"fonte": "Prev. 1.386 del 10/02/2026"
+},
+{
+"codice": "DAITSU3NDA01542",
+"descrizione": "Daitsu Artic 9000 BTU - unità esterna mono",
+"categoria": "Climatizzatori",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 220.0,
+"listinoFornitore": 220.0,
+"scontoFornitore": "",
+"fonte": "Prev. 1.386 del 10/02/2026"
+},
+{
+"codice": "DAITSU3NDA01541",
+"descrizione": "Daitsu Artic 9000 BTU - unità interna mono split",
+"categoria": "Climatizzatori",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 70.0,
+"listinoFornitore": 70.0,
+"scontoFornitore": "",
+"fonte": "Prev. 1.386 del 10/02/2026"
 },
 {
 "codice": "GENAOHG18KBTA2",
 "descrizione": "General AOHG18KBTA2 - unità esterna dual multisplit R32 5,0 kW",
-"categoria": "Climatizzatori General",
+"categoria": "Climatizzatori",
 "potenza": "",
 "marca": "Erredi",
 "prezzo": 871.38,
 "listinoFornitore": 1854.0,
 "scontoFornitore": "53",
-"fonte": "Prev. 4244 del 30/06/2026"
+"fonte": "Prev. 4.244 del 30/06/2026"
+},
+{
+"codice": "GENAOHG30KBTB",
+"descrizione": "General AOHG30KBTB - unità esterna R32 (sistemi simultanei)",
+"categoria": "Climatizzatori",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 1409.53,
+"listinoFornitore": 2999.0,
+"scontoFornitore": "53",
+"fonte": "Prev. 10.976 del 17/11/2025"
+},
+{
+"codice": "GENAOHG36KBTB",
+"descrizione": "General AOHG36KBTB - unità esterna R32 9,5 kW (sistemi simultanei)",
+"categoria": "Climatizzatori",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 1415.64,
+"listinoFornitore": 3012.0,
+"scontoFornitore": "53",
+"fonte": "Prev. 10.920 del 14/11/2025"
+},
+{
+"codice": "GENARXH30KMTAP",
+"descrizione": "General ARXH30KMTAP - unità interna canalizzata KMTAP con pompa condensa",
+"categoria": "Climatizzatori",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 887.83,
+"listinoFornitore": 1889.0,
+"scontoFornitore": "53",
+"fonte": "Prev. 10.976 del 17/11/2025"
+},
+{
+"codice": "GENARXH36KMTAP",
+"descrizione": "General ARXH36KMTAP - unità interna canalizzata KMTAP con pompa condensa",
+"categoria": "Climatizzatori",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 1917.0,
+"listinoFornitore": 1917.0,
+"scontoFornitore": "",
+"fonte": "Prev. 10.920 del 14/11/2025"
 },
 {
 "codice": "GENASHH09KMCG",
-"descrizione": "General ASHH09KMCG - unità interna a parete serie KMCG 9000 BTU",
-"categoria": "Climatizzatori General",
+"descrizione": "General ASHH09KMCG - unità interna a parete KMCG 9000 BTU",
+"categoria": "Climatizzatori",
 "potenza": "",
 "marca": "Erredi",
 "prezzo": 228.42,
 "listinoFornitore": 486.0,
 "scontoFornitore": "53",
-"fonte": "Prev. 4244 del 30/06/2026"
+"fonte": "Prev. 4.244 del 30/06/2026"
 },
 {
 "codice": "GENASHH12KMCG",
-"descrizione": "General ASHH12KMCG - unità interna a parete serie KMCG 12000 BTU",
-"categoria": "Climatizzatori General",
+"descrizione": "General ASHH12KMCG - unità interna a parete KMCG 12000 BTU",
+"categoria": "Climatizzatori",
 "potenza": "",
 "marca": "Erredi",
 "prezzo": 254.74,
 "listinoFornitore": 542.0,
 "scontoFornitore": "53",
-"fonte": "Prev. 4244 del 30/06/2026"
+"fonte": "Prev. 4.244 del 30/06/2026"
+},
+{
+"codice": "GENUTY-RLRG",
+"descrizione": "General UTY-RLRG - comando a filo con schermo LCD (2 fili)",
+"categoria": "Climatizzatori",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 147.58,
+"listinoFornitore": 314.0,
+"scontoFornitore": "53",
+"fonte": "Prev. 10.976 del 17/11/2025"
 },
 {
 "codice": "GREE10142",
 "descrizione": "Gree - unità esterna dual 18 (multisplit)",
-"categoria": "Climatizzatori Gree",
+"categoria": "Climatizzatori",
 "potenza": "",
 "marca": "Erredi",
 "prezzo": 646.38,
 "listinoFornitore": 1701.0,
 "scontoFornitore": "62",
-"fonte": "Prev. 4244 del 30/06/2026"
+"fonte": "Prev. 4.244 del 30/06/2026"
 },
 {
 "codice": "GREE10248",
 "descrizione": "Gree Cosmo 12000 BTU - unità interna",
-"categoria": "Climatizzatori Gree",
+"categoria": "Climatizzatori",
 "potenza": "",
 "marca": "Erredi",
 "prezzo": 143.64,
 "listinoFornitore": 378.0,
 "scontoFornitore": "62",
-"fonte": "Prev. 4244 del 30/06/2026"
+"fonte": "Prev. 4.244 del 30/06/2026"
 },
 {
 "codice": "RRGGREE10251",
 "descrizione": "Gree Cosmo 18000 BTU - unità esterna mono GWH18ATDXB",
-"categoria": "Climatizzatori Gree",
+"categoria": "Climatizzatori",
 "potenza": "",
 "marca": "Erredi",
 "prezzo": 436.5,
 "listinoFornitore": 970.0,
 "scontoFornitore": "55",
-"fonte": "Prev. 3125 del 20/04/2026"
+"fonte": "Prev. 3.125 del 20/04/2026"
 },
 {
 "codice": "RRGGREE10250",
-"descrizione": "Gree Cosmo 18000 BTU - unità interna GWH18AWDXB (mono/multi)",
-"categoria": "Climatizzatori Gree",
+"descrizione": "Gree Cosmo 18000 BTU - unità interna GWH18AWDXB",
+"categoria": "Climatizzatori",
 "potenza": "",
 "marca": "Erredi",
 "prezzo": 245.7,
 "listinoFornitore": 546.0,
 "scontoFornitore": "55",
-"fonte": "Prev. 3125 del 20/04/2026"
+"fonte": "Prev. 3.125 del 20/04/2026"
 },
 {
 "codice": "GREE10246",
 "descrizione": "Gree Cosmo 9000 BTU - unità interna GWH09AWAXB",
-"categoria": "Climatizzatori Gree",
+"categoria": "Climatizzatori",
 "potenza": "",
 "marca": "Erredi",
 "prezzo": 129.2,
 "listinoFornitore": 340.0,
 "scontoFornitore": "62",
-"fonte": "Prev. 4244 del 30/06/2026"
+"fonte": "Prev. 4.244 del 30/06/2026"
+},
+{
+"codice": "CARMA10800200BIANCA",
+"descrizione": "Bocchetta di mandata MA10 800x200 bianca",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 50.45,
+"listinoFornitore": 104.02,
+"scontoFornitore": "50+3",
+"fonte": "Prev. 6.044 del 28/10/2026"
+},
+{
+"codice": "CARBLFCVL",
+"descrizione": "Cavalletti fissaggio plenum BLF 1-4 feritoie",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 2.06,
+"listinoFornitore": 3.75,
+"scontoFornitore": "45",
+"fonte": "Prev. 10.920 del 14/11/2025",
+"img": "img/fornitori/aircar-plenum-blf.jpg"
+},
+{
+"codice": "CARBLFCVL2",
+"descrizione": "Cavalletti griglia BLF 2 feritoie",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 4.77,
+"listinoFornitore": 9.84,
+"scontoFornitore": "50+3",
+"fonte": "Prev. 6.044 del 28/10/2026",
+"img": "img/fornitori/aircar-plenum-blf.jpg"
+},
+{
+"codice": "CANALIZZATO300",
+"descrizione": "Collarino D.150 per plenum unità interna",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 7.13,
+"listinoFornitore": 12.96,
+"scontoFornitore": "45",
+"fonte": "Prev. 5.907 del 21/10/2026"
+},
+{
+"codice": "CARDCRSQ160",
+"descrizione": "Diffusore a coni DCRS/Q D.160 + serranda su pannello 596x596",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 49.31,
+"listinoFornitore": 89.65,
+"scontoFornitore": "45",
+"fonte": "Prev. 11.755 del 11/12/2025",
+"img": "img/fornitori/aircar-dcr.jpg"
+},
+{
+"codice": "CARDCRSQ250",
+"descrizione": "Diffusore a coni DCRS/Q D.250 + serranda su pannello 596x596",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 66.15,
+"listinoFornitore": 120.27,
+"scontoFornitore": "45",
+"fonte": "Prev. 11.755 del 11/12/2025",
+"img": "img/fornitori/aircar-dcr.jpg"
 },
 {
 "codice": "CARDCRS200",
@@ -307,7 +812,8 @@
 "prezzo": 48.07,
 "listinoFornitore": 99.12,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026",
+"img": "img/fornitori/aircar-dcr.jpg"
 },
 {
 "codice": "CARDCRS250",
@@ -318,7 +824,54 @@
 "prezzo": 58.33,
 "listinoFornitore": 120.27,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026",
+"img": "img/fornitori/aircar-dcr.jpg"
+},
+{
+"codice": "CARBLFSD21000B",
+"descrizione": "Diffusore lineare BLF/SD 2 feritoie L=1000",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 48.5,
+"listinoFornitore": 100.0,
+"scontoFornitore": "50+3",
+"fonte": "Prev. 6.044 del 28/10/2026",
+"img": "img/fornitori/aircar-blf.jpg"
+},
+{
+"codice": "CARBLFSD2800B",
+"descrizione": "Diffusore lineare BLF/SD 2 feritoie L=800",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 44.0,
+"listinoFornitore": 88.0,
+"scontoFornitore": "50",
+"fonte": "Prev. 10.920 del 14/11/2025",
+"img": "img/fornitori/aircar-blf.jpg"
+},
+{
+"codice": "CANALIZZATO020",
+"descrizione": "Griglia bocchetta 300x150 bianca",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 20.47,
+"listinoFornitore": 37.22,
+"scontoFornitore": "45",
+"fonte": "Prev. 10.920 del 14/11/2025"
+},
+{
+"codice": "CARRA251000400BIANCA",
+"descrizione": "Griglia di ripresa RA25 1000x400 RAL9016",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 66.34,
+"listinoFornitore": 132.68,
+"scontoFornitore": "50",
+"fonte": "Prev. 10.920 del 14/11/2025"
 },
 {
 "codice": "CARRA25300100BIANCA",
@@ -329,7 +882,7 @@
 "prezzo": 11.69,
 "listinoFornitore": 24.1,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "CARRA25500300",
@@ -340,7 +893,7 @@
 "prezzo": 26.32,
 "listinoFornitore": 54.28,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "CARRA25600400",
@@ -351,7 +904,51 @@
 "prezzo": 38.78,
 "listinoFornitore": 79.97,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
+},
+{
+"codice": "CARRA25800200BIANCA",
+"descrizione": "Griglia di ripresa RA25 800x200 bianca",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 33.47,
+"listinoFornitore": 69.0,
+"scontoFornitore": "50+3",
+"fonte": "Prev. 6.044 del 28/10/2026"
+},
+{
+"codice": "CARRA25PF400200",
+"descrizione": "Griglia di ripresa RA25PF 400x200 con filtro piano",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 45.03,
+"listinoFornitore": 81.88,
+"scontoFornitore": "45",
+"fonte": "Prev. 11.416 del 01/12/2025"
+},
+{
+"codice": "CARGTC100",
+"descrizione": "Griglia maschio in alluminio con rete D.100",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 10.46,
+"listinoFornitore": 21.56,
+"scontoFornitore": "50+3",
+"fonte": "Prev. 6.044 del 28/10/2026"
+},
+{
+"codice": "CARGTO120400200",
+"descrizione": "Griglia tagliafuoco GTO EI120 sp.100 400x200",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 240.07,
+"listinoFornitore": 495.0,
+"scontoFornitore": "50+3",
+"fonte": "Prev. 6.044 del 28/10/2026"
 },
 {
 "codice": "CARDCRSMR200",
@@ -362,7 +959,8 @@
 "prezzo": 18.13,
 "listinoFornitore": 32.97,
 "scontoFornitore": "45",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026",
+"img": "img/fornitori/aircar-dcr.jpg"
 },
 {
 "codice": "",
@@ -373,7 +971,76 @@
 "prezzo": 18.13,
 "listinoFornitore": 32.97,
 "scontoFornitore": "45",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026",
+"img": "img/fornitori/aircar-dcr.jpg"
+},
+{
+"codice": "CANALIZZATO001",
+"descrizione": "Plenum ABS per bocchetta con serranda 300x150",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 21.01,
+"listinoFornitore": 38.2,
+"scontoFornitore": "45",
+"fonte": "Prev. 10.920 del 14/11/2025"
+},
+{
+"codice": "PLENUMPAL-H200",
+"descrizione": "Plenum in PAL con tappo cieco e aperto da una parte - h 200 l 1300 p 200",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 78.3,
+"listinoFornitore": 78.3,
+"scontoFornitore": "",
+"fonte": "Prev. 11.416 del 01/12/2025"
+},
+{
+"codice": "PLENUMPAL-H450",
+"descrizione": "Plenum in PAL con tappo cieco e aperto da una parte - h 450 l 600 p 200",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 55.6,
+"listinoFornitore": 55.6,
+"scontoFornitore": "",
+"fonte": "Prev. 11.416 del 01/12/2025"
+},
+{
+"codice": "PLENUMPAL-36KMTAP",
+"descrizione": "Plenum in PAL per 36 kmtap cieco",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 104.0,
+"listinoFornitore": 208.0,
+"scontoFornitore": "50",
+"fonte": "Prev. 10.920 del 14/11/2025"
+},
+{
+"codice": "CARBLFPI1000/2",
+"descrizione": "Plenum isolato BLF L=1000 2 feritoie, 2 attacchi laterali D.125",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 52.2,
+"listinoFornitore": 97.85,
+"scontoFornitore": "45+3",
+"fonte": "Prev. 6.044 del 28/10/2026",
+"img": "img/fornitori/aircar-plenum-blf.jpg"
+},
+{
+"codice": "CARBLFPI800/2",
+"descrizione": "Plenum isolato BLF L=800 2 feritoie, 1 attacco laterale D.148",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 48.42,
+"listinoFornitore": 88.04,
+"scontoFornitore": "45",
+"fonte": "Prev. 10.920 del 14/11/2025",
+"img": "img/fornitori/aircar-plenum-blf.jpg"
 },
 {
 "codice": "CARPS300100",
@@ -384,7 +1051,7 @@
 "prezzo": 19.99,
 "listinoFornitore": 41.21,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "CARPS500300",
@@ -395,7 +1062,7 @@
 "prezzo": 31.68,
 "listinoFornitore": 65.32,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "CARPS600400",
@@ -406,18 +1073,161 @@
 "prezzo": 37.53,
 "listinoFornitore": 77.38,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
+},
+{
+"codice": "CARVMF100",
+"descrizione": "Valvola di ventilazione VM/F D.100 RAL9010",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 4.97,
+"listinoFornitore": 10.25,
+"scontoFornitore": "50+3",
+"fonte": "Prev. 6.044 del 28/10/2026"
+},
+{
+"codice": "TUBGAS003028000",
+"descrizione": "Curva 90° acciaio inox gas DN 28 FF",
+"categoria": "Idraulica e gas",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 5.95,
+"listinoFornitore": 21.25,
+"scontoFornitore": "72",
+"fonte": "Prev. 4.020 del 17/06/2026"
+},
+{
+"codice": "TGAS011",
+"descrizione": "Giunto elastico in gomma filettato 1\"",
+"categoria": "Idraulica e gas",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 17.13,
+"listinoFornitore": 28.55,
+"scontoFornitore": "40",
+"fonte": "Prev. 4.020 del 17/06/2026"
+},
+{
+"codice": "PN422",
+"descrizione": "Gomito 90° elettrosaldabile D.32",
+"categoria": "Idraulica e gas",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 15.4,
+"listinoFornitore": 30.8,
+"scontoFornitore": "50",
+"fonte": "Prev. 4.020 del 17/06/2026"
+},
+{
+"codice": "PN402",
+"descrizione": "Manicotto elettrosaldabile D.32",
+"categoria": "Idraulica e gas",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 5.7,
+"listinoFornitore": 11.4,
+"scontoFornitore": "50",
+"fonte": "Prev. 4.020 del 17/06/2026"
+},
+{
+"codice": "TUBGAS001028000",
+"descrizione": "Manicotto inox gas n.1 DN 28",
+"categoria": "Idraulica e gas",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 3.2,
+"listinoFornitore": 11.42,
+"scontoFornitore": "72",
+"fonte": "Prev. 4.020 del 17/06/2026"
+},
+{
+"codice": "PN301",
+"descrizione": "Raccordo di transizione curvo PE 32 x 1\"",
+"categoria": "Idraulica e gas",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 44.4,
+"listinoFornitore": 88.8,
+"scontoFornitore": "50",
+"fonte": "Prev. 10.884 del 13/11/2025"
+},
+{
+"codice": "PN306",
+"descrizione": "Raccordo di transizione diritto PE 32 x 1\"",
+"categoria": "Idraulica e gas",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 18.45,
+"listinoFornitore": 36.9,
+"scontoFornitore": "50",
+"fonte": "Prev. 4.020 del 17/06/2026"
+},
+{
+"codice": "R18Y005",
+"descrizione": "Raccordo diritto a bocchettone giallo 1\"",
+"categoria": "Idraulica e gas",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 6.82,
+"listinoFornitore": 11.37,
+"scontoFornitore": "40",
+"fonte": "Prev. 10.884 del 13/11/2025"
+},
+{
+"codice": "PN362",
+"descrizione": "Raccordo diritto elettrosaldabile 1\" M x 32",
+"categoria": "Idraulica e gas",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 26.75,
+"listinoFornitore": 53.5,
+"scontoFornitore": "50",
+"fonte": "Prev. 10.884 del 13/11/2025"
+},
+{
+"codice": "TUB0993",
+"descrizione": "Tubo acciaio inox gas DN 28 - barre 6 m (al metro)",
+"categoria": "Idraulica e gas",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 8.06,
+"listinoFornitore": 32.26,
+"scontoFornitore": "75",
+"fonte": "Prev. 4.020 del 17/06/2026"
+},
+{
+"codice": "UNI2071005032100",
+"descrizione": "Tubo gas Uniblack EVO PE100RC S5 D.32 (al metro)",
+"categoria": "Idraulica e gas",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 1.89,
+"listinoFornitore": 3.78,
+"scontoFornitore": "50",
+"fonte": "Prev. 4.020 del 17/06/2026"
+},
+{
+"codice": "PN203",
+"descrizione": "Tubo polietilene gas D.32 (al metro)",
+"categoria": "Idraulica e gas",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 1.28,
+"listinoFornitore": 1.97,
+"scontoFornitore": "35",
+"fonte": "Prev. 10.884 del 13/11/2025"
 },
 {
 "codice": "BAMTDM322000",
-"descrizione": "Tubo PPT scarico 2 bicchieri 32-2000 grigio",
+"descrizione": "Tubo PPT scarico 2 bicchieri D.32 L=2000 grigio",
 "categoria": "Scarico (PPT)",
 "potenza": "",
 "marca": "Erredi",
 "prezzo": 6.12,
 "listinoFornitore": 7.65,
 "scontoFornitore": "20",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "CARS1300100",
@@ -428,7 +1238,7 @@
 "prezzo": 7.62,
 "listinoFornitore": 15.71,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "",
@@ -439,7 +1249,8 @@
 "prezzo": 155.62,
 "listinoFornitore": 155.62,
 "scontoFornitore": "",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026",
+"img": "img/fornitori/aircar-stc2.jpg"
 },
 {
 "codice": "",
@@ -450,7 +1261,31 @@
 "prezzo": 289.32,
 "listinoFornitore": 289.32,
 "scontoFornitore": "",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026",
+"img": "img/fornitori/aircar-stc3.jpg"
+},
+{
+"codice": "CARSTC3500",
+"descrizione": "Serranda tagliafuoco STC3 EI 120 L.520 D.500",
+"categoria": "Serrande (tagliafuoco e taratura)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 264.32,
+"listinoFornitore": 545.0,
+"scontoFornitore": "50+3",
+"fonte": "Prev. 6.044 del 28/10/2026",
+"img": "img/fornitori/aircar-stc3.jpg"
+},
+{
+"codice": "CARSTO3400200",
+"descrizione": "Serranda tagliafuoco STO/3 EI 120 400x200 L.310",
+"categoria": "Serrande (tagliafuoco e taratura)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 144.29,
+"listinoFornitore": 297.5,
+"scontoFornitore": "50+3",
+"fonte": "Prev. 6.044 del 28/10/2026"
 },
 {
 "codice": "CAREUC21CL06",
@@ -472,7 +1307,7 @@
 "prezzo": 3.91,
 "listinoFornitore": 8.06,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "CARUVHM400",
@@ -483,7 +1318,7 @@
 "prezzo": 5.06,
 "listinoFornitore": 10.43,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "CAREUCO125",
@@ -495,6 +1330,17 @@
 "listinoFornitore": 12.88,
 "scontoFornitore": "50+3",
 "fonte": "Fatt. 4452 del 28/10/2026"
+},
+{
+"codice": "CAREUCO200",
+"descrizione": "Collarino alluminio diam. 200",
+"categoria": "Tubi flessibili, fascette e colla",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 7.27,
+"listinoFornitore": 14.53,
+"scontoFornitore": "50",
+"fonte": "Prev. 10.920 del 14/11/2025"
 },
 {
 "codice": "CAREUCO250",
@@ -516,7 +1362,7 @@
 "prezzo": 0.73,
 "listinoFornitore": 1.5,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "CARFAFM60325",
@@ -527,7 +1373,7 @@
 "prezzo": 1.1,
 "listinoFornitore": 2.27,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "CARFRAIRALLISOF102",
@@ -538,7 +1384,32 @@
 "prezzo": 4.04,
 "listinoFornitore": 8.32,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026",
+"img": "img/fornitori/aircar-flessibile.jpg"
+},
+{
+"codice": "CARFRAIRALLISOF125",
+"descrizione": "Tubo flessibile AIR-ALL-ISO-F D.125 (al metro)",
+"categoria": "Tubi flessibili, fascette e colla",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 4.67,
+"listinoFornitore": 9.35,
+"scontoFornitore": "50",
+"fonte": "Prev. 6.044 del 28/10/2026",
+"img": "img/fornitori/aircar-flessibile.jpg"
+},
+{
+"codice": "CARFRAIRALLISOF152",
+"descrizione": "Tubo flessibile AIR-ALL-ISO-F D.152 (al metro)",
+"categoria": "Tubi flessibili, fascette e colla",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 5.73,
+"listinoFornitore": 11.46,
+"scontoFornitore": "50",
+"fonte": "Prev. 5.907 del 21/10/2026",
+"img": "img/fornitori/aircar-flessibile.jpg"
 },
 {
 "codice": "CARFRAIRALLISOF200",
@@ -549,7 +1420,8 @@
 "prezzo": 6.37,
 "listinoFornitore": 13.14,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026",
+"img": "img/fornitori/aircar-flessibile.jpg"
 },
 {
 "codice": "CARFRAIRALLISOF254",
@@ -560,7 +1432,41 @@
 "prezzo": 7.96,
 "listinoFornitore": 16.42,
 "scontoFornitore": "50+3",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026",
+"img": "img/fornitori/aircar-flessibile.jpg"
+},
+{
+"codice": "CARECOAIR102",
+"descrizione": "Tubo flessibile Ecoair D.102 (al metro)",
+"categoria": "Tubi flessibili, fascette e colla",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 1.27,
+"listinoFornitore": 2.61,
+"scontoFornitore": "50+3",
+"fonte": "Prev. 6.044 del 28/10/2026"
+},
+{
+"codice": "CANALIZZATO088",
+"descrizione": "Tubo flessibile PVC isolato D.254",
+"categoria": "Tubi flessibili, fascette e colla",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 9.92,
+"listinoFornitore": 18.03,
+"scontoFornitore": "45",
+"fonte": "Prev. 10.583 del 04/11/2025"
+},
+{
+"codice": "ENT90008238",
+"descrizione": "Tubo rame VRF Entavrf 1 1/8\" (al metro)",
+"categoria": "Tubo rame",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 13.93,
+"listinoFornitore": 13.93,
+"scontoFornitore": "",
+"fonte": "Prev. 11.755 del 11/12/2025"
 },
 {
 "codice": "RAMESPLIT12X1",
@@ -571,7 +1477,7 @@
 "prezzo": 5.78,
 "listinoFornitore": 11.55,
 "scontoFornitore": "50",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "RAMESPLIT14X1",
@@ -582,7 +1488,7 @@
 "prezzo": 2.92,
 "listinoFornitore": 5.84,
 "scontoFornitore": "50",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "RAMESPLIT34",
@@ -593,7 +1499,7 @@
 "prezzo": 10.81,
 "listinoFornitore": 21.62,
 "scontoFornitore": "50",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "RAMESPLIT38X1",
@@ -604,7 +1510,7 @@
 "prezzo": 4.44,
 "listinoFornitore": 8.88,
 "scontoFornitore": "50",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
 "codice": "RAMESPLIT58",
@@ -615,7 +1521,7 @@
 "prezzo": 7.96,
 "listinoFornitore": 15.91,
 "scontoFornitore": "50",
-"fonte": "Prev. 6119 del 02/11/2026"
+"fonte": "Prev. 6.119 del 02/11/2026"
 }
 ]
 }

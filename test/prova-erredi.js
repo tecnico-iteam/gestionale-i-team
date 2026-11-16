@@ -27,5 +27,7 @@ const http = require('http'), fs = require('fs'), path = require('path');
   await p.click('.ov button[type=submit]'); await p.waitForTimeout(4000);
   const M = await p.evaluate(() => Object.entries(window.__store.magazzino || {}));
   console.log('magazzino:', M.length, 'articoli · esempio', JSON.stringify(M[0]));
+  await p.click('[data-tab="documenti"]'); await p.waitForTimeout(300); await p.click('[data-doc="listino"]'); await p.waitForTimeout(500); await p.fill('[data-q]', 'serranda'); await p.waitForTimeout(500); await p.evaluate(() => document.querySelector('[data-q]').scrollIntoView()); await p.screenshot({path: '/tmp/er-listino.png'}); await p.fill('[data-q]', 'gas'); await p.waitForTimeout(500); await p.evaluate(() => document.querySelector('[data-q]').scrollIntoView()); await p.screenshot({path: '/tmp/er-listino2.png'});
+  console.log('foto caricate:', await p.evaluate(() => [...document.querySelectorAll('img.pimg')].filter(i => i.src.includes('img/fornitori') && i.naturalWidth > 0).length));
   console.log('errori', errs); await b.close(); srv.close();
 })();

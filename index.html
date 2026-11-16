@@ -1866,9 +1866,9 @@ function vCalendario(fixedTec){
 const BUNDLES = [
   {file: "listino-general-2026-04.json", marca: "General Fujitsu", titolo: "Listino General Fujitsu aprile 2026", info: "Convertito dal PDF: 673 articoli tra unità interne, esterne, set completi e accessori, con immagini."},
   {file: "listino-tecnomat-accessori.json", marca: "Tecnomat", titolo: "Accessori installazione Tecnomat", info: "53 articoli dal sito Tecnomat: staffe e basi, tubi rame e scarico condensa, canaline, pompe condensa e attrezzatura. Prezzi al pubblico di novembre 2026."},
-  {file: "listino-tecnosystemi-2026-09.json", marca: "Tecnosystemi", pre: "ts", costo: true, titolo: "Tecnosystemi (offerta BM n. 2909)", info: "51 articoli: canaline Optima, tubi e raccordi scarico condensa, sifoni, staffe e basi, bacinelle, pompe condensa, pulizia, Proair, plenum e bocchette. Sono i tuoi prezzi netti d'acquisto: al caricamento scegli il ricarico per il cliente."},
-  {file: "listino-erredi-2026.json", marca: "Erredi", pre: "er", costo: true, titolo: "Erredi (Moncalieri)", info: "56 articoli dalle offerte e fatture Erredi 2026: climatizzatori Gree e General, canali spiro e raccordi, diffusori, griglie e plenum, serrande tagliafuoco, tubi flessibili, tubo rame, scarico PPT. Prezzi netti d'acquisto già scontati: al caricamento scegli il ricarico."},
-  {file: "listino-idrocentro-2026.json", marca: "Idrocentro", pre: "ic", costo: true, titolo: "Idrocentro", info: "3 articoli dalla fattura di ottobre 2026: tubo rame Starclim, profilato, valvola di zona. Prezzi netti d'acquisto: al caricamento scegli il ricarico."}
+  {file: "listino-tecnosystemi-2026-09.json", marca: "Tecnosystemi", pre: "ts", n: 51, costo: true, titolo: "Tecnosystemi (offerta BM n. 2909)", info: "51 articoli: canaline Optima, tubi e raccordi scarico condensa, sifoni, staffe e basi, bacinelle, pompe condensa, pulizia, Proair, plenum e bocchette. Sono i tuoi prezzi netti d'acquisto: al caricamento scegli il ricarico per il cliente."},
+  {file: "listino-erredi-2026.json", marca: "Erredi", pre: "er", n: 136, costo: true, titolo: "Erredi (Moncalieri)", info: "136 articoli dalle offerte e fatture Erredi 2025-2026: climatizzatori Gree, General e Daitsu, pompe di calore per acqua calda, Airzone, barriere a lama d'aria, canali spiro, diffusori, griglie, plenum, serrande tagliafuoco, flessibili, tubo rame, idraulica e gas. Prezzi netti d'acquisto già scontati: al caricamento scegli il ricarico. Se l'hai già caricato, ricaricalo per avere gli articoli nuovi."},
+  {file: "listino-idrocentro-2026.json", marca: "Idrocentro", pre: "ic", n: 3, costo: true, titolo: "Idrocentro", info: "3 articoli dalla fattura di ottobre 2026: tubo rame Starclim, profilato, valvola di zona. Prezzi netti d'acquisto: al caricamento scegli il ricarico."}
 ];
 async function loadBundle(file, ricarico){
   const b = BUNDLES.find(x => x.file === file); if (!b) return;
@@ -1909,12 +1909,29 @@ const ICONS = (() => {
     attrezzo: S('<path d="M30 70l34-34"/><circle cx="74" cy="26" r="14"/><path d="M68 20l12 12"/>'),
     split: S('<rect x="12" y="24" width="96" height="30" rx="8"/><path d="M22 46h76M30 62c4 4 4 8 0 12M60 62c4 4 4 8 0 12M90 62c4 4 4 8 0 12"/>'),
     esterna: S('<rect x="16" y="14" width="88" height="62" rx="6"/><circle cx="48" cy="45" r="20"/><circle cx="48" cy="45" r="4"/><path d="M80 26h14M80 34h14M80 42h14"/>'),
-    generico: S('<path d="M60 14l38 20v32L60 86 22 66V34z"/><path d="M22 34l38 20 38-20M60 54v32"/>')
+    generico: S('<path d="M60 14l38 20v32L60 86 22 66V34z"/><path d="M22 34l38 20 38-20M60 54v32"/>'),
+    diffusore: S('<rect x="18" y="12" width="84" height="66" rx="4"/><circle cx="60" cy="45" r="26"/><circle cx="60" cy="45" r="17"/><circle cx="60" cy="45" r="8"/>'),
+    serranda: S('<ellipse cx="30" cy="45" rx="10" ry="26"/><path d="M30 19h60M30 71h60"/><ellipse cx="90" cy="45" rx="10" ry="26"/><path d="M60 22v46M52 45h16"/><rect x="50" y="68" width="20" height="12" rx="2" stroke="#ee2332"/>'),
+    spiro: S('<ellipse cx="26" cy="45" rx="10" ry="22"/><path d="M26 23h70M26 67h70"/><ellipse cx="96" cy="45" rx="10" ry="22"/><path d="M40 23l-6 44M56 23l-6 44M72 23l-6 44M88 23l-6 44" stroke-width="1.6"/>', "#6b7c8f"),
+    flessibile: S('<path d="M14 40c10 0 10-14 20-14s10 14 20 14 10-14 20-14 10 14 20 14 10-14 12-14"/><path d="M14 64c10 0 10-14 20-14s10 14 20 14 10-14 20-14 10 14 20 14 10-14 12-14"/><path d="M14 40v24M106 26v24"/>', "#8a96a3"),
+    barriera: S('<rect x="12" y="16" width="96" height="22" rx="4"/><path d="M20 32h80"/><path d="M34 46v26M52 46v30M70 46v30M88 46v26" stroke-dasharray="4 5"/>'),
+    plenum: S('<path d="M20 30l14-14h52l14 14v40H20z"/><path d="M20 30h80M34 16v14M86 16v14"/><circle cx="60" cy="50" r="12"/>'),
+    boiler: S('<rect x="38" y="8" width="44" height="74" rx="18"/><path d="M48 30h24M60 82v6M50 88h20"/><circle cx="60" cy="52" r="8" stroke="#ee2332"/>'),
+    vaso: S('<ellipse cx="60" cy="45" rx="26" ry="30" stroke="#ee2332"/><path d="M34 45h52M60 75v10M52 85h16"/>', "#ee2332"),
+    valvola: S('<path d="M14 52h26M80 52h26"/><path d="M40 38l40 28V38L40 66z"/><path d="M60 52V26M48 22h24"/>'),
+    nastro: S('<circle cx="52" cy="45" r="28"/><circle cx="52" cy="45" r="11"/><path d="M80 45h26v14H74"/>'),
+    tubogas: S('<path d="M10 40h100M10 54h100"/><path d="M30 40v14M90 40v14" stroke-width="5"/>', "#d4a017"),
+    termostato: S('<rect x="28" y="12" width="64" height="66" rx="10"/><circle cx="60" cy="45" r="18"/><path d="M60 45l10-8"/>')
   };
 })();
 function iconFor(d){
   d = (d || "").toLowerCase();
   const r = [[/telecomando|comando|ricevitore/, "comando"], [/staff/, "staffa"], [/piedin|basi|base a pavimento|supporto/, "base"], [/canal|curva|angolo|coprigiunz|passaggio muro|deviazione/, "canale"], [/tubo rame|rame/, "rame"], [/scarico condensa|tubo flessibile|tubo scarico/, "scarico"], [/raccord|giunto|giunzione/, "raccordo"], [/pompa|minipompa/, "pompa"], [/filtro/, "filtro"], [/griglia|pannello|piastra|distanziale/, "griglia"], [/gas|freon|bombol|azoto/, "gas"], [/cartellatric|olio|chiave|manometro/, "attrezzo"], [/kit|interfaccia|scheda|modulo|web server|sonda|sensore|lan|modbus|knx|bacnet|wi-?fi/, "scheda"], [/esterna/, "esterna"], [/interna|parete|split|cassetta|canalizzabile|soffitto|pavimento/, "split"]];
+  // articoli dei fornitori (Erredi, Idrocentro, AIR CAR…): disegni specifici, controllati prima di quelli generici
+  const r0 = [[/unità interna|unita interna/, "split"], [/minipompa|mini pompa|pompa scarico|pompa rilancio/, "pompa"], [/freon|bombol|refrigerante|azoto/, "gas"], [/barriera|lama d.aria/, "barriera"], [/diffusore|bocchetta/, "diffusore"], [/serrand/, "serranda"], [/spiro|tsz|manicotto (maschio|femmina|a sella)|tappo maschio|riduzione concentrica|curva a settori|curva stampata|recuperatore/, "spiro"],
+    [/^(?!.*condensa).*(flessibil|air-all|ecoair|collarino|collare|fascetta)/, "flessibile"], [/plenum|cavallett/, "plenum"], [/acqua calda|nuos|boiler|pompa di calore/, "boiler"], [/vaso di espansione|vaso esp/, "vaso"],
+    [/valvol|gruppo di sicurezza|sifone/, "valvola"], [/nastro/, "nastro"], [/gas|polietilene|elettrosald|inox|transizione|bocchettone|giunto elastico/, "tubogas"], [/termostato|webserver|interfaccia|hmi/, "termostato"], [/scheda centrale|contatto porta/, "scheda"]];
+  for (const [re, k] of r0) if (re.test(d)) return ICONS[k];
   for (const [re, k] of r) if (re.test(d)) return ICONS[k];
   return ICONS.generico;
 }
@@ -1948,7 +1965,7 @@ function vListino(){
   if (ui.modo !== "ufficio") return `<input class="search" placeholder="Cerca codice, modello, BTU…" value="${esc(ui.q)}" data-q>
   ${list.length ? list.slice(0, 150).map(it => `<div class="card"><div class="row">${thumb(imgOrIcon(it), it.descrizione)}<span class="t" style="flex:1">${esc(it.descrizione)}</span><b class="money">${eur(it.prezzo)}</b></div><div class="m">${esc([it.codice, it.categoria, it.potenza].filter(Boolean).join(" · "))}</div></div>`).join("") : empty(LISTINO.length ? "Nessun articolo trovato." : "Il listino non è ancora stato caricato dall'ufficio.")}`;
   return `<div class="banner info">Carica il listino General Fujitsu da file <b>Excel (.xlsx)</b> o <b>CSV</b>: scegli tu quali colonne contengono codice, descrizione e prezzo. Se hai il listino solo in PDF, mandamelo in chat e lo converto io.</div>
-  ${ui.modo !== "ufficio" ? "" : BUNDLES.filter(b => !LISTINO.some(i => i.marca === b.marca)).map(b => `<div class="card" style="border-color:var(--pri)"><b>${esc(b.titolo)}</b><div class="m" style="margin:4px 0 10px">${esc(b.info)}</div><button class="btn pri" data-bundle="${b.file}">Carica ${esc(b.marca)}</button></div>`).join("")}
+  ${ui.modo !== "ufficio" ? "" : BUNDLES.map(b => [b, LISTINO.filter(i => i.marca === b.marca).length]).filter(([b, n]) => !n || (b.n && n < b.n)).map(([b, n]) => `<div class="card" style="border-color:var(--pri)"><b>${esc(b.titolo)}${n ? " · aggiornamento disponibile" : ""}</b><div class="m" style="margin:4px 0 10px">${esc(b.info)}${n ? ` Ora nel listino ne hai ${n}: aggiornandolo arrivano tutti i ${b.n}.` : ""}</div><button class="btn pri" data-bundle="${b.file}">${n ? "Aggiorna" : "Carica"} ${esc(b.marca)}</button></div>`).join("")}
   <div class="row wrap" style="margin-bottom:10px">${ui.modo !== "ufficio" ? "" : `<button class="btn ${LISTINO.length ? "pri" : ""}" data-a="limport">⬆ Importa da Excel/CSV</button><button class="btn" data-a="lnew">+ Articolo</button>${LISTINO.length ? `<span class="sp"></span><button class="btn bad sm" data-a="lclear">Svuota listino</button>` : ""}`}</div>
   <div class="tiles" style="margin-bottom:10px"><div class="tile"><div class="n">${LISTINO.length}</div><div class="l">Articoli a listino</div></div><div class="tile"><div class="n">${cats.length}</div><div class="l">Categorie / serie</div></div></div>
   <input class="search" placeholder="Cerca codice, modello, BTU…" value="${esc(ui.q)}" data-q>
@@ -2467,7 +2484,8 @@ function formScontoMassivo(){
 }
 const magId = (pre, it) => pre + "_" + (it.codice ? it.codice : it.descrizione.slice(0, 60)).replace(/[^A-Za-z0-9_\-.~:@+]/g, "-").slice(0, 120);
 const MAGCAT_FORN = {"Tubi e raccordi scarico condensa": "Consumabili", "Sifoni": "Consumabili", "Pompe scarico condensa": "Ricambi", "Pulizia e igienizzazione": "Consumabili",
-  "Climatizzatori Gree": "Unità / macchine", "Climatizzatori General": "Unità / macchine", "Tubo rame": "Consumabili", "Scarico (PPT)": "Consumabili", "Tubi flessibili, fascette e colla": "Consumabili", "Staffaggio e profilati": "Accessori", "Valvole": "Ricambi"};
+  "Climatizzatori Gree": "Unità / macchine", "Climatizzatori General": "Unità / macchine", "Tubo rame": "Consumabili", "Scarico (PPT)": "Consumabili", "Tubi flessibili, fascette e colla": "Consumabili", "Staffaggio e profilati": "Accessori", "Valvole": "Ricambi", "Climatizzatori": "Unità / macchine", "Acqua calda sanitaria (pompe di calore)": "Unità / macchine",
+  "Barriere a lama d'aria (FläktGroup)": "Unità / macchine", "Idraulica e gas": "Consumabili", "Airzone (zone e termostati)": "Ricambi"};
 const magCatOf = it => BUNDLES.some(b => b.costo && b.marca === it.marca) ? (MAGCAT_FORN[it.categoria] || "Accessori") : it.marca === "Tecnomat" ? ({"Staffe e basi": "Accessori", "Canaline e accessori": "Accessori", "Tubi rame e scarico condensa": "Consumabili", "Pompe scarico condensa e vuoto": "Ricambi", "Gas e attrezzatura": "Gas refrigerante"}[it.categoria] || "Accessori") : (/^(Unità|Control box)/.test(it.descrizione) ? "Unità / macchine" : "Accessori");
 function formImportMag(){
   openForm({ title: "Importa cataloghi nel magazzino", saveLabel: "Importa",
@@ -2507,7 +2525,7 @@ async function runMagImport(list){
     const prezzi = {prezzoListino: j.pl, sconto: j.sc, prezzoVendita: j.pc, ...(j.pa !== "" ? {prezzoAcquisto: j.pa} : {})};
     for (let t = 0; t < 6; t++) {
       try {
-        if (ex) { await db.collection("magazzino").doc(j.id).update({...prezzi, aggiornato: new Date().toISOString()}); agg++; }
+        if (ex) { await db.collection("magazzino").doc(j.id).update({...prezzi, ...(j.it.img && !ex.img && !ex.foto ? {img: j.it.img} : {}), aggiornato: new Date().toISOString()}); agg++; }
         else { await db.collection("magazzino").doc(j.id).set({...(j.it.img ? {img: j.it.img} : {}), codice: j.it.codice || "", descrizione: j.it.descrizione, categoria: magCatOf(j.it), serie: j.it.categoria || "", fornitore: j.forn, unita: /al metro/i.test(j.it.descrizione) ? "m" : "pz", quantita: 0, scortaMinima: 0, ...prezzi, aggiornato: new Date().toISOString()}); nuovi++; }
         return;
       } catch(e) {
