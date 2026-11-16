@@ -1866,7 +1866,9 @@ function vCalendario(fixedTec){
 const BUNDLES = [
   {file: "listino-general-2026-04.json", marca: "General Fujitsu", titolo: "Listino General Fujitsu aprile 2026", info: "Convertito dal PDF: 673 articoli tra unità interne, esterne, set completi e accessori, con immagini."},
   {file: "listino-tecnomat-accessori.json", marca: "Tecnomat", titolo: "Accessori installazione Tecnomat", info: "53 articoli dal sito Tecnomat: staffe e basi, tubi rame e scarico condensa, canaline, pompe condensa e attrezzatura. Prezzi al pubblico di novembre 2026."},
-  {file: "listino-tecnosystemi-2026-09.json", marca: "Tecnosystemi", costo: true, titolo: "Tecnosystemi (offerta BM n. 2909)", info: "51 articoli: canaline Optima, tubi e raccordi scarico condensa, sifoni, staffe e basi, bacinelle, pompe condensa, pulizia, Proair, plenum e bocchette. Sono i tuoi prezzi netti d'acquisto: al caricamento scegli il ricarico per il cliente."}
+  {file: "listino-tecnosystemi-2026-09.json", marca: "Tecnosystemi", pre: "ts", costo: true, titolo: "Tecnosystemi (offerta BM n. 2909)", info: "51 articoli: canaline Optima, tubi e raccordi scarico condensa, sifoni, staffe e basi, bacinelle, pompe condensa, pulizia, Proair, plenum e bocchette. Sono i tuoi prezzi netti d'acquisto: al caricamento scegli il ricarico per il cliente."},
+  {file: "listino-erredi-2026.json", marca: "Erredi", pre: "er", costo: true, titolo: "Erredi (Moncalieri)", info: "56 articoli dalle offerte e fatture Erredi 2026: climatizzatori Gree e General, canali spiro e raccordi, diffusori, griglie e plenum, serrande tagliafuoco, tubi flessibili, tubo rame, scarico PPT. Prezzi netti d'acquisto già scontati: al caricamento scegli il ricarico."},
+  {file: "listino-idrocentro-2026.json", marca: "Idrocentro", pre: "ic", costo: true, titolo: "Idrocentro", info: "3 articoli dalla fattura di ottobre 2026: tubo rame Starclim, profilato, valvola di zona. Prezzi netti d'acquisto: al caricamento scegli il ricarico."}
 ];
 async function loadBundle(file, ricarico){
   const b = BUNDLES.find(x => x.file === file); if (!b) return;
@@ -1880,7 +1882,7 @@ async function loadBundle(file, ricarico){
   try {
     const data = await (await fetch(file)).json(); const items = (data.items || []).map(i => ({...i, marca: b.marca, ...(b.costo ? {costo: num(i.prezzo), prezzo: r2(num(i.prezzo) * (1 + num(ricarico) / 100))} : {})}));
     for (const ch of S.listino.slice()) if ((ch.items || []).length && ch.items.every(i => i.marca === b.marca)) await remove("listino", ch.id);
-    const base = ({Tecnomat: "tm", Tecnosystemi: "ts"}[b.marca] || "gf") + Date.now();
+    const base = (b.pre || {Tecnomat: "tm"}[b.marca] || "gf") + Date.now();
     for (let i = 0, k = 0; i < items.length; i += 250, k++) await save("listino", base + "_" + String(k).padStart(3, "0"), {items: items.slice(i, i + 250)});
     clearToasts(); toast(`✅ ${b.marca}: ${items.length} articoli caricati`, 4000);
   } catch(e) { clearToasts(); toast("Caricamento non riuscito, riprova", 4000); }
@@ -2464,29 +2466,31 @@ function formScontoMassivo(){
   });
 }
 const magId = (pre, it) => pre + "_" + (it.codice ? it.codice : it.descrizione.slice(0, 60)).replace(/[^A-Za-z0-9_\-.~:@+]/g, "-").slice(0, 120);
-const magCatOf = it => it.marca === "Tecnosystemi" ? ({"Tubi e raccordi scarico condensa": "Consumabili", "Sifoni": "Consumabili", "Pompe scarico condensa": "Ricambi", "Pulizia e igienizzazione": "Consumabili"}[it.categoria] || "Accessori") : it.marca === "Tecnomat" ? ({"Staffe e basi": "Accessori", "Canaline e accessori": "Accessori", "Tubi rame e scarico condensa": "Consumabili", "Pompe scarico condensa e vuoto": "Ricambi", "Gas e attrezzatura": "Gas refrigerante"}[it.categoria] || "Accessori") : (/^(Unità|Control box)/.test(it.descrizione) ? "Unità / macchine" : "Accessori");
+const MAGCAT_FORN = {"Tubi e raccordi scarico condensa": "Consumabili", "Sifoni": "Consumabili", "Pompe scarico condensa": "Ricambi", "Pulizia e igienizzazione": "Consumabili",
+  "Climatizzatori Gree": "Unità / macchine", "Climatizzatori General": "Unità / macchine", "Tubo rame": "Consumabili", "Scarico (PPT)": "Consumabili", "Tubi flessibili, fascette e colla": "Consumabili", "Staffaggio e profilati": "Accessori", "Valvole": "Ricambi"};
+const magCatOf = it => BUNDLES.some(b => b.costo && b.marca === it.marca) ? (MAGCAT_FORN[it.categoria] || "Accessori") : it.marca === "Tecnomat" ? ({"Staffe e basi": "Accessori", "Canaline e accessori": "Accessori", "Tubi rame e scarico condensa": "Consumabili", "Pompe scarico condensa e vuoto": "Ricambi", "Gas e attrezzatura": "Gas refrigerante"}[it.categoria] || "Accessori") : (/^(Unità|Control box)/.test(it.descrizione) ? "Unità / macchine" : "Accessori");
 function formImportMag(){
   openForm({ title: "Importa cataloghi nel magazzino", saveLabel: "Importa",
     intro: `<p class="m" style="margin-top:-6px">Gli articoli vengono aggiunti con quantità 0: le giacenze le aggiorni tu. Se un articolo è già a magazzino, ne aggiorno solo i prezzi e lascio invariate quantità e note.</p>`,
-    values: {gf: true, tm: true, ts: true, gfSconto: CFG.scontoCliente || 0, gfAcq: CFG.scontoAcquisto || 0, tmRic: "", tsRic: ""},
+    values: {gf: true, tm: true, ...Object.fromEntries(BUNDLES.filter(b => b.costo).flatMap(b => [[b.pre, true], [b.pre + "Ric", ""]])), gfSconto: CFG.scontoCliente || 0, gfAcq: CFG.scontoAcquisto || 0, tmRic: ""},
     fields: [
       {k:"gf", label:"General Fujitsu: 673 articoli (unità interne, esterne, accessori; i set non vanno a magazzino)", type:"checkbox", rerender:true},
       {k:"gfSconto", label:"Prezzo cliente General = listino meno sconto %", type:"number", half:true, show: v => v.gf},
       {k:"gfAcq", label:"Tuo costo = listino meno sconto d'acquisto %", type:"number", half:true, show: v => v.gf},
       {k:"tm", label:"Tecnomat accessori: 53 articoli", type:"checkbox", rerender:true},
       {k:"tmRic", label:"Prezzo cliente Tecnomat = prezzo Tecnomat più ricarico %", type:"number", show: v => v.tm, req:true},
-      {k:"ts", label:"Tecnosystemi (offerta BM 2909): 51 articoli, prezzi netti d'acquisto", type:"checkbox", rerender:true},
-      {k:"tsRic", label:"Prezzo cliente Tecnosystemi = tuo costo più ricarico %", type:"number", show: v => v.ts, req:true},
-      {k:"ex", type:"info", html: v => { const a = []; if (v.gf) a.push(`Es. listino General 1.000 € → cliente <b>${eur(1000 * (1 - num(v.gfSconto) / 100))}</b>, tuo costo ${eur(1000 * (1 - num(v.gfAcq) / 100))}`); if (v.tm) a.push(`Es. Tecnomat 10 € → cliente <b>${eur(10 * (1 + num(v.tmRic) / 100))}</b>`); if (v.ts) a.push(`Es. Tecnosystemi costo 10 € → cliente <b>${eur(10 * (1 + num(v.tsRic) / 100))}</b>`); return a.join("<br>") || "Scegli almeno un catalogo"; }}
+      ...BUNDLES.filter(b => b.costo).flatMap(b => [{k: b.pre, label: `${b.titolo}: prezzi netti d'acquisto`, type:"checkbox", rerender:true},
+        {k: b.pre + "Ric", label: `Prezzo cliente ${b.marca} = tuo costo più ricarico %`, type:"number", show: v => v[b.pre], req:true}]),
+      {k:"ex", type:"info", html: v => { const a = []; if (v.gf) a.push(`Es. listino General 1.000 € → cliente <b>${eur(1000 * (1 - num(v.gfSconto) / 100))}</b>, tuo costo ${eur(1000 * (1 - num(v.gfAcq) / 100))}`); if (v.tm) a.push(`Es. Tecnomat 10 € → cliente <b>${eur(10 * (1 + num(v.tmRic) / 100))}</b>`); BUNDLES.filter(b => b.costo && v[b.pre]).forEach(b => a.push(`Es. ${b.marca} costo 10 € → cliente <b>${eur(10 * (1 + num(v[b.pre + "Ric"]) / 100))}</b>`)); return a.join("<br>") || "Scegli almeno un catalogo"; }}
     ],
     onSave: async v => {
-      if (!v.gf && !v.tm && !v.ts) { toast("Scegli almeno un catalogo"); throw new Error("x"); }
+      if (!v.gf && !v.tm && !BUNDLES.some(b => b.costo && v[b.pre])) { toast("Scegli almeno un catalogo"); throw new Error("x"); }
       const jobs = [];
       const load = async f => (await (await fetch(f)).json()).items || [];
       try {
         if (v.gf) (await load("listino-general-2026-04.json")).filter(i => !(i.codice || "").includes("+")).forEach(i => jobs.push({id: magId("gf", i), it: i, pl: num(i.prezzo), sc: num(v.gfSconto), pc: r2(num(i.prezzo) * (1 - num(v.gfSconto) / 100)), pa: num(v.gfAcq) ? r2(num(i.prezzo) * (1 - num(v.gfAcq) / 100)) : "", forn: "General Fujitsu"}));
         if (v.tm) (await load("listino-tecnomat-accessori.json")).forEach(i => jobs.push({id: magId("tm", i), it: i, pl: num(i.prezzo), sc: -num(v.tmRic), pc: r2(num(i.prezzo) * (1 + num(v.tmRic) / 100)), pa: num(i.prezzo), forn: "Tecnomat"}));
-        if (v.ts) (await load("listino-tecnosystemi-2026-09.json")).forEach(i => jobs.push({id: magId("ts", {...i, marca: "Tecnosystemi"}), it: {...i, marca: "Tecnosystemi"}, pl: num(i.prezzo), sc: -num(v.tsRic), pc: r2(num(i.prezzo) * (1 + num(v.tsRic) / 100)), pa: num(i.prezzo), forn: "Tecnosystemi"}));
+        for (const b of BUNDLES.filter(b => b.costo && v[b.pre])) (await load(b.file)).forEach(i => { const ric = num(v[b.pre + "Ric"]); jobs.push({id: magId(b.pre, i), it: {...i, marca: b.marca}, pl: num(i.prezzo), sc: -ric, pc: r2(num(i.prezzo) * (1 + ric / 100)), pa: num(i.prezzo), forn: b.marca}); });
       } catch(e) { toast("Non riesco a leggere i cataloghi, riprova"); throw e; }
       const seen = new Set(); const list = jobs.filter(j => !seen.has(j.id) && seen.add(j.id));
       setTimeout(() => runMagImport(list), 50);

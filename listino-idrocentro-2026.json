@@ -1,0 +1,32 @@
+{
+"nome": "Idrocentro - prezzi netti iTeam da fattura ottobre 2026",
+"items": [
+{
+"codice": "12429499",
+"descrizione": "Tubo rame Starclim 3/8 x 0,8 - rotolo 50 m (al metro)",
+"categoria": "Tubo rame",
+"potenza": "",
+"marca": "Idrocentro",
+"prezzo": 3.62,
+"fonte": "Fatt. FT/DIF/0115051 del 31/10/2026"
+},
+{
+"codice": "12401422",
+"descrizione": "Profilato 30x15x1,5 (al metro)",
+"categoria": "Staffaggio e profilati",
+"potenza": "",
+"marca": "Idrocentro",
+"prezzo": 4.21,
+"fonte": "Fatt. FT/DIF/0115051 del 31/10/2026"
+},
+{
+"codice": "12686784",
+"descrizione": "Valvola di zona a sfera 2 vie motorizzata 1/2\"",
+"categoria": "Valvole",
+"potenza": "",
+"marca": "Idrocentro",
+"prezzo": 139.7,
+"fonte": "Fatt. FT/DIF/0115051 del 31/10/2026"
+}
+]
+}

@@ -19,6 +19,9 @@ in italiano semplice, senza gergo tecnico.
 - `listino-*.json`, `img/` – listini e foto prodotti caricati nel magazzino/preventivatore.
   `listino-tecnosystemi-2026-09.json` = offerta BM n. 2909 con prezzi NETTI d'acquisto (BUNDLES `costo: true`: al caricamento
   si chiede il ricarico; nel listino `prezzo` = costo + ricarico, `costo` = netto). Prefisso documenti "ts".
+  Stessa logica (`costo: true`, prefisso `pre`) per `listino-erredi-2026.json` ("er", da preventivi/fatture Erredi 2026, prezzo = netto
+  dopo sconti, con `listinoFornitore`/`scontoFornitore`/`fonte`) e `listino-idrocentro-2026.json` ("ic"). L'importazione in magazzino
+  crea da sola una spunta + ricarico per ogni listino `costo: true` di BUNDLES.
 
 - Avvisi appuntamenti: il tecnico attiva le notifiche (firebase-app.js → `ITEAM.notifiche`, chiave `vapidKey` in
   firebase-config.js); il codice del telefono va in `dispositivi/{token}` = {tecnico,…}. `.github/workflows/avvisi.yml`
