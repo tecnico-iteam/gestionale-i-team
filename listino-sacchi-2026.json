@@ -1,0 +1,861 @@
+{
+"nome": "Sacchi (filiale Orbassano) - prezzi netti iTeam da preventivi 2025-2026",
+"items": [
+{
+"codice": "CGFG16R5G10B15",
+"descrizione": "Cavo FG16(O)R16 0,6/1 kV 5G10 (al metro)",
+"categoria": "Cavi e tubi",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 9.04,
+"fonte": "Prev. Sacchi 2008355602 del 23/07/2026"
+},
+{
+"codice": "JLGHZ15002",
+"descrizione": "Cavo FG16OH2R16 2x1,5 schermato (al metro)",
+"categoria": "Cavi e tubi",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 1.28,
+"fonte": "Prev. Sacchi 2008611270 del 04/11/2026"
+},
+{
+"codice": "JLGHZ25003",
+"descrizione": "Cavo FG16OH2R16 3G2,5 schermato (al metro)",
+"categoria": "Cavi e tubi",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 2.24,
+"fonte": "Prev. Sacchi 2008611270 del 04/11/2026"
+},
+{
+"codice": "CVFS18R4G2,57M1",
+"descrizione": "Cavo FS18OR18 450/750 V 4G2,5 (al metro)",
+"categoria": "Cavi e tubi",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 1.99,
+"fonte": "Prev. Sacchi 2008355602 del 23/07/2026"
+},
+{
+"codice": "GWDX25325",
+"descrizione": "Tubo rigido medio grigio RK15 D.25 - barra 3 m (al metro)",
+"categoria": "Cavi e tubi",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 1.09,
+"fonte": "Prev. Sacchi 2008611270 del 04/11/2026"
+},
+{
+"codice": "MX001971",
+"descrizione": "Plenum di mandata PMZ-71R2 per DUCT71R2",
+"categoria": "Climatizzatori",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 754.0,
+"fonte": "Prev. Sacchi 2007840018 del 26/01/2026"
+},
+{
+"codice": "MX000166",
+"descrizione": "Unità esterna Universal Super DC R32 7 kW (UECS71R2)",
+"categoria": "Climatizzatori",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 695.0,
+"fonte": "Prev. Sacchi 2007840018 del 26/01/2026"
+},
+{
+"codice": "MX000171",
+"descrizione": "Unità interna canalizzata Multi Super DC R32 (DUCT71R2)",
+"categoria": "Climatizzatori",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 424.0,
+"fonte": "Prev. Sacchi 2007840018 del 26/01/2026"
+},
+{
+"codice": "TEA9N61690",
+"descrizione": "Interruttore C60NA-DC 2P per stringhe fotovoltaiche (fino a 1000 V)",
+"categoria": "Fotovoltaico e accumulo",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 70.63,
+"fonte": "Prev. Sacchi 2007691135 del 19/11/2025"
+},
+{
+"codice": "CTKZCLM8",
+"descrizione": "Kit collare laterale M8 per controvento",
+"categoria": "Fotovoltaico e accumulo",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 2.38,
+"fonte": "Prev. Sacchi 2007691135 del 19/11/2025"
+},
+{
+"codice": "CTKZCPM8",
+"descrizione": "Kit collare posteriore M8 per controvento",
+"categoria": "Fotovoltaico e accumulo",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 2.15,
+"fonte": "Prev. Sacchi 2007691135 del 19/11/2025"
+},
+{
+"codice": "CTKMTN2848",
+"descrizione": "Kit morsetto terminale 28-48 mm",
+"categoria": "Fotovoltaico e accumulo",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 1.8,
+"fonte": "Prev. Sacchi 2007691135 del 19/11/2025"
+},
+{
+"codice": "CTKSTZ0006",
+"descrizione": "Kit staffa incroci controvento",
+"categoria": "Fotovoltaico e accumulo",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 3.56,
+"fonte": "Prev. Sacchi 2007691135 del 19/11/2025"
+},
+{
+"codice": "CP5094608",
+"descrizione": "Limitatore di sovratensione V20-C 3 fasi 1000 V",
+"categoria": "Fotovoltaico e accumulo",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 43.09,
+"fonte": "Prev. Sacchi 2007691135 del 19/11/2025"
+},
+{
+"codice": "CTPRC2525Z-200",
+"descrizione": "Profilo controvento 25x25 mm 200 cm acciaio zincato",
+"categoria": "Fotovoltaico e accumulo",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 7.63,
+"fonte": "Prev. Sacchi 2007691135 del 19/11/2025"
+},
+{
+"codice": "CTPRC14005Z",
+"descrizione": "Profilo distanziale per zavorra B-DUE",
+"categoria": "Fotovoltaico e accumulo",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 7.36,
+"fonte": "Prev. Sacchi 2007691135 del 19/11/2025"
+},
+{
+"codice": "CTQIT100-2",
+"descrizione": "Quadro di interfaccia CEI 0-21 100 kW per 2 inverter",
+"categoria": "Fotovoltaico e accumulo",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 4575.2,
+"fonte": "Prev. Sacchi 2007691135 del 19/11/2025"
+},
+{
+"codice": "SXAELIO-B100",
+"descrizione": "Solax accumulo Aelio 100 kWh (BESS, senza PCS)",
+"categoria": "Fotovoltaico e accumulo",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 29511.3,
+"fonte": "Prev. Sacchi 2007691135 del 19/11/2025"
+},
+{
+"codice": "SXX3-AELIO-50K",
+"descrizione": "Solax inverter fotovoltaico Aelio 50 kW per accumulo (BESS)",
+"categoria": "Fotovoltaico e accumulo",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 5368.54,
+"fonte": "Prev. Sacchi 2007691135 del 19/11/2025"
+},
+{
+"codice": "CTZTP1311",
+"descrizione": "Tappetino EPDM adesivo 130x108 sp. 10 mm",
+"categoria": "Fotovoltaico e accumulo",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 0.98,
+"fonte": "Prev. Sacchi 2007691135 del 19/11/2025"
+},
+{
+"codice": "A2CSEP1K0AA3",
+"descrizione": "UPS SEP 1000 VA",
+"categoria": "Fotovoltaico e accumulo",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 491.02,
+"fonte": "Prev. Sacchi 2007691135 del 19/11/2025"
+},
+{
+"codice": "CTVT0001",
+"descrizione": "Vite TE M8x20 inox AISI 304",
+"categoria": "Fotovoltaico e accumulo",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 0.25,
+"fonte": "Prev. Sacchi 2007691135 del 19/11/2025"
+},
+{
+"codice": "CTVT1010",
+"descrizione": "Vite autoforante 6,3x19 zincata",
+"categoria": "Fotovoltaico e accumulo",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 0.11,
+"fonte": "Prev. Sacchi 2007691135 del 19/11/2025"
+},
+{
+"codice": "CTZA1021",
+"descrizione": "Zavorra anteriore 10° in cls - 21 kg",
+"categoria": "Fotovoltaico e accumulo",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 15.39,
+"fonte": "Prev. Sacchi 2007691135 del 19/11/2025"
+},
+{
+"codice": "CTZP1027",
+"descrizione": "Zavorra posteriore 10° in cls - 27 kg",
+"categoria": "Fotovoltaico e accumulo",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 16.93,
+"fonte": "Prev. Sacchi 2007691135 del 19/11/2025"
+},
+{
+"codice": "TI122750",
+"descrizione": "Alimentatore LED 70 W 24 V",
+"categoria": "Illuminazione ed emergenza",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 26.29,
+"fonte": "Prev. Sacchi 2008604053 del 02/11/2026"
+},
+{
+"codice": "BH43433",
+"descrizione": "Lampada di emergenza Exit Pro 32 m IP42",
+"categoria": "Illuminazione ed emergenza",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 82.44,
+"fonte": "Prev. Sacchi 2008611270 del 04/11/2026"
+},
+{
+"codice": "LKGZ1303",
+"descrizione": "Lampada di emergenza Gost XL 1200 lm 1,5 h IP65 autotest",
+"categoria": "Illuminazione ed emergenza",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 79.38,
+"fonte": "Prev. Sacchi 2008610371 del 03/11/2026"
+},
+{
+"codice": "BH18821",
+"descrizione": "Plafoniera Matrix 1000 IP65",
+"categoria": "Illuminazione ed emergenza",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 180.52,
+"fonte": "Prev. Sacchi 2008611270 del 04/11/2026"
+},
+{
+"codice": "ALFLR.374.3W",
+"descrizione": "Striscia LED 24V 14,4 W/m 3000K IP20 - bobina 5 m",
+"categoria": "Illuminazione ed emergenza",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 22.19,
+"fonte": "Prev. Sacchi 2008604053 del 02/11/2026"
+},
+{
+"codice": "CO3RILPCLAP0412",
+"descrizione": "Rilassati PCLAP 3A F4",
+"categoria": "Materiale elettrico",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 117.2,
+"fonte": "Prev. Sacchi 2008231468 del 09/06/2026"
+},
+{
+"codice": "TCG23AC32",
+"descrizione": "Bticino BTDIN-BDA G2 - differenziale puro 2P 32A 30mA AC",
+"categoria": "Protezioni e apparecchi modulari",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 94.26,
+"fonte": "Prev. Sacchi 2008579964 del 23/10/2026"
+},
+{
+"codice": "TCGC8813AC10",
+"descrizione": "Bticino BTDIN-RS - Magnetotermico differenziale AC 1P+N 30mA 10A 4",
+"categoria": "Protezioni e apparecchi modulari",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 29.77,
+"fonte": "Prev. Sacchi 2008626252 del 09/11/2026"
+},
+{
+"codice": "TCGC8813AC16",
+"descrizione": "Bticino BTDIN-RS - Magnetotermico differenziale AC 1P+N 30mA 16A 4",
+"categoria": "Protezioni e apparecchi modulari",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 29.77,
+"fonte": "Prev. Sacchi 2008626252 del 09/11/2026"
+},
+{
+"codice": "TCFN881C10",
+"descrizione": "Bticino BTDIN60 - Magnetotermico 1P+N curva c 10A 6kA",
+"categoria": "Protezioni e apparecchi modulari",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 44.47,
+"fonte": "Prev. Sacchi 2008579964 del 23/10/2026"
+},
+{
+"codice": "TCFN881C16",
+"descrizione": "Bticino BTDIN60 - Magnetotermico 1P+N curva c 16A 6kA",
+"categoria": "Protezioni e apparecchi modulari",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 47.09,
+"fonte": "Prev. Sacchi 2008604053 del 02/11/2026"
+},
+{
+"codice": "TCFN82C25",
+"descrizione": "Bticino BTDIN60 - Magnetotermico 2P curva c 25A 6kA",
+"categoria": "Protezioni e apparecchi modulari",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 49.52,
+"fonte": "Prev. Sacchi 2008579964 del 23/10/2026"
+},
+{
+"codice": "TCGN8813AC16",
+"descrizione": "Bticino BTDIN60 - Magnetotermico differenziale AC 1P+N 16A 6kA 30mA",
+"categoria": "Protezioni e apparecchi modulari",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 141.43,
+"fonte": "Prev. Sacchi 2008604053 del 02/11/2026"
+},
+{
+"codice": "TCGN8813AC32",
+"descrizione": "Bticino BTDIN60 - Magnetotermico differenziale AC 1P+N 32A 6kA 30mA",
+"categoria": "Protezioni e apparecchi modulari",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 142.33,
+"fonte": "Prev. Sacchi 2008626252 del 09/11/2026"
+},
+{
+"codice": "TCF80CMG",
+"descrizione": "Bticino supporto per guida DIN",
+"categoria": "Protezioni e apparecchi modulari",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 6.39,
+"fonte": "Prev. Sacchi 2008604053 del 02/11/2026"
+},
+{
+"codice": "LODMED300T2",
+"descrizione": "Contatore di energia digitale 80 A trifase 2 uscite",
+"categoria": "Protezioni e apparecchi modulari",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 185.59,
+"fonte": "Prev. Sacchi 2008137228 del 06/05/2026"
+},
+{
+"codice": "FN260182300000",
+"descrizione": "Relè ad impulsi da pannello 1NO 10 A",
+"categoria": "Protezioni e apparecchi modulari",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 7.49,
+"fonte": "Prev. Sacchi 2008604053 del 02/11/2026"
+},
+{
+"codice": "GWGW44234",
+"descrizione": "Gewiss cassetta di derivazione IP55 100x100x50",
+"categoria": "Quadri, centralini e cassette",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 4.1,
+"fonte": "Prev. Sacchi 2008611270 del 04/11/2026"
+},
+{
+"codice": "GWGW40102",
+"descrizione": "Gewiss centralino da parete 8 moduli IP65",
+"categoria": "Quadri, centralini e cassette",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 26.44,
+"fonte": "Prev. Sacchi 2008137228 del 06/05/2026"
+},
+{
+"codice": "GWGW42201",
+"descrizione": "Gewiss centralino per sistemi di emergenza con pulsante",
+"categoria": "Quadri, centralini e cassette",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 39.26,
+"fonte": "Prev. Sacchi 2008611270 del 04/11/2026"
+},
+{
+"codice": "GWGW40108",
+"descrizione": "Gewiss quadro da parete 54 moduli (18x3) IP65",
+"categoria": "Quadri, centralini e cassette",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 178.51,
+"fonte": "Prev. Sacchi 2007691135 del 19/11/2025"
+},
+{
+"codice": "TCKG01",
+"descrizione": "Bticino Living Now - Cover comando 1 mod. nera",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 2.08,
+"fonte": "Prev. Sacchi 2008626252 del 09/11/2026"
+},
+{
+"codice": "TCKG02",
+"descrizione": "Bticino Living Now - Cover presa ITA 10/16A 1M nera",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 2.09,
+"fonte": "Prev. Sacchi 2008626252 del 09/11/2026"
+},
+{
+"codice": "TCKG03",
+"descrizione": "Bticino Living Now - Cover presa it/ger 2M nera",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 3.14,
+"fonte": "Prev. Sacchi 2008626252 del 09/11/2026"
+},
+{
+"codice": "TCK4001",
+"descrizione": "Bticino Living Now - Interruttore 1P 10AX",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 6.71,
+"fonte": "Prev. Sacchi 2008626252 del 09/11/2026"
+},
+{
+"codice": "TCKG4002",
+"descrizione": "Bticino Living Now - Interruttore 2P 16AX nero",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 13.08,
+"fonte": "Prev. Sacchi 2008626252 del 09/11/2026"
+},
+{
+"codice": "TCKA4803KG",
+"descrizione": "Bticino Living Now - Placca 3p nero",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 5.19,
+"fonte": "Prev. Sacchi 2008626252 del 09/11/2026"
+},
+{
+"codice": "TCKG4180",
+"descrizione": "Bticino Living Now - Presa 2P+T 10/16A 250vac bipasso nera",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 7.38,
+"fonte": "Prev. Sacchi 2008626252 del 09/11/2026"
+},
+{
+"codice": "TCKG4140A16",
+"descrizione": "Bticino Living Now - Presa UNEL e bipasso 10/16A nera",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 15.92,
+"fonte": "Prev. Sacchi 2008626252 del 09/11/2026"
+},
+{
+"codice": "TCK4703",
+"descrizione": "Bticino Living Now - Supporto 3 mod.",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 1.84,
+"fonte": "Prev. Sacchi 2008626252 del 09/11/2026"
+},
+{
+"codice": "TCK4704",
+"descrizione": "Bticino Living Now - Supporto 4 mod.",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 4.13,
+"fonte": "Prev. Sacchi 2008626252 del 09/11/2026"
+},
+{
+"codice": "TCK4706",
+"descrizione": "Bticino Living Now - Supporto 6 mod.",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 8.65,
+"fonte": "Prev. Sacchi 2008626252 del 09/11/2026"
+},
+{
+"codice": "TCJW4051",
+"descrizione": "Bticino Matix Go - Interruttore 1P 10AX 1M assiale bianco",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 3.16,
+"fonte": "Prev. Sacchi 2008604053 del 02/11/2026"
+},
+{
+"codice": "TCJW4001",
+"descrizione": "Bticino Matix Go - Interruttore 1P 10AX 1M bianco",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 2.5,
+"fonte": "Prev. Sacchi 2008579964 del 23/10/2026"
+},
+{
+"codice": "TCJW4002",
+"descrizione": "Bticino Matix Go - Interruttore 2P 16AX 1M bianco",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 9.19,
+"fonte": "Prev. Sacchi 2008579964 del 23/10/2026"
+},
+{
+"codice": "TCJW4180",
+"descrizione": "Bticino Matix Go - Presa ITA P17/11 bianco",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 4.52,
+"fonte": "Prev. Sacchi 2008604053 del 02/11/2026"
+},
+{
+"codice": "TCJW4140A16",
+"descrizione": "Bticino Matix Go - Presa ITA P40 bianco",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 8.21,
+"fonte": "Prev. Sacchi 2008579964 del 23/10/2026"
+},
+{
+"codice": "TCJW4202D",
+"descrizione": "Bticino Matix Go - Presa TV diretta 1M bianco",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 11.82,
+"fonte": "Prev. Sacchi 2008604053 del 02/11/2026"
+},
+{
+"codice": "TCJW4202P14",
+"descrizione": "Bticino Matix Go - Presa TV passante 1M bianco",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 17.08,
+"fonte": "Prev. Sacchi 2008604053 del 02/11/2026"
+},
+{
+"codice": "TCJW4005",
+"descrizione": "Bticino Matix Go - Pulsante 1P NO 10A 1M bianco",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 3.36,
+"fonte": "Prev. Sacchi 2008579964 del 23/10/2026"
+},
+{
+"codice": "TCJW4055",
+"descrizione": "Bticino Matix Go - Pulsante 1P NO 10A assiale bianco",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 4.24,
+"fonte": "Prev. Sacchi 2008604053 del 02/11/2026"
+},
+{
+"codice": "TCJW4351V230",
+"descrizione": "Bticino Matix Go - Suoneria 230V bianco",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 24.34,
+"fonte": "Prev. Sacchi 2008604053 del 02/11/2026"
+},
+{
+"codice": "TCJ4703",
+"descrizione": "Bticino Matix Go - Supporto 3M",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 1.1,
+"fonte": "Prev. Sacchi 2008579964 del 23/10/2026"
+},
+{
+"codice": "TCJ4704",
+"descrizione": "Bticino Matix Go - Supporto 4M",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 2.24,
+"fonte": "Prev. Sacchi 2008579964 del 23/10/2026"
+},
+{
+"codice": "TCJ4707",
+"descrizione": "Bticino Matix Go - Supporto 7M",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 2.96,
+"fonte": "Prev. Sacchi 2008579964 del 23/10/2026"
+},
+{
+"codice": "TCJW4950",
+"descrizione": "Bticino Matix Go - falso polo bianco",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 0.77,
+"fonte": "Prev. Sacchi 2008579964 del 23/10/2026"
+},
+{
+"codice": "VI14903",
+"descrizione": "Vimar Plana - contenitore IP55 3M",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 4.28,
+"fonte": "Prev. Sacchi 2008127213 del 30/04/2026"
+},
+{
+"codice": "VI20041",
+"descrizione": "Vimar Plana - copriforo grigio",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 1.47,
+"fonte": "Prev. Sacchi 2008127213 del 30/04/2026"
+},
+{
+"codice": "VI20062",
+"descrizione": "Vimar Plana - due pulsanti interblocc.NO+NO 10A",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 29.1,
+"fonte": "Prev. Sacchi 2008127213 del 30/04/2026"
+},
+{
+"codice": "VI20001",
+"descrizione": "Vimar Plana - interruttore 1P 16AX grigio",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 10.54,
+"fonte": "Prev. Sacchi 2008127213 del 30/04/2026"
+},
+{
+"codice": "VI20203",
+"descrizione": "Vimar Plana - presa 2P+T 16A P17/11 grigio",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 11.22,
+"fonte": "Prev. Sacchi 2008127213 del 30/04/2026"
+},
+{
+"codice": "VI20300.01",
+"descrizione": "Vimar Plana - presa TV-rd-sat diretta grigio",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 11.02,
+"fonte": "Prev. Sacchi 2008127213 del 30/04/2026"
+},
+{
+"codice": "VI20300.10",
+"descrizione": "Vimar Plana - presa TV-rd-sat passante grigio",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 15.69,
+"fonte": "Prev. Sacchi 2008127213 del 30/04/2026"
+},
+{
+"codice": "VI20108",
+"descrizione": "Vimar Plana - pulsante 1P NO 10A assiale grigio",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 12.07,
+"fonte": "Prev. Sacchi 2008127213 del 30/04/2026"
+},
+{
+"codice": "VI21614",
+"descrizione": "Vimar Plana - supporto 4M con viti",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 3.44,
+"fonte": "Prev. Sacchi 2008127213 del 30/04/2026"
+},
+{
+"codice": "VI21617",
+"descrizione": "Vimar Plana - supporto 7M con viti",
+"categoria": "Serie civili (prese e interruttori)",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 9.49,
+"fonte": "Prev. Sacchi 2008127213 del 30/04/2026"
+},
+{
+"codice": "TH4933368690",
+"descrizione": "Milwaukee DD 2-160 XE - carotatrice",
+"categoria": "Utensili",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 629.0,
+"fonte": "Prev. Sacchi 2008015086 del 23/03/2026"
+},
+{
+"codice": "TH4933478226",
+"descrizione": "Milwaukee M12 PAL-0 - lampada da lavoro (senza batteria)",
+"categoria": "Utensili",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 109.0,
+"fonte": "Prev. Sacchi 2008015086 del 23/03/2026"
+},
+{
+"codice": "TH4933479241",
+"descrizione": "Milwaukee M12 PCSS-0 - tagliatubi (senza batteria)",
+"categoria": "Utensili",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 269.0,
+"fonte": "Prev. Sacchi 2008015086 del 23/03/2026"
+},
+{
+"codice": "TH4933498605",
+"descrizione": "Milwaukee M12 PCSS54-402C - tagliatubi con batterie",
+"categoria": "Utensili",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 719.0,
+"fonte": "Prev. Sacchi 2008015086 del 23/03/2026"
+},
+{
+"codice": "TH4933478071",
+"descrizione": "Milwaukee M18 BLHPT-202C - pressatubi TH con batterie",
+"categoria": "Utensili",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 1829.0,
+"fonte": "Prev. Sacchi 2008015086 del 23/03/2026"
+},
+{
+"codice": "TH4933478291",
+"descrizione": "Milwaukee M18 FSZ-502X - seghetto diritto con batterie",
+"categoria": "Utensili",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 649.0,
+"fonte": "Prev. Sacchi 2008015086 del 23/03/2026"
+},
+{
+"codice": "TH4933384300",
+"descrizione": "Milwaukee PCE 3 - demolitore",
+"categoria": "Utensili",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 419.0,
+"fonte": "Prev. Sacchi 2008015086 del 23/03/2026"
+},
+{
+"codice": "TH4932399172",
+"descrizione": "Milwaukee corona diamantata 1 1/4\" 162x490",
+"categoria": "Utensili",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 353.3,
+"fonte": "Prev. Sacchi 2008015086 del 23/03/2026"
+},
+{
+"codice": "TH4932307071",
+"descrizione": "Milwaukee punta SDS+ 2 taglienti 8x160 mm",
+"categoria": "Utensili",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 3.3,
+"fonte": "Prev. Sacchi 2008015086 del 23/03/2026"
+},
+{
+"codice": "TH4932352172",
+"descrizione": "Milwaukee rotore Clean Line Fixtec",
+"categoria": "Utensili",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 297.8,
+"fonte": "Prev. Sacchi 2008015086 del 23/03/2026"
+},
+{
+"codice": "TH4932493695",
+"descrizione": "Milwaukee scarpe antinfortunistiche FTX S1PS taglia 43",
+"categoria": "Utensili",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 85.0,
+"fonte": "Prev. Sacchi 2008015086 del 23/03/2026"
+},
+{
+"codice": "TH4932399173",
+"descrizione": "Milwaukee unità di centratura per carotatrice",
+"categoria": "Utensili",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 49.0,
+"fonte": "Prev. Sacchi 2008015086 del 23/03/2026"
+},
+{
+"codice": "UR1130/11",
+"descrizione": "Citofono 1130 4+N tradizionale",
+"categoria": "Videocitofonia",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 49.88,
+"fonte": "Prev. Sacchi 2008579964 del 23/10/2026"
+},
+{
+"codice": "EV7558/E",
+"descrizione": "Vimar Elvox 7558/E - kit videocitofono 2F+ monofamiliare Tab 4,3\" vivavoce",
+"categoria": "Videocitofonia",
+"potenza": "",
+"marca": "Sacchi",
+"prezzo": 326.0,
+"fonte": "Prev. Sacchi 2008355602 del 23/07/2026",
+"img": "img/fornitori/elvox-7558.jpg"
+}
+]
+}

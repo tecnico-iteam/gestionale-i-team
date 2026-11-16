@@ -22,7 +22,7 @@ const http = require('http'), fs = require('fs'), path = require('path');
   await p.uncheck('.ov [name=gf], .ov [data-k=gf]').catch(e => console.log('gf?', e.message.slice(0, 60)));
   await p.uncheck('.ov [name=tm], .ov [data-k=tm]').catch(e => console.log('tm?', e.message.slice(0, 60)));
   await p.waitForTimeout(200);
-  for (const k of ['ts', 'ic', 'er']) await p.uncheck(`.ov [data-k=${k}], .ov [name=${k}]`).catch(() => {}); await p.waitForTimeout(200); await p.fill('.ov [name=dpRic], .ov [data-k=dpRic]', '30').catch(e => console.log('tsRic?', e.message.slice(0, 60)));
+  for (const k of ['ts', 'ic', 'er', 'sa']) await p.uncheck(`.ov [data-k=${k}], .ov [name=${k}]`).catch(() => {}); await p.waitForTimeout(200); await p.fill('.ov [name=dpRic], .ov [data-k=dpRic]', '30').catch(e => console.log('tsRic?', e.message.slice(0, 60)));
   await p.screenshot({path: '/tmp/ts-mag.png'});
   await p.click('.ov button[type=submit]'); await p.waitForTimeout(4000);
   const M = await p.evaluate(() => Object.entries(window.__store.magazzino || {}));
