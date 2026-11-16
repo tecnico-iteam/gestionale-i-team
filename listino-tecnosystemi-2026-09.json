@@ -1,0 +1,413 @@
+{
+"nome": "Tecnosystemi - Offerta BM n. 2909 del 15/09/2026 (prezzi netti iTeam)",
+"items": [
+{
+"codice": "TNS11130075",
+"descrizione": "Canalina linea Optima T75 - Optima White",
+"categoria": "Canaline Optima",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 15.898
+},
+{
+"codice": "TNSSCD100249",
+"descrizione": "Terminale a muro flangiato quadro Optima TM",
+"categoria": "Canaline Optima",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 7.846
+},
+{
+"codice": "TNS11106005",
+"descrizione": "Terminale ad angolo Optima TA75 - Optima White",
+"categoria": "Canaline Optima",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 6.406
+},
+{
+"codice": "TNS11106008",
+"descrizione": "Curva piana Optima CP75 - Optima White",
+"categoria": "Canaline Optima",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 6.846
+},
+{
+"codice": "TNS11106014",
+"descrizione": "Curva angolo interna Optima CAI75 - Optima White",
+"categoria": "Canaline Optima",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 6.246
+},
+{
+"codice": "TNS11106020",
+"descrizione": "Curva angolo esterno Optima CAE75 - Optima White",
+"categoria": "Canaline Optima",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 6.246
+},
+{
+"codice": "TNS11106039",
+"descrizione": "Tappo di chiusura Optima TC75 - Optima White",
+"categoria": "Canaline Optima",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 4.374
+},
+{
+"codice": "TNS11126316",
+"descrizione": "Tubo scarico condensa per canalina ø18 singolo",
+"categoria": "Canaline Optima",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 44.707
+},
+{
+"codice": "TNS11126020",
+"descrizione": "Raccordo 'Y' due vie ø18-18 per tubo condensa",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 2.614
+},
+{
+"codice": "TNS11126022",
+"descrizione": "Raccordo 'Y' due vie ø20-20 per tubo condensa",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 2.966
+},
+{
+"codice": "TNSSCD300008",
+"descrizione": "Raccordo adattatore ø16 (conf. 5 pz.)",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 1.75
+},
+{
+"codice": "TNSSCD300009",
+"descrizione": "Raccordo adattatore ø18 (conf. 5 pz.)",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 2.234
+},
+{
+"codice": "TNSSCD300010",
+"descrizione": "Raccordo adattatore ø20 (conf. 5 pz.)",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 2.708
+},
+{
+"codice": "TNSSCD300015",
+"descrizione": "Raccordo adattatore ø22 (conf. 5 pz.)",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 4.617
+},
+{
+"codice": "TNSSCD300011",
+"descrizione": "Raccordo adattatore ø25 (conf. 5 pz.)",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 3.182
+},
+{
+"codice": "TNSSCD300012",
+"descrizione": "Raccordo adattatore ø32 (conf. 5 pz.)",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 3.665
+},
+{
+"codice": "TNSSCD300013",
+"descrizione": "Raccordo adattatore ø40 (conf. 5 pz.)",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 4.139
+},
+{
+"codice": "TNS11126324",
+"descrizione": "Tubo scarico condensa rigido TCR-21 bianco",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 5.551
+},
+{
+"codice": "TNS11126313",
+"descrizione": "Manicotto giunzione MG - TCR-21 bianco",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 2.356
+},
+{
+"codice": "TNS11126310",
+"descrizione": "Curva angolo CA 45° - TCR-21 bianco",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 2.356
+},
+{
+"codice": "TNS11126311",
+"descrizione": "Curva angolo CA 90° - TCR-21 bianco",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 2.356
+},
+{
+"codice": "TNS11126312",
+"descrizione": "Derivazione a 'T' - TCR-21 bianco",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 2.802
+},
+{
+"codice": "TNSSCD300016",
+"descrizione": "Tubo scarico condensa rigido TCR-25 bianco",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 5.706
+},
+{
+"codice": "TNSSCD300017",
+"descrizione": "Manicotto giunzione MG - TCR-25 bianco",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 2.792
+},
+{
+"codice": "TNSSCD300018",
+"descrizione": "Curva angolo CA 45° - TCR-25 bianco",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 2.792
+},
+{
+"codice": "TNSSCD300019",
+"descrizione": "Curva angolo CA 90° - TCR-25 bianco",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 3.449
+},
+{
+"codice": "TNSSCD300020",
+"descrizione": "Derivazione a 'T' - TCR-25 bianco",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 3.449
+},
+{
+"codice": "TNSSCD300034",
+"descrizione": "Tubo scarico condensa rigido TCR-32 bianco",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 5.884
+},
+{
+"codice": "TNS11126393",
+"descrizione": "Manicotto giunzione MG - TCR-32 bianco",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 3.215
+},
+{
+"codice": "TNS11126391",
+"descrizione": "Curva angolo CA 45° - TCR-32 bianco",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 3.215
+},
+{
+"codice": "TNS11126392",
+"descrizione": "Curva angolo CA 90° - TCR-32 bianco",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 4.561
+},
+{
+"codice": "TNS11126394",
+"descrizione": "Derivazione a 'T' - TCR-32 bianco",
+"categoria": "Tubi e raccordi scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 4.116
+},
+{
+"codice": "TNS11126322B",
+"descrizione": "Sifone a secco anti-odore trasparente…",
+"categoria": "Sifoni",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 20.346
+},
+{
+"codice": "TNSSCD300006",
+"descrizione": "Sifone a secco orizzontale antiodore trasparente",
+"categoria": "Sifoni",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 16.462
+},
+{
+"codice": "TNSSCD500392",
+"descrizione": "Staffa 'Galileo Eco SGL Ivory' con kit antivibrante",
+"categoria": "Staffe e basi",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 17.846
+},
+{
+"codice": "TNS11100100F",
+"descrizione": "Bacinella raccolta condensa 'Blue River' ivory",
+"categoria": "Bacinelle condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 90.91
+},
+{
+"codice": "TNSSCD300068",
+"descrizione": "Bacinella raccolta condensa con cavo scaldante",
+"categoria": "Bacinelle condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 123.29
+},
+{
+"codice": "TNS11105350A",
+"descrizione": "Piedino a pavimento ivory regolabile 'Genius'",
+"categoria": "Staffe e basi",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 5.513
+},
+{
+"codice": "TNSSCD500290",
+"descrizione": "Coppia basi a pavimento Pitagora 365 ivory",
+"categoria": "Staffe e basi",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 12.872
+},
+{
+"codice": "TNSSCC600108",
+"descrizione": "Ultra Hydro Clean machine light, batteria 12V",
+"categoria": "Pulizia e igienizzazione",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 162.25
+},
+{
+"codice": "TNSSCC600079",
+"descrizione": "Deodorante spray per unità interne",
+"categoria": "Pulizia e igienizzazione",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 12.646
+},
+{
+"codice": "TNSSCC600081",
+"descrizione": "Detergente spray schiumogeno per filtri e…",
+"categoria": "Pulizia e igienizzazione",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 12.426
+},
+{
+"codice": "TNS12170070",
+"descrizione": "Pompa nebulizzatrice per risparmio energetico",
+"categoria": "Pompe scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 191.32
+},
+{
+"codice": "TNS12170100",
+"descrizione": "Pompa scarico condensa da sotto-split…",
+"categoria": "Pompe scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 89.39
+},
+{
+"codice": "TNS12170037",
+"descrizione": "Mini pompa 'Easy Flow 11 lt' - 'EF11'",
+"categoria": "Pompe scarico condensa",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 71.37
+},
+{
+"codice": "TNSGAD400508",
+"descrizione": "Proair pack RF Ambra 4 - con plenum in polistirene",
+"categoria": "Canalizzati (Proair, plenum, bocchette)",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 1851.75
+},
+{
+"codice": "TNSGAD400377",
+"descrizione": "Proair pack CAB Lilla 4 - con plenum in polistirene",
+"categoria": "Canalizzati (Proair, plenum, bocchette)",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 2073.5
+},
+{
+"codice": "TNSPWD400284",
+"descrizione": "Plenum Eolo in polistirene mod. B4 per Fujitsu",
+"categoria": "Canalizzati (Proair, plenum, bocchette)",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 134.7
+},
+{
+"codice": "TNSPWD100014",
+"descrizione": "Bocchetta BPAP 300x150",
+"categoria": "Canalizzati (Proair, plenum, bocchette)",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 18.653
+},
+{
+"codice": "TNSPWD402433",
+"descrizione": "Plenum in PS con collarino posteriore telescopico",
+"categoria": "Canalizzati (Proair, plenum, bocchette)",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 18.85
+},
+{
+"codice": "TNSWB11161525",
+"descrizione": "Griglia di ripresa in alluminio verniciato",
+"categoria": "Canalizzati (Proair, plenum, bocchette)",
+"potenza": "",
+"marca": "Tecnosystemi",
+"prezzo": 116.336
+}
+]
+}

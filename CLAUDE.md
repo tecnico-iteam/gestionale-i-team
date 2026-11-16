@@ -17,6 +17,8 @@ in italiano semplice, senza gergo tecnico.
 - `sw.js` – service worker (offline). Rete prima per pagina/script, cache prima per `img/`, `icons/` e SDK.
 - `manifest.json`, `icons/` – installazione come app.
 - `listino-*.json`, `img/` – listini e foto prodotti caricati nel magazzino/preventivatore.
+  `listino-tecnosystemi-2026-09.json` = offerta BM n. 2909 con prezzi NETTI d'acquisto (BUNDLES `costo: true`: al caricamento
+  si chiede il ricarico; nel listino `prezzo` = costo + ricarico, `costo` = netto). Prefisso documenti "ts".
 
 - Avvisi appuntamenti: il tecnico attiva le notifiche (firebase-app.js → `ITEAM.notifiche`, chiave `vapidKey` in
   firebase-config.js); il codice del telefono va in `dispositivi/{token}` = {tecnico,…}. `.github/workflows/avvisi.yml`
