@@ -1,0 +1,27 @@
+{
+"nome": "Doppler - prezzi netti iTeam (listino General meno 52,75%)",
+"items": [
+{
+"codice": "ARXC072GTEH",
+"descrizione": "General ARXC072GTEH - unità interna canalizzata VRF",
+"categoria": "Climatizzatori VRF General",
+"potenza": "",
+"marca": "Doppler",
+"prezzo": 1336.23,
+"listinoFornitore": 2828,
+"scontoFornitore": "52,75",
+"fonte": "Email Doppler (sconto 52,75% su listino General)"
+},
+{
+"codice": "AJH162LALDH",
+"descrizione": "General AJH162LALDH - unità esterna VRF",
+"categoria": "Climatizzatori VRF General",
+"potenza": "",
+"marca": "Doppler",
+"prezzo": 11323.46,
+"listinoFornitore": 23965,
+"scontoFornitore": "52,75",
+"fonte": "Email Doppler (sconto 52,75% su listino General)"
+}
+]
+}

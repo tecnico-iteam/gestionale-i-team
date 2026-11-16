@@ -35,6 +35,17 @@
 "fonte": "Prev. 4.943 del 31/08/2026"
 },
 {
+"codice": "ARISTON100",
+"descrizione": "Scaldabagno elettrico Ariston Pro Eco Evo 80 L",
+"categoria": "Acqua calda sanitaria (pompe di calore)",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 153.2,
+"listinoFornitore": 383.0,
+"scontoFornitore": "60",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
 "codice": "CHX877086",
 "descrizione": "Sifone 1\"",
 "categoria": "Acqua calda sanitaria (pompe di calore)",
@@ -134,6 +145,39 @@
 "fonte": "Prev. 10.920 del 14/11/2025"
 },
 {
+"codice": "FERRA3217",
+"descrizione": "Svasatore da 14 a 32 mm",
+"categoria": "Attrezzatura",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 46.2,
+"listinoFornitore": 77.0,
+"scontoFornitore": "40",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
+"codice": "ROT029",
+"descrizione": "Tagliatubi TC 35",
+"categoria": "Attrezzatura",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 50.16,
+"listinoFornitore": 62.7,
+"scontoFornitore": "20",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
+"codice": "FERRA3055",
+"descrizione": "Tagliatubi rame 25 mm",
+"categoria": "Attrezzatura",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 13.8,
+"listinoFornitore": 13.8,
+"scontoFornitore": "",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
 "codice": "FSE50WH",
 "descrizione": "FläktGroup barriera - comando HMI digitale",
 "categoria": "Barriere a lama d'aria (FläktGroup)",
@@ -141,17 +185,6 @@
 "marca": "Erredi",
 "prezzo": 72.07,
 "listinoFornitore": 72.07,
-"scontoFornitore": "",
-"fonte": "Prev. 6.119 del 02/11/2026"
-},
-{
-"codice": "DC.MAG",
-"descrizione": "FläktGroup barriera - contatto porta magnetico",
-"categoria": "Barriere a lama d'aria (FläktGroup)",
-"potenza": "",
-"marca": "Erredi",
-"prezzo": 57.28,
-"listinoFornitore": 57.28,
 "scontoFornitore": "",
 "fonte": "Prev. 6.119 del 02/11/2026"
 },
@@ -191,8 +224,30 @@
 "img": "img/fornitori/flakt-barriera.jpg"
 },
 {
+"codice": "CARB45SET500",
+"descrizione": "Curva a settori B45° D.500",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 32.05,
+"listinoFornitore": 66.07,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
+"codice": "CARB90SET500",
+"descrizione": "Curva a settori B90° D.500",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 59.42,
+"listinoFornitore": 122.52,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
 "codice": "CARB90SET300",
-"descrizione": "Curva a settori B90° D.300",
+"descrizione": "Curva a settori b90° D.300",
 "categoria": "Canali spiro e raccordi",
 "potenza": "",
 "marca": "Erredi",
@@ -203,7 +258,7 @@
 },
 {
 "codice": "CARB90SET400",
-"descrizione": "Curva a settori B90° D.400",
+"descrizione": "Curva a settori b90° D.400",
 "categoria": "Canali spiro e raccordi",
 "potenza": "",
 "marca": "Erredi",
@@ -224,6 +279,28 @@
 "fonte": "Prev. 10.920 del 14/11/2025"
 },
 {
+"codice": "",
+"descrizione": "Dc.mag - contatto porta megnetico",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 57.28,
+"listinoFornitore": 57.28,
+"scontoFornitore": "",
+"fonte": "Prev. 6.119 del 02/11/2026"
+},
+{
+"codice": "",
+"descrizione": "Eco contributo raee",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 2.5,
+"listinoFornitore": 2.5,
+"scontoFornitore": "",
+"fonte": "Prev. 4.344 del 30/04/2025"
+},
+{
 "codice": "CARTTD100",
 "descrizione": "Estrattore in linea in ABS TTD D.100",
 "categoria": "Canali spiro e raccordi",
@@ -233,6 +310,61 @@
 "listinoFornitore": 94.0,
 "scontoFornitore": "50+3",
 "fonte": "Prev. 6.044 del 28/10/2026"
+},
+{
+"codice": "37940",
+"descrizione": "Fascette fissatubo 16-63 (nr.40)",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 0.21,
+"listinoFornitore": 0.3,
+"scontoFornitore": "30",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
+"codice": "TM10025",
+"descrizione": "Gomito a stringere 26x26",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 11.12,
+"listinoFornitore": 22.23,
+"scontoFornitore": "50",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
+"codice": "",
+"descrizione": "Kflex alu sp 8mm al mq.",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 9.31,
+"listinoFornitore": 19.2,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
+"codice": "TM10138",
+"descrizione": "Manicotto a press. rid. 26x20 art. 1651",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 7.39,
+"listinoFornitore": 14.77,
+"scontoFornitore": "50",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
+"codice": "TM10126",
+"descrizione": "Manicotto a pressare 20x20 art. 1651",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 4.62,
+"listinoFornitore": 9.24,
+"scontoFornitore": "50",
+"fonte": "Fatt. 4077 del 30/09/2026"
 },
 {
 "codice": "CARSPS100280-355",
@@ -279,6 +411,17 @@
 "fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
+"codice": "CARSPS250250",
+"descrizione": "Manicotto a sella PS D.250 su tubo D.250 mm",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 9.4,
+"listinoFornitore": 18.8,
+"scontoFornitore": "50",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
 "codice": "CARSPS250355-400",
 "descrizione": "Manicotto a sella PS D.250 su tubo D.355-400 mm",
 "categoria": "Canali spiro e raccordi",
@@ -288,6 +431,17 @@
 "listinoFornitore": 18.8,
 "scontoFornitore": "50+3",
 "fonte": "Prev. 6.119 del 02/11/2026"
+},
+{
+"codice": "CARSPS250450-560",
+"descrizione": "Manicotto a sella PS D.250 su tubo D.450-560 mm",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 9.12,
+"listinoFornitore": 18.8,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
 },
 {
 "codice": "CARMF150",
@@ -345,6 +499,17 @@
 "fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
+"codice": "CARNP250",
+"descrizione": "Manicotto maschio NP D.250",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 2.27,
+"listinoFornitore": 4.69,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
 "codice": "CARNP300",
 "descrizione": "Manicotto maschio NP D.300",
 "categoria": "Canali spiro e raccordi",
@@ -356,6 +521,17 @@
 "fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
+"codice": "CARNP355",
+"descrizione": "Manicotto maschio NP D.355",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 3.95,
+"listinoFornitore": 8.15,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
 "codice": "CARNP400",
 "descrizione": "Manicotto maschio NP D.400",
 "categoria": "Canali spiro e raccordi",
@@ -365,6 +541,94 @@
 "listinoFornitore": 9.52,
 "scontoFornitore": "50+3",
 "fonte": "Prev. 6.119 del 02/11/2026"
+},
+{
+"codice": "CARNP450",
+"descrizione": "Manicotto maschio NP D.450",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 8.15,
+"listinoFornitore": 16.8,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
+"codice": "CARNP500",
+"descrizione": "Manicotto maschio NP D.500",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 9.23,
+"listinoFornitore": 19.04,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
+"codice": "G224008",
+"descrizione": "Manicotto ottone rid. ff 3/4\"x1/2\"",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 1.59,
+"listinoFornitore": 2.65,
+"scontoFornitore": "40",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
+"codice": "TM10042A",
+"descrizione": "Racc. D. f. stringere 1/2x20 art. 1602",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 3.54,
+"listinoFornitore": 7.09,
+"scontoFornitore": "50",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
+"codice": "TM10110",
+"descrizione": "Racc. D. m. pressare 3/4x20 art. 1650",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 3.62,
+"listinoFornitore": 7.24,
+"scontoFornitore": "50",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
+"codice": "TM10190",
+"descrizione": "Racc.20x20 pres.curvo doppio art.1653",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 5.42,
+"listinoFornitore": 10.83,
+"scontoFornitore": "50",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
+"codice": "TM10191",
+"descrizione": "Racc.26x26 pres.curvo doppio art.1653",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 8.96,
+"listinoFornitore": 17.91,
+"scontoFornitore": "50",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
+"codice": "TM10161",
+"descrizione": "Racc.26x3/4 pres.dri.f art.1652",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 6.34,
+"listinoFornitore": 12.69,
+"scontoFornitore": "50",
+"fonte": "Fatt. 4077 del 30/09/2026"
 },
 {
 "codice": "",
@@ -379,7 +643,7 @@
 },
 {
 "codice": "",
-"descrizione": "Raccordo recuperatore a diam. 400",
+"descrizione": "Raccordo recuperatore a diam.400",
 "categoria": "Canali spiro e raccordi",
 "potenza": "",
 "marca": "Erredi",
@@ -411,6 +675,17 @@
 "fonte": "Prev. 11.755 del 11/12/2025"
 },
 {
+"codice": "CARRC355250",
+"descrizione": "Riduzione concentrica RC D.355/250",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 15.07,
+"listinoFornitore": 31.08,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
 "codice": "CARRC400300",
 "descrizione": "Riduzione concentrica RC D.400/300",
 "categoria": "Canali spiro e raccordi",
@@ -420,6 +695,83 @@
 "listinoFornitore": 38.92,
 "scontoFornitore": "50+3",
 "fonte": "Prev. 6.119 del 02/11/2026"
+},
+{
+"codice": "CARRC400355",
+"descrizione": "Riduzione concentrica RC D.400/355",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 17.88,
+"listinoFornitore": 36.86,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
+"codice": "CARRC450400",
+"descrizione": "Riduzione concentrica RC D.450/400",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 26.59,
+"listinoFornitore": 54.82,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
+"codice": "CARRC500450",
+"descrizione": "Riduzione concentrica RC D.500/450",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 27.75,
+"listinoFornitore": 57.21,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
+"codice": "CARRCU450400",
+"descrizione": "Riduzione concentrica RCU D.450/400 con guarnizione",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 26.59,
+"listinoFornitore": 54.82,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
+"codice": "G224107",
+"descrizione": "Riduzione ottone m.3/4\"x1/2\"\"f.",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 0.74,
+"listinoFornitore": 1.24,
+"scontoFornitore": "40",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
+"codice": "RASTE039",
+"descrizione": "Rubinetto di scarico da 1/4\"",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 1.64,
+"listinoFornitore": 2.18,
+"scontoFornitore": "25",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
+"codice": "CAREP250",
+"descrizione": "Tappo maschio EP D.250",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 3.09,
+"listinoFornitore": 6.37,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
 },
 {
 "codice": "CAREP300",
@@ -444,6 +796,17 @@
 "fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
+"codice": "TM10917",
+"descrizione": "Tubo multis.20x2.0 rivest. blu art.0630b (al metro)",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 2.24,
+"listinoFornitore": 5.52,
+"scontoFornitore": "50+10+10",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
 "codice": "CARTUBO200",
 "descrizione": "Tubo spiro zincato TSZ D.200 (al metro)",
 "categoria": "Canali spiro e raccordi",
@@ -461,10 +824,10 @@
 "categoria": "Canali spiro e raccordi",
 "potenza": "",
 "marca": "Erredi",
-"prezzo": 32.45,
-"listinoFornitore": 59.0,
-"scontoFornitore": "45",
-"fonte": "Prev. 10.920 del 14/11/2025",
+"prezzo": 13.73,
+"listinoFornitore": 28.3,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026",
 "img": "img/fornitori/aircar-spiro.jpg"
 },
 {
@@ -480,6 +843,18 @@
 "img": "img/fornitori/aircar-spiro.jpg"
 },
 {
+"codice": "CARTUBO355",
+"descrizione": "Tubo spiro zincato TSZ D.355 (al metro)",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 19.71,
+"listinoFornitore": 40.65,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026",
+"img": "img/fornitori/aircar-spiro.jpg"
+},
+{
 "codice": "CARTUBO400",
 "descrizione": "Tubo spiro zincato TSZ D.400 (al metro)",
 "categoria": "Canali spiro e raccordi",
@@ -490,6 +865,52 @@
 "scontoFornitore": "50+3",
 "fonte": "Prev. 6.119 del 02/11/2026",
 "img": "img/fornitori/aircar-spiro.jpg"
+},
+{
+"codice": "CARTUBO450",
+"descrizione": "Tubo spiro zincato TSZ D.450 (al metro)",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 28.78,
+"listinoFornitore": 59.34,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026",
+"img": "img/fornitori/aircar-spiro.jpg"
+},
+{
+"codice": "CARTUBO500",
+"descrizione": "Tubo spiro zincato TSZ D.500 (al metro)",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 32.03,
+"listinoFornitore": 66.05,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026",
+"img": "img/fornitori/aircar-spiro.jpg"
+},
+{
+"codice": "ITP1000034",
+"descrizione": "V. europa 3/4\" 3/4\"",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 7.92,
+"listinoFornitore": 14.41,
+"scontoFornitore": "45",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
+"codice": "G228005",
+"descrizione": "Vite doppia ottone 3/4\"",
+"categoria": "Canali spiro e raccordi",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 1.01,
+"listinoFornitore": 1.84,
+"scontoFornitore": "45",
+"fonte": "Fatt. 4077 del 30/09/2026"
 },
 {
 "codice": "TECNO047",
@@ -503,15 +924,26 @@
 "fonte": "Prev. 10.920 del 14/11/2025"
 },
 {
+"codice": "CANALINA002",
+"descrizione": "Canalina EVA per dual/trial 80x60 - barra 2 m (al metro)",
+"categoria": "Canaline, basi e nastri",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 4.74,
+"listinoFornitore": 7.9,
+"scontoFornitore": "40",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
 "codice": "CANALINA001",
 "descrizione": "Canalina EVA per mono 65x50 - barra 2 m (al metro)",
 "categoria": "Canaline, basi e nastri",
 "potenza": "",
 "marca": "Erredi",
-"prezzo": 4.05,
-"listinoFornitore": 6.75,
+"prezzo": 4.26,
+"listinoFornitore": 7.1,
 "scontoFornitore": "40",
-"fonte": "Prev. 1.386 del 10/02/2026"
+"fonte": "Fatt. 4615 del 30/10/2026"
 },
 {
 "codice": "CANALINA030",
@@ -525,26 +957,37 @@
 "fonte": "Prev. 1.386 del 10/02/2026"
 },
 {
+"codice": "CANALINA015",
+"descrizione": "Curva angolo esterno canalina 65",
+"categoria": "Canaline, basi e nastri",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 2.4,
+"listinoFornitore": 4.0,
+"scontoFornitore": "40",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
+"codice": "CANALINA010",
+"descrizione": "Curva angolo interno canalina 65",
+"categoria": "Canaline, basi e nastri",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 2.4,
+"listinoFornitore": 4.0,
+"scontoFornitore": "40",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
 "codice": "CANALINA020",
 "descrizione": "Curva piana canalina 65",
 "categoria": "Canaline, basi e nastri",
 "potenza": "",
 "marca": "Erredi",
-"prezzo": 2.52,
-"listinoFornitore": 4.2,
+"prezzo": 2.67,
+"listinoFornitore": 4.45,
 "scontoFornitore": "40",
-"fonte": "Prev. 1.386 del 10/02/2026"
-},
-{
-"codice": "FIMI200",
-"descrizione": "Nastro alluminio adesivo 5 cm x 50 m",
-"categoria": "Canaline, basi e nastri",
-"potenza": "",
-"marca": "Erredi",
-"prezzo": 9.85,
-"listinoFornitore": 17.9,
-"scontoFornitore": "45",
-"fonte": "Prev. 10.920 del 14/11/2025"
+"fonte": "Fatt. 4615 del 30/10/2026"
 },
 {
 "codice": "FACOT037",
@@ -780,6 +1223,17 @@
 "fonte": "Prev. 5.907 del 21/10/2026"
 },
 {
+"codice": "",
+"descrizione": "Diffusore DFA/V D.250 verniciato + serranda",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 16.52,
+"listinoFornitore": 34.06,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
 "codice": "CARDCRSQ160",
 "descrizione": "Diffusore a coni DCRS/Q D.160 + serranda su pannello 596x596",
 "categoria": "Diffusori, griglie e plenum",
@@ -864,7 +1318,7 @@
 },
 {
 "codice": "CARRA251000400BIANCA",
-"descrizione": "Griglia di ripresa RA25 1000x400 RAL9016",
+"descrizione": "Griglia di ripresa RA25 1000x400 ral9016",
 "categoria": "Diffusori, griglie e plenum",
 "potenza": "",
 "marca": "Erredi",
@@ -875,7 +1329,7 @@
 },
 {
 "codice": "CARRA25300100BIANCA",
-"descrizione": "Griglia di ripresa RA25 300x100 RAL9016",
+"descrizione": "Griglia di ripresa RA25 300x100 ral9016",
 "categoria": "Diffusori, griglie e plenum",
 "potenza": "",
 "marca": "Erredi",
@@ -1087,6 +1541,197 @@
 "fonte": "Prev. 6.044 del 28/10/2026"
 },
 {
+"codice": "RASTE034",
+"descrizione": "Valvola inclinata da 3/4\"",
+"categoria": "Diffusori, griglie e plenum",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 20.2,
+"listinoFornitore": 26.93,
+"scontoFornitore": "25",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
+"codice": "FIMI504",
+"descrizione": "Bendaplast grigio 25 m",
+"categoria": "Fissaggi e consumabili",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 4.16,
+"listinoFornitore": 7.57,
+"scontoFornitore": "45",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
+"codice": "FIS00567674",
+"descrizione": "Collare pesante CPT 1\"",
+"categoria": "Fissaggi e consumabili",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 1.0,
+"listinoFornitore": 1.43,
+"scontoFornitore": "30",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
+"codice": "TCG00000011883",
+"descrizione": "Fascette cablaggio nylon 290 x 3,6 mm (conf. 100)",
+"categoria": "Fissaggi e consumabili",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 6.63,
+"listinoFornitore": 11.05,
+"scontoFornitore": "40",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
+"codice": "FIS00521762",
+"descrizione": "Fischer Klima Strong - kit fissaggio unità esterna",
+"categoria": "Fissaggi e consumabili",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 25.74,
+"listinoFornitore": 64.36,
+"scontoFornitore": "60",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
+"codice": "FIMI200",
+"descrizione": "Nastro alluminio adesivo 5 cm x 50 m",
+"categoria": "Fissaggi e consumabili",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 10.65,
+"listinoFornitore": 19.36,
+"scontoFornitore": "45",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
+"codice": "37705",
+"descrizione": "Silicone Fischer trasparente acetico",
+"categoria": "Fissaggi e consumabili",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 3.83,
+"listinoFornitore": 5.48,
+"scontoFornitore": "30",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
+"codice": "TP-LD53",
+"descrizione": "Batteria Solax T-BAT LD53 5,3 kWh bassa tensione",
+"categoria": "Fotovoltaico",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 1280.33,
+"listinoFornitore": 1280.33,
+"scontoFornitore": "",
+"fonte": "Prev. 4.344 del 30/04/2025",
+"img": "img/fornitori/solax-batteria.jpg"
+},
+{
+"codice": "PV4F+",
+"descrizione": "Connettore femmina PV4 per cavo solare 4/6 mmq",
+"categoria": "Fotovoltaico",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 2.4,
+"listinoFornitore": 2.4,
+"scontoFornitore": "",
+"fonte": "Prev. 4.344 del 30/04/2025"
+},
+{
+"codice": "",
+"descrizione": "Connettore maschio PV4 per cavo solare 4/6 mmq",
+"categoria": "Fotovoltaico",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 2.4,
+"listinoFornitore": 2.4,
+"scontoFornitore": "",
+"fonte": "Prev. 4.344 del 30/04/2025"
+},
+{
+"codice": "X1-HYB-6.0-LV",
+"descrizione": "Inverter ibrido Solax X1-Hybrid 6,0 kW monofase (batterie bassa tensione)",
+"categoria": "Fotovoltaico",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 1536.89,
+"listinoFornitore": 1536.89,
+"scontoFornitore": "",
+"fonte": "Prev. 4.344 del 30/04/2025",
+"img": "img/fornitori/solax-inverter.jpg"
+},
+{
+"codice": "KIT_01",
+"descrizione": "Kit fotovoltaico 3,44 kWp con accumulo 5,12 kWh (moduli Sunerg 440 W, inverter ibrido 3 kW, batteria 5,12 kWh)",
+"categoria": "Fotovoltaico",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 2868.85,
+"listinoFornitore": 2868.85,
+"scontoFornitore": "",
+"fonte": "Prev. 4.344 del 30/04/2025",
+"img": "img/fornitori/sunerg-modulo.jpg"
+},
+{
+"codice": "KIT_INCL_4",
+"descrizione": "Kit strutture di fissaggio per tetto inclinato (4 moduli)",
+"categoria": "Fotovoltaico",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 230.33,
+"listinoFornitore": 230.33,
+"scontoFornitore": "",
+"fonte": "Prev. 4.344 del 30/04/2025"
+},
+{
+"codice": "XMHC440BFDGKLBW+H",
+"descrizione": "Modulo fotovoltaico Sunerg X-Half 440 W TopCon vetro-vetro bifacciale",
+"categoria": "Fotovoltaico",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 67.1,
+"listinoFornitore": 67.1,
+"scontoFornitore": "",
+"fonte": "Prev. 4.344 del 30/04/2025",
+"img": "img/fornitori/sunerg-modulo.jpg"
+},
+{
+"codice": "QCC1-1000V",
+"descrizione": "Quadro di campo fotovoltaico 1 stringa 1000 V IP65",
+"categoria": "Fotovoltaico",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 186.0,
+"listinoFornitore": 186.0,
+"scontoFornitore": "",
+"fonte": "Prev. 4.344 del 30/04/2025"
+},
+{
+"codice": "QCC1+1-1000V",
+"descrizione": "Quadro di campo fotovoltaico 1+1 stringhe 1000 V",
+"categoria": "Fotovoltaico",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 343.44,
+"listinoFornitore": 343.44,
+"scontoFornitore": "",
+"fonte": "Prev. 4.344 del 30/04/2025"
+},
+{
+"codice": "POCKET-WIFI-3.0",
+"descrizione": "Solax Pocket Wi-Fi 3.0 - dongle di monitoraggio",
+"categoria": "Fotovoltaico",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 43.77,
+"listinoFornitore": 43.77,
+"scontoFornitore": "",
+"fonte": "Prev. 4.344 del 30/04/2025"
+},
+{
 "codice": "TUBGAS003028000",
 "descrizione": "Curva 90° acciaio inox gas DN 28 FF",
 "categoria": "Idraulica e gas",
@@ -1125,10 +1770,10 @@
 "categoria": "Idraulica e gas",
 "potenza": "",
 "marca": "Erredi",
-"prezzo": 5.7,
-"listinoFornitore": 11.4,
+"prezzo": 6.0,
+"listinoFornitore": 12.0,
 "scontoFornitore": "50",
-"fonte": "Prev. 4.020 del 17/06/2026"
+"fonte": "Fatt. 4077 del 30/09/2026"
 },
 {
 "codice": "TUBGAS001028000",
@@ -1140,6 +1785,17 @@
 "listinoFornitore": 11.42,
 "scontoFornitore": "72",
 "fonte": "Prev. 4.020 del 17/06/2026"
+},
+{
+"codice": "G253009",
+"descrizione": "Prolunga ottone ridotta 3/4\" M x 1\" F",
+"categoria": "Idraulica e gas",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 1.82,
+"listinoFornitore": 3.03,
+"scontoFornitore": "40",
+"fonte": "Fatt. 4077 del 30/09/2026"
 },
 {
 "codice": "PN301",
@@ -1158,10 +1814,10 @@
 "categoria": "Idraulica e gas",
 "potenza": "",
 "marca": "Erredi",
-"prezzo": 18.45,
-"listinoFornitore": 36.9,
+"prezzo": 19.3,
+"listinoFornitore": 38.6,
 "scontoFornitore": "50",
-"fonte": "Prev. 4.020 del 17/06/2026"
+"fonte": "Fatt. 4077 del 30/09/2026"
 },
 {
 "codice": "R18Y005",
@@ -1288,6 +1944,17 @@
 "fonte": "Prev. 6.044 del 28/10/2026"
 },
 {
+"codice": "",
+"descrizione": "Alfascetta fascetta inox 60/215",
+"categoria": "Tubi flessibili, fascette e colla",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 1.01,
+"listinoFornitore": 1.83,
+"scontoFornitore": "45",
+"fonte": "Fatt. 4077 del 30/09/2026"
+},
+{
 "codice": "CAREUC21CL06",
 "descrizione": "Colla rapida 50 g",
 "categoria": "Tubi flessibili, fascette e colla",
@@ -1297,6 +1964,17 @@
 "listinoFornitore": 17.22,
 "scontoFornitore": "",
 "fonte": "Fatt. 4452 del 28/10/2026"
+},
+{
+"codice": "CARUVHM250",
+"descrizione": "Collare 2 pz UVHM + inserto filettato D.250",
+"categoria": "Tubi flessibili, fascette e colla",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 3.3,
+"listinoFornitore": 6.81,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
 },
 {
 "codice": "CARUVHM300",
@@ -1310,6 +1988,17 @@
 "fonte": "Prev. 6.119 del 02/11/2026"
 },
 {
+"codice": "CARUVHM355",
+"descrizione": "Collare 2 pz UVHM + inserto filettato D.355",
+"categoria": "Tubi flessibili, fascette e colla",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 4.62,
+"listinoFornitore": 9.52,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
 "codice": "CARUVHM400",
 "descrizione": "Collare 2 pz UVHM + inserto filettato D.400",
 "categoria": "Tubi flessibili, fascette e colla",
@@ -1319,6 +2008,39 @@
 "listinoFornitore": 10.43,
 "scontoFornitore": "50+3",
 "fonte": "Prev. 6.119 del 02/11/2026"
+},
+{
+"codice": "CARUVHM450",
+"descrizione": "Collare 2 pz UVHM + inserto filettato D.450",
+"categoria": "Tubi flessibili, fascette e colla",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 6.98,
+"listinoFornitore": 14.39,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
+"codice": "CARUVHM500",
+"descrizione": "Collare 2 pz UVHM + inserto filettato D.500",
+"categoria": "Tubi flessibili, fascette e colla",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 7.89,
+"listinoFornitore": 16.26,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
+},
+{
+"codice": "",
+"descrizione": "Collare per dfa D.250",
+"categoria": "Tubi flessibili, fascette e colla",
+"potenza": "",
+"marca": "Erredi",
+"prezzo": 10.59,
+"listinoFornitore": 21.84,
+"scontoFornitore": "50+3",
+"fonte": "Fatt. 4615 del 30/10/2026"
 },
 {
 "codice": "CAREUCO125",
