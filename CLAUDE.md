@@ -30,6 +30,9 @@ in italiano semplice, senza gergo tecnico.
   ufficio_tecnico, tecnico, preventivatore; ogni ruolo vede solo le sue aree (`modiConsentiti()` in index.html).
   Con l'account si entra come se stessi: `utenti.postazione` / `utenti.tecnico` (collegati da 👤 → Utenti, se vuoti
   ricavati dal nome); con una sola area si entra direttamente (`entraModo()`), niente PIN ufficio.
+- Password: le cambia SOLO il titolare (pulsante 🔑 in alto, `openPasswords()` in firebase-app.js, visibile solo a OWNER);
+  gli altri non possono cambiare la propria. La nuova password va in `utenti/{uid}.nuovaPassword` (scrivibile solo da admin) e
+  `scripts/password.js` (stesso workflow degli avvisi) la applica con firebase-admin e la cancella; esito in `passwordCambiata`/`passwordErrore`.
 
 ## Dati (Firestore)
 Collezioni: clienti, impianti, interventi, preventivi, fatture, magazzino, listino, dico, config/impostazioni,

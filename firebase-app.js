@@ -231,7 +231,9 @@ window.ITEAM = { profilo: () => profilo, logout: () => auth && auth.signOut(), n
 function addAccountButton(){
   const h = document.querySelector("header.top"); if (!h || document.getElementById("hacc")) return;
   const b = document.createElement("button"); b.className = "hbtn"; b.id = "hacc"; b.title = "Account"; b.textContent = "👤";
-  b.onclick = openAccount; h.appendChild(b);
+  b.onclick = openAccount;
+  if (isOwner) { const k = document.createElement("button"); k.className = "hbtn"; k.id = "hpw"; k.title = "Password degli account"; k.textContent = "🔑"; k.onclick = openPasswords; h.appendChild(k); }
+  h.appendChild(b);
 }
 function panel(html){
   document.getElementById("uacc")?.remove();
@@ -245,10 +247,6 @@ function openAccount(){
   const u = auth.currentUser, admin = isOwner || profilo?.ruolo === "admin";
   const ov = panel(`<h2 style="margin-top:0">Account</h2>
     <div class="info" style="margin-bottom:10px"><b>${esc(profilo?.nome || u.displayName || "")}</b><br><span class="m">${esc(showName(u.email))} · ${esc((RUOLI.find(r => r[0] === profilo?.ruolo) || ["", profilo?.ruolo || ""])[1])}</span></div>
-    ${(u.providerData || []).some(p => p && p.providerId === "password") ? `<details style="margin-bottom:10px"><summary class="m" style="cursor:pointer">🔑 Cambia la mia password</summary>
-      <div style="margin-top:8px"><input id="pOld" type="password" placeholder="Password attuale" autocomplete="current-password" style="width:100%;margin-bottom:6px">
-      <input id="pNew" type="password" placeholder="Nuova password (almeno 6 caratteri)" autocomplete="new-password" style="width:100%;margin-bottom:6px">
-      <button class="btn" id="pSave">Salva nuova password</button></div></details>` : ""}
     ${admin ? `<h3>Utenti</h3>
     <details id="nuDet" class="u" style="background:#f7fafc"><summary style="cursor:pointer;font-weight:650">➕ Crea nuovo account</summary>
       <div style="margin-top:10px">
@@ -264,14 +262,6 @@ function openAccount(){
     <div class="row wrap" style="gap:8px"><button class="btn" id="aBk">⬇️ Scarica backup</button><button class="btn" id="aImp">⬆️ Importa dati</button></div>` : ""}
     <div class="acts"><button class="btn bad" id="aOut">Esci dall'account</button><span class="sp"></span><button class="btn pri" data-close>Chiudi</button></div>`);
   ov.querySelector("#aOut").onclick = () => auth.signOut();
-  const ps = ov.querySelector("#pSave");
-  if (ps) ps.onclick = async () => {
-    const o = ov.querySelector("#pOld").value, n = ov.querySelector("#pNew").value;
-    if (!o || !n) return toastMsg("Scrivi la password attuale e quella nuova");
-    if (n.length < 6) return toastMsg("La nuova password deve avere almeno 6 caratteri");
-    try { await u.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(u.email, o)); await u.updatePassword(n); toastMsg("✅ Password cambiata"); ov.querySelector("#pOld").value = ov.querySelector("#pNew").value = ""; }
-    catch(e) { toastMsg(e && (e.code === "auth/invalid-credential" || e.code === "auth/wrong-password") ? "La password attuale non è corretta" : errMsg(e)); }
-  };
   if (!admin) return;
   ov.querySelector("#nuCrea").onclick = async () => {
     const nome = ov.querySelector("#nuNome").value.trim(), em = toEmail(ov.querySelector("#nuUser").value), pw = ov.querySelector("#nuPass").value, ruolo = ov.querySelector("#nuRuolo").value;
@@ -309,6 +299,39 @@ function openAccount(){
     if (t.dataset.udel && confirmBox("Eliminare questo utente? Non potrà più accedere.")) { try { await db.collection("utenti").doc(t.dataset.udel).delete(); } catch(err){} }
     if (t.id === "aBk") backup();
     if (t.id === "aImp") importa();
+  });
+}
+// ---------- password degli account (solo il titolare) ----------
+// La nuova password va in utenti/{uid}.nuovaPassword (scrivibile solo dall'amministratore):
+// il controllo automatico su GitHub (scripts/password.js) la applica entro ~10-15 minuti e la cancella.
+function openPasswords(){
+  if (!isOwner) return;
+  const me = auth.currentUser.uid;
+  const ov = panel(`<h2 style="margin-top:0">🔑 Password degli account</h2>
+    <p class="m" style="margin-top:0">Scrivi la nuova password e premi <b>Cambia</b>. Diventa attiva entro circa 15 minuti: poi comunicala alla persona. Solo tu puoi cambiare le password.</p>
+    <div id="pwlist" class="m">Caricamento…</div>
+    <div class="acts"><span class="sp"></span><button class="btn pri" data-close>Chiudi</button></div>`);
+  const data = v => { try { const d = new Date(v); return d.toLocaleDateString("it-IT") + " " + d.toLocaleTimeString("it-IT", {hour: "2-digit", minute: "2-digit"}); } catch(e) { return ""; } };
+  const un = db.collection("utenti").onSnapshot(s => {
+    const el = ov.querySelector("#pwlist"); if (!el) return un();
+    const L = s.docs.map(d => ({id: d.id, ...d.data()})).filter(x => x.id !== me && x.ruolo !== "nuovo").sort((a, b) => (a.nome || a.email || "").localeCompare(b.nome || b.email || ""));
+    el.innerHTML = L.length ? L.map(x => {
+      const stato = x.nuovaPassword ? `<span class="chip warn">⏳ In attesa: attiva entro 15 minuti circa</span>`
+        : x.passwordErrore ? `<span class="chip bad">${esc(x.passwordErrore)}</span>`
+        : x.passwordCambiata ? `<span class="chip ok">✓ Cambiata il ${esc(data(x.passwordCambiata))}</span>` : "";
+      return `<div class="u"><div class="row"><b>${esc(x.nome || "—")}</b><span class="sp"></span>${x.attivo ? "" : `<span class="chip bad">Disattivato</span>`}</div>
+        <div class="m">${x.email && x.email.endsWith("@" + DOMINIO_UTENTI) ? "Nome utente: <b>" + esc(showName(x.email)) + "</b>" : esc(x.email || "")}</div>
+        <div class="row" style="gap:8px;margin-top:8px"><input data-pw="${x.id}" type="text" placeholder="Nuova password (almeno 6 caratteri)" autocapitalize="none" spellcheck="false" autocomplete="off" style="flex:1;min-width:0"><button class="btn sm pri" data-pwset="${x.id}">Cambia</button></div>
+        ${stato ? `<div style="margin-top:6px">${stato}</div>` : ""}</div>`; }).join("") : "Nessun altro account.";
+  }, () => { const el = ov.querySelector("#pwlist"); if (el) el.textContent = "Non riesco a caricare gli account."; });
+  ov.addEventListener("click", async e => {
+    const id = e.target.dataset.pwset; if (!id) return;
+    const inp = ov.querySelector(`[data-pw="${id}"]`), pw = (inp?.value || "").trim();
+    if (pw.length < 6) return toastMsg("La password deve avere almeno 6 caratteri");
+    e.target.disabled = true;
+    try { await db.collection("utenti").doc(id).update({nuovaPassword: pw, nuovaPasswordIl: new Date().toISOString(), passwordErrore: firebase.firestore.FieldValue.delete()}); inp.value = ""; toastMsg("✅ Password in arrivo: attiva entro 15 minuti circa"); }
+    catch(err) { toastMsg("Non riuscito, riprova"); }
+    e.target.disabled = false;
   });
 }
 function confirmBox(m){ return window.confirm(m); }

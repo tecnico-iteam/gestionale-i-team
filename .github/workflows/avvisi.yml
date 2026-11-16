@@ -25,6 +25,11 @@ jobs:
         run: node scripts/avvisi.js
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - name: Cambio password decisi dal titolare
+        if: always()
+        run: node scripts/password.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
       - name: Promemoria ai clienti (email)
         run: node scripts/promemoria-clienti.js
         env:
