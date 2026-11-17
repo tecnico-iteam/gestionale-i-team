@@ -1840,7 +1840,7 @@ async function prevPdf(p){
     if (num(p.sconto)) tot("Sconto " + p.sconto + "%", "", false);
     tot("Imponibile", eur(t.imp)); tot("IVA " + (p.iva ?? 22) + "%", eur(t.iva)); tot("TOTALE", eur(t.tot), true);
     if (p.note) { y += 2; doc.setFont("helvetica", "bold"); doc.setFontSize(9); need(10); doc.text("Condizioni e note", M, y); y += 4.5; doc.setFont("helvetica", "normal"); doc.splitTextToSize(p.note, W - 2 * M).forEach(l => { need(5); doc.text(l, M, y); y += 4.2; }); }
-    need(40); y += 6; doc.setFontSize(8.5); doc.setTextColor(70);
+    need(40); y += 6; doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(70);
     doc.splitTextToSize("I prezzi si intendono IVA esclusa salvo diversa indicazione. Con la firma il cliente dichiara di aver ricevuto e letto l'informativa sul trattamento dei dati personali (art. 13 Reg. UE 2016/679) riportata nell'ultima pagina di questo preventivo.", W - 2 * M).forEach(l => { doc.text(l, M, y); y += 3.8; });
     y += 5; doc.setTextColor(20); doc.setFontSize(9.5); doc.text("Per accettazione (timbro e firma del cliente)", M, y); doc.text("Data", 150, y); y += 2;
     if (p.firmaCliente) { try { doc.addImage(p.firmaCliente, "JPEG", M, y, 60, 20); } catch(e){} doc.text(fd(p.firmatoIl || today()), 150, y + 12); }
