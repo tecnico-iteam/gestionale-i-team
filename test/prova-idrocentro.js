@@ -1,0 +1,33 @@
+// Prova: listino Idrocentro (prezzi netti) caricato con ricarico, nel listino e nel magazzino
+const {chromium} = require('playwright');
+const http = require('http'), fs = require('fs'), path = require('path');
+(async () => {
+  const srv = http.createServer((q, r) => { const f = path.join(process.cwd(), decodeURIComponent(q.url.split('?')[0])); fs.readFile(f, (e, d) => { r.writeHead(e ? 404 : 200, {'content-type': f.endsWith('.html') ? 'text/html' : f.endsWith('.js') ? 'text/javascript' : 'application/json'}); r.end(d); }); }).listen(8771);
+  const b = await chromium.launch(); const errs = [];
+  const p = await (await b.newContext({viewport: {width: 430, height: 900}, serviceWorkers: 'block'})).newPage();
+  p.on('pageerror', e => errs.push(e.message));
+  await p.route(/^https:\/\//, r => r.fulfill({body: '', contentType: 'text/javascript'}));
+  await p.addInitScript({path: 'test/fbmock.js'});
+  await p.addInitScript(() => { window.__nextUser = {uid:'u1', email:'carone.t46@gmail.com', emailVerified:true, displayName:'Tommaso Carone'}; });
+  await p.route('**/firebase-config.js', r => r.fulfill({body: 'window.FIREBASE_CONFIG={apiKey:"x",projectId:"p"};', contentType:'text/javascript'}));
+  await p.goto('http://localhost:8771/index.html'); await p.waitForTimeout(500);
+  await p.click('#gGoogle'); await p.waitForTimeout(800);
+  await p.click('[data-mode="ufficio"] >> nth=0').catch(() => {}); await p.waitForTimeout(600);
+  await p.click('[data-tab="documenti"]'); await p.waitForTimeout(300); await p.click('[data-doc="listino"]'); await p.waitForTimeout(400); await p.click('[data-bundle="listino-idrocentro-2026.json"]'); await p.waitForTimeout(400);
+  await p.screenshot({path: '/tmp/ts-form.png'});
+  await p.fill('.ov input[type=number]', '30'); await p.click('.ov button[type=submit]'); await p.waitForTimeout(1500);
+  const L = await p.evaluate(() => Object.values(window.__store.listino || {}).flatMap(c => c.items));
+  console.log('listino:', L.length, 'articoli · esempio', JSON.stringify(L[0]));
+  await p.click('[data-tab="magazzino"]'); await p.waitForTimeout(300); await p.click('[data-a="magimp"]'); await p.waitForTimeout(400);
+  await p.uncheck('.ov [name=gf], .ov [data-k=gf]').catch(e => console.log('gf?', e.message.slice(0, 60)));
+  await p.uncheck('.ov [name=tm], .ov [data-k=tm]').catch(e => console.log('tm?', e.message.slice(0, 60)));
+  await p.waitForTimeout(200);
+  for (const k of ['ts', 'er', 'dp', 'sa']) await p.uncheck(`.ov [data-k=${k}], .ov [name=${k}]`).catch(() => {}); await p.waitForTimeout(200); await p.fill('.ov [name=icRic], .ov [data-k=icRic]', '30').catch(e => console.log('tsRic?', e.message.slice(0, 60)));
+  await p.screenshot({path: '/tmp/ts-mag.png'});
+  await p.click('.ov button[type=submit]'); await p.waitForTimeout(4000);
+  const M = await p.evaluate(() => Object.entries(window.__store.magazzino || {}));
+  console.log('magazzino:', M.length, 'articoli · esempio', JSON.stringify(M[0]));
+  await p.click('[data-tab="documenti"]'); await p.waitForTimeout(300); await p.click('[data-doc="listino"]'); await p.waitForTimeout(500); await p.fill('[data-q]', 'serranda'); await p.waitForTimeout(500); await p.evaluate(() => document.querySelector('[data-q]').scrollIntoView()); await p.screenshot({path: '/tmp/er-listino.png'}); await p.fill('[data-q]', 'gas'); await p.waitForTimeout(500); await p.evaluate(() => document.querySelector('[data-q]').scrollIntoView()); await p.screenshot({path: '/tmp/er-listino2.png'});
+  console.log('foto caricate:', await p.evaluate(() => [...document.querySelectorAll('img.pimg')].filter(i => i.src.includes('img/fornitori') && i.naturalWidth > 0).length));
+  console.log('errori', errs); await b.close(); srv.close();
+})();

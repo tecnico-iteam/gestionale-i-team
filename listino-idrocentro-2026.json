@@ -1,5 +1,5 @@
 {
-"nome": "Idrocentro - prezzi netti iTeam da fattura ottobre 2026",
+"nome": "Idrocentro - prezzi netti iTeam da fatture ottobre 2026",
 "items": [
 {
 "codice": "12429499",
@@ -27,6 +27,69 @@
 "marca": "Idrocentro",
 "prezzo": 139.7,
 "fonte": "Fatt. FT/DIF/0115051 del 31/10/2026"
+},
+{
+"codice": "12357481",
+"descrizione": "Tubo zincato Mannesmann 1 1/4\" (al metro)",
+"categoria": "Idraulica e gas",
+"potenza": "",
+"marca": "Idrocentro",
+"prezzo": 9.84,
+"fonte": "Fatt. FT/DIF/0109208 del 15/10/2026"
+},
+{
+"codice": "12723851",
+"descrizione": "Tubo scarico PP 1 bicchiere D.32 L=2000",
+"categoria": "Scarico",
+"potenza": "",
+"marca": "Idrocentro",
+"prezzo": 7.44,
+"fonte": "Fatt. FT/DIF/0109208 del 15/10/2026"
+},
+{
+"codice": "12409261",
+"descrizione": "Isolante ACE Plus D.42 sp. 9 mm (al metro)",
+"categoria": "Isolanti",
+"potenza": "",
+"marca": "Idrocentro",
+"prezzo": 2.01,
+"fonte": "Fatt. FT/DIF/0109208 del 15/10/2026"
+},
+{
+"codice": "12723864",
+"descrizione": "Curva scarico PP D.32 87,5°",
+"categoria": "Scarico",
+"potenza": "",
+"marca": "Idrocentro",
+"prezzo": 1.6,
+"fonte": "Fatt. FT/DIF/0109208 del 15/10/2026"
+},
+{
+"codice": "12723862",
+"descrizione": "Curva scarico PP D.32 45°",
+"categoria": "Scarico",
+"potenza": "",
+"marca": "Idrocentro",
+"prezzo": 1.53,
+"fonte": "Fatt. FT/DIF/0109208 del 15/10/2026"
+},
+{
+"codice": "12348455",
+"descrizione": "Valvola di ritegno Europa 1\"",
+"categoria": "Valvole",
+"potenza": "",
+"marca": "Idrocentro",
+"prezzo": 13.18,
+"fonte": "Fatt. FT/DIF/0109208 del 15/10/2026"
+},
+{
+"codice": "561515",
+"descrizione": "Barra filettata M8 x 1000 classe 8.8",
+"categoria": "Staffaggio e profilati",
+"potenza": "",
+"marca": "Idrocentro",
+"prezzo": 2.65,
+"fonte": "Fatt. VL 2026/022304 del 31/10/2026"
 }
 ]
 }
