@@ -486,7 +486,15 @@ function openForm(o){
 }
 
 // ---------- form specifici ----------
-const cliOpts = (blank = "— Seleziona cliente —") => [["", blank], ...S.clienti.slice().sort((a,b)=>(a.nome||"").localeCompare(b.nome||"")).map(c => [c.id, c.nome + (c.citta ? " · " + c.citta : "")])];
+// rubrica: Tommy e Irene vedono tutti i clienti, gli altri solo quelli con attività nell'ultimo anno
+const vedeTuttiClienti = () => { const a = mioAccount() || {}; if (a.email === "carone.t46@gmail.com") return true;
+  return /\b(tommy|tommaso|carone|irene|cavicchio)\b/i.test([a.nome, ui.modo === "ufficio" ? ui.uff : "", ui.modo === "tecnico" ? ui.tecnico : "", ui.modo === "comm" ? ui.comm : ""].join(" ")); };
+const clientiRecentiSet = () => { const lim = addDays(today(), -365), s = new Set(), su = (id, d) => { if (id && String(d || "").slice(0, 10) >= lim) s.add(id); };
+  S.interventi.forEach(x => su(x.clienteId, x.dataFine && x.dataFine > (x.data || "") ? x.dataFine : x.data)); S.preventivi.forEach(x => su(x.clienteId, x.data)); S.fatture.forEach(x => su(x.clienteId, x.data));
+  (S.contratti || []).forEach(x => su(x.clienteId, x.scadenza)); (S.commesse || []).forEach(x => su(x.clienteId, x.aggiornato)); (S.dico || []).forEach(x => su(x.clienteId, x.data || x.aggiornato));
+  S.clienti.forEach(c => { if (!c.importatoIl) su(c.id, c.aggiornato); }); return s; };
+const clientiVisibili = keep => { if (vedeTuttiClienti()) return S.clienti; const s = clientiRecentiSet(); return S.clienti.filter(c => s.has(c.id) || c.id === keep); };
+const cliOpts = (blank = "— Seleziona cliente —", keep) => [["", blank], ...clientiVisibili(keep).slice().sort((a,b)=>(a.nome||"").localeCompare(b.nome||"")).map(c => [c.id, c.nome + (c.citta ? " · " + c.citta : "")])];
 const impOpts = cid => [["", "— Nessun impianto specifico —"], ...S.impianti.filter(i => i.clienteId === cid).map(i => [i.id, impName(i) || "Impianto"])];
 const magOpts = () => [["", "Altro (non a magazzino)"], ...S.magazzino.slice().sort((a,b)=>(num(b.quantita) > 0) - (num(a.quantita) > 0) || (a.descrizione||"").localeCompare(b.descrizione||"")).map(m => [m.id, (m.codice ? m.codice + " · " : "") + m.descrizione + " (" + (m.quantita ?? 0) + " " + (m.unita || "pz") + ")"])];
 
@@ -510,7 +518,7 @@ function formCliente(c = {}){
 function formImpianto(i = {}){
   openForm({ title: i.id ? "Modifica impianto" : "Nuovo impianto", values: i,
     fields: [
-      {k:"clienteId", label:"Cliente", type:"select", search:true, options:() => cliOpts(), req:true},
+      {k:"clienteId", label:"Cliente", type:"select", search:true, options: v => cliOpts(undefined, v && v.clienteId), req:true},
       {k:"tipo", label:"Tipo", type:"select", options:TIPI_IMP, def:"Split", half:true},
       {k:"ubicazione", label:"Ubicazione", ph:"es. Soggiorno, Tetto", half:true},
       {k:"marca", label:"Marca", half:true}, {k:"modello", label:"Modello", half:true},
@@ -533,7 +541,7 @@ function formImpianto(i = {}){
 function formIntervento(x = {}){
   openForm({ title: x.id ? "Modifica appuntamento" : "Nuovo intervento", values: x,
     fields: [
-      {k:"clienteId", label:"Cliente", type:"select", search:true, options:() => cliOpts(), req:true, rerender:true, onChange: v => { v.impiantoId = ""; }},
+      {k:"clienteId", label:"Cliente", type:"select", search:true, options: v => cliOpts(undefined, v && v.clienteId), req:true, rerender:true, onChange: v => { v.impiantoId = ""; }},
       {k:"impiantoId", label:"Impianto", type:"select", options: v => impOpts(v.clienteId)},
       {k:"data", label: "Data (inizio)", type:"date", def: today, req:true, half:true, rerender:true, onChange: v => { if (v.cantiere && num(v.durataGg) > 1) v.dataFine = fineDaDurata(v.data, num(v.durataGg), v.giorniLav); }},
       {k:"ora", label:"Ora (inizio)", type:"time", half:true},
@@ -619,7 +627,7 @@ function formPreventivo(p = {}){
   const nextN = () => { const ns = S.preventivi.map(q => String(q.numero || "")).filter(n => n.endsWith("/" + y)).map(n => parseInt(n)); return (ns.length ? Math.max(...ns) + 1 : 1) + "/" + y; };
   openForm({ title: p.id ? "Preventivo " + (p.numero || "") : "Nuovo preventivo", values: p,
     fields: [
-      {k:"clienteId", label:"Cliente", type:"select", search:true, options:() => cliOpts(), req:true},
+      {k:"clienteId", label:"Cliente", type:"select", search:true, options: v => cliOpts(undefined, v && v.clienteId), req:true},
       {k:"numero", label:"Numero", def: nextN, half:true}, {k:"data", label:"Data", type:"date", def: today, half:true},
       {k:"oggetto", label:"Oggetto", ph:"es. Fornitura e posa climatizzatore dual split"},
       {k:"righe", label:"Voci", type:"rows", addLabel:"Aggiungi voce", def: () => [{descrizione:"", qta:1, prezzo:""}], newRow: () => ({descrizione:"", qta:1, prezzo:""}),
@@ -641,7 +649,7 @@ function formFattura(f = {}){
   openForm({ title: f.id ? "Fattura " + (f.numero || "") : "Nuova fattura", values: f,
     intro: `<div class="banner info">Registro di fatture e incassi. La fattura elettronica va comunque trasmessa allo SdI con il tuo software o commercialista.</div>`,
     fields: [
-      {k:"clienteId", label:"Cliente", type:"select", search:true, options:() => cliOpts(), req:true},
+      {k:"clienteId", label:"Cliente", type:"select", search:true, options: v => cliOpts(undefined, v && v.clienteId), req:true},
       {k:"numero", label:"Numero", def: nextN, half:true}, {k:"data", label:"Data", type:"date", def: today, half:true},
       {k:"descrizione", label:"Descrizione"},
       {k:"imponibile", label:"Imponibile €", type:"number", req:true, half:true},
@@ -735,7 +743,7 @@ function nextCommNum(){
 function formCommessa(c = {}){
   openForm({ title: c.id ? "Modifica commessa" : "Nuova commessa", values: {...c, numero: c.numero || nextCommNum()},
     fields: [
-      {k:"clienteId", label:"Cliente", type:"select", search:true, options:() => cliOpts(), req:true},
+      {k:"clienteId", label:"Cliente", type:"select", search:true, options: v => cliOpts(undefined, v && v.clienteId), req:true},
       {k:"titolo", label:"Titolo della commessa", req:true, ph:"es. Impianto multisplit villa Rossi"},
       {k:"numero", label:"Numero", half:true},
       {k:"stato", label:"Stato", type:"select", options:STATI_COMM, def:"Aperta", half:true},
@@ -1368,7 +1376,7 @@ function formDico(d = {}){
   openForm({ title: d.id ? "DiCo n. " + d.numero : "Nuova dichiarazione di conformità", values: d,
     fields: [
       {k:"numero", label:"Numero", def: nextN, half:true}, {k:"data", label:"Data", type:"date", def: today, half:true},
-      {k:"clienteId", label:"Committente", type:"select", search:true, options:() => cliOpts(), req:true, rerender:true, onChange: v => { const c = byId("clienti", v.clienteId); if (c) { v.comune = v.comune || c.citta || ""; v.via = v.via || c.indirizzo || ""; v.proprietario = v.proprietario || c.nome; } }},
+      {k:"clienteId", label:"Committente", type:"select", search:true, options: v => cliOpts(undefined, v && v.clienteId), req:true, rerender:true, onChange: v => { const c = byId("clienti", v.clienteId); if (c) { v.comune = v.comune || c.citta || ""; v.via = v.via || c.indirizzo || ""; v.proprietario = v.proprietario || c.nome; } }},
       {k:"lettere", label:"Tipo di impianto (art. 1 c. 2)", type:"checks", options: DICO_LETTERE.map(l => l[0]), def: () => ["c) riscaldamento e climatizzazione"], onChange: v => { v.respTecnico = respFor(v.lettere); }},
       {k:"abil", type:"info", html: v => { const no = (v.lettere || []).filter(l => !(CFG.abilitazioni || []).includes(l)); const refr = /refrigeraz/i.test(v.descrizione || "") && (v.lettere || []).includes("c) riscaldamento e climatizzazione") ? `<br><b style="color:var(--warn)">Nota:</b> la lettera C dell'impresa esclude gli impianti di refrigerazione.` : "";
         return (no.length ? `<b style="color:var(--bad)">⚠ Attenzione:</b> dalla visura l'impresa è abilitata solo per ${esc((CFG.abilitazioni || []).join(", "))}. Per <b>${esc(no.join(", "))}</b> la DiCo non può essere firmata da ${esc(AZIENDA.ragione)} finché l'abilitazione non è registrata in Camera di Commercio.` : `Abilitazioni dell'impresa: ${esc((CFG.abilitazioni || []).join(", "))} ✓`) + refr; }},
@@ -1585,7 +1593,7 @@ const GUIDA = [
   {per: "u", t: "🏗️ Cantieri di più giorni", h: `<p>Nel nuovo appuntamento metti la spunta <b>Cantiere di più giorni</b>. Poi scrivi la <b>durata in giorni di lavoro</b> (la data di fine si calcola da sola) oppure scegli direttamente la <b>data di fine</b>.</p><p>L'orario è già impostato <b>dalle 8 alle 17</b> e si può cambiare. Scegli anche i giorni di lavoro: lunedì–venerdì, lunedì–sabato o tutti i giorni. Il cantiere resta segnato in calendario e nella pagina Oggi per <b>ogni giorno</b>, con la scritta "giorno 3 di 15".</p>`},
   {per: "u", t: "📅 Calendario", h: `<p>Due viste: <b>Mese</b> e <b>Settimana</b>. Con ‹ e › cambi periodo, con <b>Oggi</b> torni alla data di oggi. La tendina in alto mostra un solo tecnico oppure i lavori <b>da assegnare</b>.</p><p>Ogni tecnico ha il suo colore (legenda in fondo). Nella vista settimana il <b>+</b> accanto al giorno crea un appuntamento in quella data. I 🔧 segnano le manutenzioni in scadenza: il tasto <b>Programma</b> crea subito l'appuntamento.</p>`},
   {per: "u", t: "🔧 Interventi e rapportini", h: `<p>Filtri: <b>Oggi</b>, <b>Prossimi</b>, <b>Da verificare</b> (rapportini appena arrivati), <b>Non chiusi</b>, <b>Completati</b>, <b>Tutti</b> e <b>Ore tecnici</b> (ore lavorate del mese, esportabili in Excel).</p><p>Quando un tecnico invia il rapportino lo vedi in tempo reale, con ore, materiali, foto e firma. Controllalo e tocca <b>Segna verificato</b>. Poi puoi <b>Creare la fattura</b>, mandare la <b>📄 Copia al cliente</b> o preparare la <b>📑 DiCo</b>. Puoi vedere anche dove il tecnico ha iniziato e finito il lavoro.</p>`},
-  {per: "u", t: "👥 Clienti, impianti e commesse", h: `<p>Nella scheda cliente trovi dati, impianti, storico interventi, preventivi e fatture. Ogni <b>impianto</b> ha i suoi dati (marca, matricola, gas, carica) e la prossima manutenzione, e puoi stampare un'<b>etichetta QR</b> da attaccare alla macchina.</p><p>Nelle <b>commesse</b> carichi documenti e planimetrie del cliente: scegli tu quali vedono i tecnici, che possono anche aggiungere note.</p>`},
+  {per: "u", t: "👥 Clienti, impianti e commesse", h: `<p>Nella scheda cliente trovi dati, impianti, storico interventi, preventivi e fatture. Ogni <b>impianto</b> ha i suoi dati (marca, matricola, gas, carica) e la prossima manutenzione, e puoi stampare un'<b>etichetta QR</b> da attaccare alla macchina.</p><p>Nella rubrica i colleghi vedono solo i clienti con lavori, preventivi o fatture dell'<b>ultimo anno</b>. Gli altri, segnati con 📁, li vedono solo Tommy e Irene.</p><p>Nelle <b>commesse</b> carichi documenti e planimetrie del cliente: scegli tu quali vedono i tecnici, che possono anche aggiungere note.</p>`},
   {per: "up", t: "📋 Preventivi e preventivatore", h: `<p>Con il <b>Preventivatore</b> cerchi gli articoli nei listini caricati (General, Erredi, Sacchi, Tecnosystemi e gli altri), aggiungi la manodopera <b>a ore o a giornate</b>, imposti lo sconto e salvi il preventivo per il cliente.</p><p>Per ogni articolo il gestionale ti segnala anche se un altro fornitore te lo vende a meno.</p>`},
   {per: "u", t: "🧾 Fatture e DiCo", h: `<p>Nella pagina <b>Preventivi</b> trovi anche le schede <b>Fatture</b> (da incassare, scadute, pagate) e <b>DiCo</b> (dichiarazioni di conformità). Una fattura si crea a mano oppure, in un tocco, da un intervento verificato.</p>`},
   {per: "u", t: "📦 Magazzino", h: `<p>Elenco degli articoli con quantità, prezzi e <b>scorta minima</b>: quando un articolo scende sotto la scorta lo vedi nella pagina Oggi. Per trovare un articolo puoi leggere il <b>codice a barre</b> con la fotocamera.</p><p>Il materiale usato nei rapportini si scarica da solo, prima dal furgone del tecnico. Per caricare un listino del fornitore scegli il <b>ricarico</b> da applicare.</p><p>Con <b>📷 Fotografa articolo</b> e <b>📷 Fotografa documento</b> scatti la foto con il telefono e te la ritrovi in automatico sul computer dell'ufficio.</p>`},
@@ -1730,9 +1738,11 @@ function vInterventi(){
 function vClienti(){
   if (ui.cliente) { const c = byId("clienti", ui.cliente); if (c) return vCliente(c); ui.cliente = null; }
   const q = ui.q.toLowerCase();
-  const list = S.clienti.filter(c => !q || [c.nome, c.citta, c.telefono, c.indirizzo, c.referente].join(" ").toLowerCase().includes(q)).sort((a,b) => (a.nome||"").localeCompare(b.nome||""));
-  return `<div class="row" style="align-items:center"><h2 style="flex:1">Clienti</h2>${ui.modo === "ufficio" ? `<button class="btn sm" data-a="impcli">⬆ Importa rubrica</button>` : ""}</div><input class="search" placeholder="Cerca per nome, città, telefono…" value="${esc(ui.q)}" data-q>
-  ${list.length ? list.map(c => { const n = S.impianti.filter(i => i.clienteId === c.id).length; return `<div class="card tap" data-cli="${c.id}"><div class="row"><span class="t">${esc(c.nome)}</span><span class="sp"></span><span class="chip">${n} impiant${n === 1 ? "o" : "i"}</span></div><div class="m">${esc([c.citta, c.telefono, c.tipo].filter(Boolean).join(" · "))}</div></div>`; }).join("") : empty(S.clienti.length ? "Nessun cliente trovato." : "Nessun cliente ancora.", `<button class="btn pri sm" data-a="newcli">+ Nuovo cliente</button>`)}`;
+  const tutti = vedeTuttiClienti(), rec = clientiRecentiSet();
+  const list = clientiVisibili().filter(c => !q || [c.nome, c.citta, c.telefono, c.indirizzo, c.referente].join(" ").toLowerCase().includes(q)).sort((a,b) => (a.nome||"").localeCompare(b.nome||""));
+  const vecchi = S.clienti.filter(c => !rec.has(c.id)).length;
+  return `<div class="row" style="align-items:center"><h2 style="flex:1">Clienti</h2>${ui.modo === "ufficio" ? `<button class="btn sm" data-a="impcli">⬆ Importa rubrica</button>` : ""}</div><input class="search" placeholder="Cerca per nome, città, telefono…" value="${esc(ui.q)}" data-q>${tutti && vecchi ? `<p class="m" style="margin:-4px 2px 8px">📁 ${vecchi} clienti senza lavori nell'ultimo anno li vedono solo Tommy e Irene (segnati con 📁). Gli altri vedono ${S.clienti.length - vecchi} clienti.</p>` : ""}
+  ${list.length ? list.map(c => { const n = S.impianti.filter(i => i.clienteId === c.id).length; return `<div class="card tap" data-cli="${c.id}"><div class="row"><span class="t">${tutti && !rec.has(c.id) ? "📁 " : ""}${esc(c.nome)}</span><span class="sp"></span><span class="chip">${n} impiant${n === 1 ? "o" : "i"}</span></div><div class="m">${esc([c.citta, c.telefono, c.tipo].filter(Boolean).join(" · "))}</div></div>`; }).join("") : empty(S.clienti.length ? "Nessun cliente trovato." : "Nessun cliente ancora.", `<button class="btn pri sm" data-a="newcli">+ Nuovo cliente</button>`)}`;
 }
 function vCliente(c){
   const imps = S.impianti.filter(i => i.clienteId === c.id);
@@ -2321,7 +2331,7 @@ function vCalc(){
   const righe = QT.righe;
   return `${!LISTINO.length ? `<div class="banner warn">Il listino è vuoto. Vai su <b>Listino</b> e importalo per cercare i prodotti General Fujitsu.</div>` : ""}
   <div class="card">
-    <div class="f"><label class="lb">Cliente</label><select data-qcli>${cliOpts().map(([v, l]) => `<option value="${esc(v)}" ${QT.clienteId === v ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></div>
+    <div class="f"><label class="lb">Cliente</label><select data-qcli>${cliOpts(undefined, QT.clienteId).map(([v, l]) => `<option value="${esc(v)}" ${QT.clienteId === v ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></div>
     <div class="f" style="margin:0"><label class="lb">Oggetto</label><input data-qobj value="${esc(QT.oggetto)}" placeholder="es. Fornitura e posa dual split General Fujitsu"></div>
   </div>
   <h3>Aggiungi prodotti dal listino</h3>
@@ -2782,7 +2792,7 @@ function vTecnico(){
 }
 function vTecClienti(){
   const q = ui.q.toLowerCase();
-  const list = S.clienti.filter(c => !q || [c.nome, c.citta, c.telefono, c.indirizzo].join(" ").toLowerCase().includes(q)).sort((a,b) => (a.nome||"").localeCompare(b.nome||""));
+  const list = clientiVisibili().filter(c => !q || [c.nome, c.citta, c.telefono, c.indirizzo].join(" ").toLowerCase().includes(q)).sort((a,b) => (a.nome||"").localeCompare(b.nome||""));
   return `<input class="search" placeholder="Cerca cliente per nome, città, telefono…" value="${esc(ui.q)}" data-q>
   <button class="btn pri big" data-a="tecnewcli" style="margin-bottom:12px">+ Nuovo cliente</button>
   ${list.length ? list.slice(0, 80).map(c => `<div class="card tap" data-tcli="${c.id}"><div class="t">${esc(c.nome)}</div><div class="m">${esc([addr(c), c.telefono].filter(Boolean).join(" · "))}</div></div>`).join("") : empty(S.clienti.length ? "Nessun cliente trovato: crealo con il pulsante sopra." : "Nessun cliente ancora.")}`;
@@ -2812,7 +2822,7 @@ function formTecNew(pre = {}){
   openForm({ title: "Lavoro non programmato", values: pre,
     intro: `<p class="m" style="margin-top:-6px">Per chiamate urgenti o lavori aggiunti sul posto. Se il cliente non è in elenco, inseriscilo qui sotto.</p>`,
     fields: [
-      {k:"clienteId", label:"Cliente", type:"select", search:true, options:() => cliOpts("— Nuovo cliente —"), rerender:true, onChange: v => { v.impiantoId = ""; }},
+      {k:"clienteId", label:"Cliente", type:"select", search:true, options: v => cliOpts("— Nuovo cliente —", v && v.clienteId), rerender:true, onChange: v => { v.impiantoId = ""; }},
       {k:"nuovoNome", label:"Nome nuovo cliente", show: v => !v.clienteId, req:true},
       {k:"nuovoInd", label:"Indirizzo", show: v => !v.clienteId},
       {k:"nuovoCitta", label:"Città", show: v => !v.clienteId, half:true}, {k:"nuovoCap", label:"CAP", show: v => !v.clienteId, half:true},
@@ -3173,7 +3183,7 @@ const statoContr = c => { const t = today(); if (c.stato === "Disdetto") return 
 function formContratto(c = {}){
   openForm({ title: c.id ? "Contratto di manutenzione" : "Nuovo contratto di manutenzione", values: {inizio: today(), durataMesi: 12, visiteAnno: 1, rinnovoAuto: true, stato: "Attivo", ...c},
     fields: [
-      {k:"clienteId", label:"Cliente", type:"select", search:true, options:() => cliOpts(), req:true, rerender:true},
+      {k:"clienteId", label:"Cliente", type:"select", search:true, options: v => cliOpts(undefined, v && v.clienteId), req:true, rerender:true},
       {k:"impianti", label:"Impianti compresi", type:"checks", options: v => S.impianti.filter(i => i.clienteId === v.clienteId).map(i => impName(i) || "Impianto"), show: v => S.impianti.some(i => i.clienteId === v.clienteId)},
       {k:"descrizione", label:"Cosa comprende", type:"textarea", ph:"es. 1 manutenzione annuale con pulizia filtri, sanificazione, controllo gas e perdite"},
       {k:"canone", label:"Canone annuo € (+ IVA)", type:"number", half:true}, {k:"visiteAnno", label:"Visite all'anno", type:"number", half:true},
@@ -3505,7 +3515,7 @@ document.addEventListener("click", async e => {
   if (a === "magimp") formImportMag();
   if (a === "magsc") formScontoMassivo();
   if (a === "orecsv") { const rows = S.interventi.filter(x => x.rapportino && (x.data || "").startsWith(ui.oreM)).sort(sortInt); saveCsv(`Ore tecnici ${ui.oreM}.csv`, ["Data", "Tecnico", "Cliente", "Tipo", "Inizio", "Fine", "Pausa min", "Ore lavorate", "Viaggio min", "Lavori", "Materiali", "Esito"], rows.map(x => { const r = x.rapportino; return [x.data, tecTxt(x) || r.inviatoDa || "", cliName(x.clienteId), x.tipo || "", r.inizio, r.fine, r.pausaMin || 0, String(r2(num(r.minutiLavoro) / 60)).replace(".", ","), r.viaggioMin || 0, (r.lavori || []).join(", "), (r.materiali || []).map(m => m.qta + " " + m.descrizione).join(", "), r.esito || ""]; })); }
-  if (a === "expcli") saveCsv("Clienti iTeam.csv", ["Nome", "Tipo", "Telefono", "Email", "Indirizzo", "CAP", "Città", "P.IVA/CF", "Referente", "Note"], S.clienti.map(c => [c.nome, c.tipo, c.telefono, c.email, c.indirizzo, c.cap, c.citta, c.piva, c.referente, c.note]));
+  if (a === "expcli") saveCsv("Clienti iTeam.csv", ["Nome", "Tipo", "Telefono", "Email", "Indirizzo", "CAP", "Città", "P.IVA/CF", "Referente", "Note"], clientiVisibili().map(c => [c.nome, c.tipo, c.telefono, c.email, c.indirizzo, c.cap, c.citta, c.piva, c.referente, c.note]));
   if (a === "expint") saveCsv("Interventi iTeam.csv", ["Data", "Ora", "Cliente", "Tipo", "Tecnico", "Stato", "Descrizione", "Ore lavorate", "Esito"], S.interventi.slice().sort(sortInt).map(x => [x.data, x.ora, cliName(x.clienteId), x.tipo, tecTxt(x), x.stato, x.descrizione, x.rapportino ? String(r2(num(x.rapportino.minutiLavoro) / 60)).replace(".", ",") : "", x.rapportino?.esito || ""]));
   if (a === "expmag") saveCsv("Magazzino iTeam.csv", ["Codice", "Descrizione", "Fornitore", "Categoria", "Serie", "Quantità", "Unità", "Scorta minima", "Prezzo listino", "Sconto %", "Prezzo cliente", "Costo"], S.magazzino.map(m => [m.codice, m.descrizione, m.fornitore, m.categoria, m.serie, m.quantita, m.unita, m.scortaMinima, m.prezzoListino, m.sconto, m.prezzoVendita, m.prezzoAcquisto].map(v => typeof v === "number" ? String(v).replace(".", ",") : v)));
   if (a === "expfat") saveCsv("Fatture iTeam.csv", ["Numero", "Data", "Cliente", "Descrizione", "Imponibile", "IVA %", "Totale", "Scadenza", "Pagata", "Data pagamento"], S.fatture.map(f => [f.numero, f.data, cliName(f.clienteId), f.descrizione, String(num(f.imponibile)).replace(".", ","), f.iva, String(r2(fatTot(f))).replace(".", ","), f.scadenza, f.pagata ? "Sì" : "No", f.dataPagamento]));
