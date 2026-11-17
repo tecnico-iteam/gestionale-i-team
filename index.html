@@ -1827,7 +1827,7 @@ async function prevPdf(p){
     doc.setTextColor(20); doc.setFont("helvetica", "normal"); doc.setFontSize(9);
     for (const r of (p.righe || [])) {
       const img = r.img ? await toDataURL(r.img) : null; const tx = img ? M + 26 : M + 3;
-      const lines = doc.splitTextToSize(r.descrizione || "", 128 - (img ? 23 : 0)); const h = Math.max(lines.length * 4.2 + 3, img ? 18 : 0);
+      const lines = doc.splitTextToSize(r.descrizione || "", 128 - tx); const h = Math.max(lines.length * 4.2 + 3, img ? 18 : 0);
       need(h + 2);
       if (img) { try { doc.addImage(img, "JPEG", M + 2, y - 1, 22, 16); } catch(e){} }
       lines.forEach((l, i) => doc.text(l, tx, y + 3 + i * 4.2));
