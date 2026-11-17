@@ -45,8 +45,22 @@ in italiano semplice, senza gergo tecnico.
   `iteam-condivisi` e apre `?condividi=N`; `controllaCondivisi()` in index.html fa scegliere l'intervento e usa `caricaFile()`.
   Funziona solo su Android con l'app installata (iPhone non lo supporta: lì si salva in galleria e si usa 📷 Aggiungi).
 
+- Pagina "Gestione" (tab `altro`, `vAltro()` e `ALTRO()` in index.html, solo ufficio): Margini (`margineInt`, `marginePrev`;
+  costo ore = `CFG.costoInterno`, costo materiali = `costo` salvato nelle righe o `prezzoAcquisto`), Confronto prezzi (`fontiPrezzo`,
+  `stessoArticolo`: codice o misura + parole, `hintPrezzo` nel preventivatore), Incassi e solleciti, Ordini ai fornitori (`ordini`,
+  contatti in `CFG.fornitori`, "Ricevuto" carica il magazzino), Furgoni (`magazzino.furgoni = {tecnico: qta}`: il rapportino scarica
+  prima dal furgone; il tecnico ha la scheda 🚐 Furgone con i `materialiPrevisti` del prossimo giorno), Contratti (`contratti`),
+  Registro F-gas (`fgasMesi`: ≥5 t → 12 mesi, ≥50 → 6, ≥500 → 3, doppio con `rilevatorePerdite`; `ultimoControlloPerdite`
+  si aggiorna dal rapportino), Contabilità (`contabilita`, file in Storage `contabilita/`; solo titolare e utenti con
+  `utenti.contabilita` = spunta 📒 che vede solo il titolare in 👤 Utenti).
+- Scheda impianto `detImpianto()` con etichetta QR (link `?imp=ID`, `controllaLinkImpianto()`).
+- Timbratura: `posizione()` salva `interventi.inizioPos` (▶ Inizia) e `rapportino.finePos` (invio), visibili solo all'ufficio.
+- Ruoli: tecnico e preventivatore non caricano fatture, ordini, contratti (`colsPerMe()`), e le regole lo impediscono.
+- Backup notturno: `.github/workflows/backup.yml` → `scripts/backup.js` salva `backups/backup-AAAA-MM-GG.json` in Storage (30 giorni).
+- Regole: `.github/workflows/regole.yml` → `scripts/regole.js` le pubblica da solo quando cambiano (se fallisce, vanno incollate a mano).
+
 ## Dati (Firestore)
-Collezioni: clienti, impianti, interventi, preventivi, fatture, magazzino, listino, dico, config/impostazioni,
+Collezioni: clienti, impianti, interventi, preventivi, fatture, magazzino, listino, dico, commesse, contratti, ordini, contabilita, config/impostazioni,
 utenti/{uid} = {email, nome, ruolo: admin|ufficio|tecnico|preventivatore|nuovo, attivo}.
 Il proprietario è carone.t46@gmail.com (sempre amministratore, costante OWNER in firebase-app.js e nelle regole).
 Media: `interventi.media[] = {id, url, tipo, da, il}`; `magazzino.foto` + `fotoUrl`.

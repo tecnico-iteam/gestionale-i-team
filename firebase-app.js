@@ -156,12 +156,13 @@ const assets = {
     if (blob.size > 50 * 1048576) throw {code: "too_large"};
     const ext = (type.split("/")[1] || "bin").replace("jpeg", "jpg").replace(/[^a-z0-9]/g, "");
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8) + "." + ext;
-    const ref = storage.ref("media/" + id);
+    const cartella = opts.cartella === "contabilita" ? "contabilita/" : "media/";
+    const ref = storage.ref(cartella + id);
     try { await ref.put(blob, {contentType: type}); } catch(e) { console.warn("upload", e); throw {code: e && e.code === "storage/quota-exceeded" ? "quota_or_state" : "upload_failed", detail: (e && e.code) || String(e && e.message || e)}; }
     let url; try { url = await ref.getDownloadURL(); } catch(e) { throw {code: "upload_failed", detail: (e && e.code) || "download-url"}; }
-    return {id, url, sizeBytes: blob.size, contentType: type};
+    return {id, url, path: cartella + id, sizeBytes: blob.size, contentType: type};
   },
-  async delete(id){ if (storage && id) await storage.ref("media/" + id).delete(); },
+  async delete(id, cartella){ if (storage && id) await storage.ref((cartella === "contabilita" ? "contabilita/" : "media/") + id).delete(); },
   async list(){ return {assets: [], usage: {}}; }
 };
 const downloads = {
@@ -225,7 +226,7 @@ const notifiche = (() => {
     }
   };
 })();
-window.ITEAM = { profilo: () => profilo, logout: () => auth && auth.signOut(), notifiche };
+window.ITEAM = { profilo: () => profilo, isOwner: () => isOwner, logout: () => auth && auth.signOut(), notifiche };
 
 // ---------- pulsante account, utenti, backup ----------
 function addAccountButton(){
@@ -287,12 +288,13 @@ function openAccount(){
     const L = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a, b) => (a.attivo - b.attivo) || (a.nome || a.email || "").localeCompare(b.nome || b.email || ""));
     const O = (window.ITEAM_OPZIONI && window.ITEAM_OPZIONI()) || {postazioni: [], tecnici: []};
     const sel = (x, campo, lista, label) => `<label class="m" style="display:flex;align-items:center;gap:6px;margin-top:6px">${label}<select data-link="${x.id}" data-campo="${campo}" style="flex:1;min-width:0"><option value="">Automatico (dal nome)</option>${lista.map(n => `<option ${x[campo] === n ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label>`;
-    const links = x => (["admin", "ufficio", "ufficio_tecnico"].includes(x.ruolo) || (x.id === u.uid && isOwner) ? sel(x, "postazione", O.postazioni, "🏢 Postazione") : "") + (["admin", "ufficio_tecnico", "tecnico"].includes(x.ruolo) || (x.id === u.uid && isOwner) ? sel(x, "tecnico", O.tecnici, "🔧 Tecnico") : "");
+    const links = x => (["admin", "ufficio", "ufficio_tecnico"].includes(x.ruolo) || (x.id === u.uid && isOwner) ? sel(x, "postazione", O.postazioni, "🏢 Postazione") : "") + (["admin", "ufficio_tecnico", "tecnico"].includes(x.ruolo) || (x.id === u.uid && isOwner) ? sel(x, "tecnico", O.tecnici, "🔧 Tecnico") : "") + (isOwner && !sonoIo(x) && x.ruolo !== "tecnico" && x.ruolo !== "nuovo" ? `<label class="m" style="display:flex;align-items:center;gap:6px;margin-top:6px"><input type="checkbox" data-contab="${x.id}" ${x.contabilita ? "checked" : ""}> 📒 Vede la contabilità (fatture fornitori e DDT)</label>` : "");
+    const sonoIo = x => x.id === u.uid;
     el.innerHTML = L.length ? L.map(x => { const me = x.id === u.uid; return `<div class="u"><div class="row"><b>${esc(x.nome || "—")}</b>${!x.attivo ? `<span class="chip bad" style="margin-left:6px">Da attivare</span>` : ""}<span class="sp"></span>${me ? `<span class="chip pri">Tu</span>` : ""}</div><div class="m">${x.email && x.email.endsWith("@" + DOMINIO_UTENTI) ? "Nome utente: <b>" + esc(showName(x.email)) + "</b>" : esc(x.email)}</div>
       ${me ? "" : `<div class="row wrap" style="gap:8px;margin-top:8px"><select data-ruolo="${x.id}">${(x.ruolo === "nuovo" ? [["nuovo", "— Scegli ruolo —"]] : []).concat(RUOLI).map(([k, l]) => `<option value="${k}" ${x.ruolo === k ? "selected" : ""}>${l}</option>`).join("")}</select>
       <button class="btn sm ${x.attivo ? "" : "ok"}" data-att="${x.id}" data-v="${x.attivo ? 0 : 1}">${x.attivo ? "Disattiva" : "✓ Attiva"}</button><button class="btn sm bad" data-udel="${x.id}">Elimina</button></div>`}${links(x)}</div>`; }).join("") : "Nessun utente.";
   }, () => {});
-  ov.addEventListener("change", async e => { if (e.target.dataset.link) { try { await db.collection("utenti").doc(e.target.dataset.link).update({[e.target.dataset.campo]: e.target.value}); toastMsg("Collegamento salvato"); } catch(err) { toastMsg("Non riuscito"); } return; } const id = e.target.dataset.ruolo; if (id) { try { await db.collection("utenti").doc(id).update({ruolo: e.target.value}); toastMsg("Ruolo aggiornato"); } catch(err) { toastMsg("Non riuscito"); } } });
+  ov.addEventListener("change", async e => { if (e.target.dataset.contab) { try { await db.collection("utenti").doc(e.target.dataset.contab).update({contabilita: e.target.checked}); toastMsg(e.target.checked ? "Contabilità abilitata" : "Contabilità tolta"); } catch(err) { toastMsg("Non riuscito"); } return; } if (e.target.dataset.link) { try { await db.collection("utenti").doc(e.target.dataset.link).update({[e.target.dataset.campo]: e.target.value}); toastMsg("Collegamento salvato"); } catch(err) { toastMsg("Non riuscito"); } return; } const id = e.target.dataset.ruolo; if (id) { try { await db.collection("utenti").doc(id).update({ruolo: e.target.value}); toastMsg("Ruolo aggiornato"); } catch(err) { toastMsg("Non riuscito"); } } });
   ov.addEventListener("click", async e => {
     const t = e.target;
     if (t.dataset.att) { const sel = ov.querySelector(`[data-ruolo="${t.dataset.att}"]`); if (t.dataset.v === "1" && sel && sel.value === "nuovo") return toastMsg("Scegli prima il ruolo"); try { await db.collection("utenti").doc(t.dataset.att).update({attivo: t.dataset.v === "1"}); toastMsg(t.dataset.v === "1" ? "Account attivato" : "Account disattivato"); } catch(err) { toastMsg("Non riuscito"); } }
@@ -335,11 +337,11 @@ function openPasswords(){
   });
 }
 function confirmBox(m){ return window.confirm(m); }
-const COLLEZIONI = ["clienti","impianti","interventi","preventivi","fatture","magazzino","listino","dico","commesse","config"];
+const COLLEZIONI = ["clienti","impianti","interventi","preventivi","fatture","magazzino","listino","dico","commesse","contratti","ordini","contabilita","config"];
 async function backup(){
   toastMsg("Preparo il backup…");
   const out = {app: "iteam-gestionale", creato: new Date().toISOString(), collections: {}};
-  for (const c of COLLEZIONI) { const s = await db.collection(c).get(); out.collections[c] = s.docs.map(d => ({id: d.id, ...d.data()})); }
+  for (const c of COLLEZIONI) { try { const s = await db.collection(c).get(); out.collections[c] = s.docs.map(d => ({id: d.id, ...d.data()})); } catch(e) { if (c !== "contabilita") throw e; } }
   const d = new Date(); const p = n => String(n).padStart(2, "0");
   await downloads.save({filename: `Backup gestionale iTeam ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.json`, data: new Blob([JSON.stringify(out)], {type: "application/json"})});
 }

@@ -26,9 +26,18 @@ service cloud.firestore {
       allow read: if active();
       allow write: if office();
     }
-    // Tutti gli altri dati (clienti, interventi, preventivi, fatture, magazzino, listino, dico, …)
+    // Contabilità (fatture dei fornitori e DDT): solo il titolare e chi ha la spunta "Contabilità" in 👤 Utenti
+    function contab() { return owner() || (active() && prof().get('contabilita', false) == true); }
+    match /contabilita/{id} {
+      allow read, write: if contab();
+    }
+    // Fatture ai clienti, ordini ai fornitori e contratti: solo ufficio e amministratore (i tecnici non li vedono)
+    match /fatture/{id} { allow read, write: if office(); }
+    match /ordini/{id} { allow read, write: if office(); }
+    match /contratti/{id} { allow read, write: if office(); }
+    // Tutti gli altri dati (clienti, interventi, preventivi, magazzino, listino, dico, …)
     match /{col}/{id} {
-      allow read, write: if active() && col != 'utenti' && col != 'config';
+      allow read, write: if active() && !(col in ['utenti', 'config', 'contabilita', 'fatture', 'ordini', 'contratti']);
     }
   }
 }

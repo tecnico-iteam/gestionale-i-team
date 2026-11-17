@@ -59,6 +59,7 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:#fff;borde
 nav.tabs button{flex:1;background:none;border:0;padding:6px 2px;font-size:11px;color:var(--mute);display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;position:relative}
 nav.tabs button svg{width:22px;height:22px}
 nav.tabs button.on{color:var(--pri);font-weight:600}
+@media (max-width:430px){nav.tabs button{font-size:10px;padding:6px 0;min-width:0;letter-spacing:-.2px}}
 .badge{position:absolute;top:2px;left:calc(50% + 6px);background:var(--bad);color:#fff;border-radius:10px;font-size:10px;padding:0 5px;line-height:16px;min-width:16px}
 h2{font-size:20px;margin:6px 0 12px}
 h3{font-size:14px;text-transform:uppercase;letter-spacing:.5px;color:var(--mute);margin:22px 0 8px;font-weight:650}
@@ -189,7 +190,7 @@ const AZIENDA = {nome: "iTeam", legale: "Via dei Mille 2, 10024 Moncalieri (TO)"
 // Biglietto da visita virtuale (pulsante QR in alto a sinistra): riferimenti dell'ufficio sempre presenti
 const BIGLIETTO = {email: "ufficio@iteamservice.it", servizi: "Impianti di climatizzazione - Impianti fotovoltaici", via: "Via dei Mille 2", citta: "Moncalieri", prov: "TO", cap: "10024"};
 const aziendaTxt = () => `${AZIENDA.ragione}\n${AZIENDA.attivita}\nSede legale: ${AZIENDA.legale}\nSede operativa: ${AZIENDA.operativa}\nTel. ${AZIENDA.tel}\nEmail: ${AZIENDA.email} - PEC: ${AZIENDA.pec}\nP.IVA ${AZIENDA.piva} - SDI ${AZIENDA.sdi}`;
-const COLS = ["clienti","impianti","interventi","preventivi","fatture","magazzino","listino","dico","commesse","promemoriaClienti"];
+const COLS = ["clienti","impianti","interventi","preventivi","fatture","magazzino","listino","dico","commesse","promemoriaClienti","contratti","ordini"];
 let LISTINO = [];
 const DEFAULT_LAVORI = [
   "Pulizia filtri unità interna","Sanificazione batteria / evaporatore","Pulizia unità esterna / condensatore",
@@ -212,11 +213,12 @@ const NAV = [
   ["interventi","Interventi",'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>'],
   ["clienti","Clienti",'<circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M17 11a3 3 0 1 0 0-6M22 21c0-3-2-5-4-5.5"/>'],
   ["documenti","Preventivi",'<path d="M6 2h9l5 5v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/><path d="M14 2v6h6M9 13h6M9 17h6"/>'],
-  ["magazzino","Magazzino",'<path d="M3 8l9-5 9 5v12H3z"/><path d="M7 20v-7h10v7"/>']
+  ["magazzino","Magazzino",'<path d="M3 8l9-5 9 5v12H3z"/><path d="M7 20v-7h10v7"/>'],
+  ["altro","Gestione",'<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>']
 ];
 
 // ---------- stato ----------
-const S = Object.fromEntries(COLS.map(c => [c, []]));
+const S = Object.fromEntries(COLS.map(c => [c, []])); S.contabilita = [];
 const DEFAULT_MANODOPERA = ["Installazione monosplit (fino a 3 m di linee)","Installazione dual split","Installazione trial split","Metro aggiuntivo linee frigorifere","Staffa per unità esterna","Pompa scarico condensa","Canalina (al metro)","Carotaggio muro","Linea elettrica dedicata","Smontaggio e smaltimento vecchio impianto","Dichiarazione di conformità e pratiche F-gas"].map(d => ({descrizione: d, prezzo: 0}));
 let CFG = {postazioni: ["Tommy", "Irene", "Alessandro"], titolare: "Carone Tommaso", respAB: "Carone Tommaso", respCE: "Sasso Francesco", fgas: "FGAS-A18879", cciaa: "Torino", rea: "TO-1331174", alboArt: "", abilitazioni: ["a) elettrici", "b) radiotelevisivi ed elettronici", "c) riscaldamento e climatizzazione", "e) gas"], tecnici: [], lavori: DEFAULT_LAVORI.slice(), scontoAcquisto: 0, scontoCliente: 0, costoOra: 45, costoGiornata: 300, manodopera: DEFAULT_MANODOPERA.map(x => ({...x}))};
 let assetsNS = null;
@@ -299,13 +301,15 @@ async function initDb(){
   claude.use("assets").then(a => { assetsNS = a; render(); refreshMedia(); avviaAscoltoScansioni(); }).catch(() => {});
   try { const u = await claude.use("user"); if (u) { const c = await u.can("data.write"); if (c === false) canWrite = false; } } catch(e){}
   if (!db) { ui.stale = "nodb"; render(); return; }
-  const timer = setTimeout(() => { if (loaded.size < COLS.length) { ui.stale = true; render(); } }, 10000);
-  COLS.forEach(c => {
+  const MIE = colsPerMe();
+  const timer = setTimeout(() => { if (loaded.size < MIE.length) { ui.stale = true; render(); } }, 10000);
+  if (puoContab()) db.collection("contabilita").onSnapshot(snap => { S.contabilita = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
+  MIE.forEach(c => {
     db.collection(c).onSnapshot(snap => {
       S[c] = snap.docs.map(d => ({id: d.id, ...d.data()}));
       if (c === "listino") LISTINO = S.listino.flatMap(ch => (ch.items || []).map((it, i) => ({...it, _c: ch.id, _i: i})));
       if (!snap.metadata.fromCache) loaded.add(c);
-      if (loaded.size >= COLS.length) { clearTimeout(timer); ui.stale = false; }
+      if (loaded.size >= MIE.length) { clearTimeout(timer); ui.stale = false; }
       if (c === "interventi") { notifyReports(snap); setTimeout(refreshMedia, 0); }
       render();
     }, err => { loaded.add(c); clearTimeout(timer); ui.stale = true; render(); });
@@ -316,6 +320,7 @@ async function initDb(){
       scontoAcquisto: num(d.scontoAcquisto), scontoCliente: d.scontoCliente === undefined || d.scontoCliente === "" ? 0 : num(d.scontoCliente),
       manodopera: Array.isArray(d.manodopera) && d.manodopera.length ? d.manodopera : DEFAULT_MANODOPERA.map(x => ({...x})),
       costoOra: d.costoOra === undefined || d.costoOra === "" ? 45 : num(d.costoOra), costoGiornata: d.costoGiornata === undefined || d.costoGiornata === "" ? 300 : num(d.costoGiornata),
+      costoInterno: num(d.costoInterno), fornitori: Array.isArray(d.fornitori) ? d.fornitori : [],
       titolare: d.titolare || "Carone Tommaso", respAB: d.respAB || d.respTecnico || "Carone Tommaso", respCE: d.respCE || "Sasso Francesco", fgas: d.fgas || "FGAS-A18879", cciaa: d.cciaa || "Torino", rea: d.rea || "TO-1331174", alboArt: d.alboArt || "", abilitazioni: d.abilVer >= 2 && Array.isArray(d.abilitazioni) && d.abilitazioni.length ? d.abilitazioni : ["a) elettrici", "b) radiotelevisivi ed elettronici", "c) riscaldamento e climatizzazione", "e) gas"]};
     render();
   }, () => {});
@@ -507,6 +512,8 @@ function formImpianto(i = {}){
       {k:"garanziaFino", label:"Garanzia fino al", type:"date", half:true},
       {k:"frequenzaMesi", label:"Manutenzione ogni (mesi)", type:"number", def:12, half:true},
       {k:"prossimaManutenzione", label:"Prossima manutenzione", type:"date", half:true},
+      {k:"ultimoControlloPerdite", label:"Ultimo controllo perdite F-gas", type:"date", half:true, show: v => (tco2(v) || 0) >= 5},
+      {k:"rilevatorePerdite", label:"Ha un sistema di rilevamento perdite (controlli a intervallo doppio)", type:"checkbox", show: v => (tco2(v) || 0) >= 5},
       {k:"note", label:"Note", type:"textarea"}
     ],
     onSave: async v => { await save("impianti", i.id, v); toast("Impianto salvato"); render(); },
@@ -524,10 +531,12 @@ function formIntervento(x = {}){
       {k:"tecnico", label:"Tecnico", type:"select", options:() => [["", "— Da assegnare —"], ...tecnici()], half:true, rerender:true},
       {k:"tecnico2", label:"Secondo tecnico (facoltativo)", type:"select", options: v => [["", "— Nessuno —"], ...tecnici().filter(t => !sameTec(t, v.tecnico))], half:true, show: v => !!v.tecnico},
       {k:"descrizione", label:"Cosa c'è da fare", type:"textarea", ph:"Richiesta del cliente, problema segnalato…"},
+      {k:"materialiPrevisti", label:"Materiale da portare (il tecnico lo vede la sera prima)", type:"rows", addLabel:"Aggiungi materiale", newRow: () => ({articoloId:"", descrizione:"", qta:1}),
+        cols:[{k:"articoloId", type:"select", options: magOpts, w:3}, {k:"descrizione", label:"Descrizione (se altro)", w:2}, {k:"qta", label:"Q.tà", type:"number", w:1}]},
       {k:"stato", label:"Stato", type:"select", options:STATI_INT, def:"Programmato"},
       {k:"promemoria", label:"⚠️ Manda al cliente il promemoria il giorno prima (email e WhatsApp)", type:"checkbox", def:true}
     ],
-    onSave: async v => { if (!v.tecnico || sameTec(v.tecnico2, v.tecnico)) v.tecnico2 = ""; await save("interventi", x.id, v); if (x.id) closeModal(); toast("Appuntamento salvato"); render(); },
+    onSave: async v => { if (!v.tecnico || sameTec(v.tecnico2, v.tecnico)) v.tecnico2 = ""; v.materialiPrevisti = (v.materialiPrevisti || []).filter(m => m.articoloId || (m.descrizione || "").trim()); await save("interventi", x.id, v); if (x.id) closeModal(); toast("Appuntamento salvato"); render(); },
     onDelete: x.id ? async () => { await remove("interventi", x.id); closeModal(); toast("Intervento eliminato"); render(); } : null
   });
 }
@@ -566,7 +575,7 @@ function formRapportino(x){
       if (!v.clienteAssente && !v.firma) { toast("Fai firmare il cliente, oppure spunta \"Cliente non presente\""); throw new Error("firma"); }
       const materiali = (v.materiali || []).filter(m => m.articoloId || (m.descrizione || "").trim()).map(m => {
         const a = byId("magazzino", m.articoloId);
-        return {articoloId: m.articoloId || "", descrizione: a ? a.descrizione : m.descrizione, codice: a?.codice || "", qta: num(m.qta) || 1, unita: a?.unita || "pz", prezzo: a ? num(a.prezzoVendita) : 0};
+        return {articoloId: m.articoloId || "", descrizione: a ? a.descrizione : m.descrizione, codice: a?.codice || "", qta: num(m.qta) || 1, unita: a?.unita || "pz", prezzo: a ? num(a.prezzoVendita) : 0, costo: a ? num(a.prezzoAcquisto) : 0};
       });
       const minuti = Math.max(0, minsBetween(v.inizio, v.fine) - num(v.pausaMin));
       const rap = {inizio: v.inizio, fine: v.fine, pausaMin: num(v.pausaMin), viaggioMin: num(v.viaggioMin), minutiLavoro: minuti,
@@ -574,8 +583,11 @@ function formRapportino(x){
         inviatoIl: new Date().toISOString(), inviatoDa: ui.tecnico || x.tecnico || "", scaricato: true};
       await patch("interventi", x.id, {rapportino: rap, stato: v.esito === "Da completare" ? "In corso" : "Completato", verificato: false, tecnico: x.tecnico || ui.tecnico || ""});
       if (!already) {
-        for (const m of materiali) { const a = byId("magazzino", m.articoloId); if (a) { try { await patch("magazzino", a.id, {quantita: num(a.quantita) - m.qta}); } catch(e){} } }
+        const tec = ui.tecnico || x.tecnico || "";
+        for (const m of materiali) { const a = byId("magazzino", m.articoloId); if (a) { const dalFurgone = Math.min(furgQ(a, tec), m.qta); try { await patch("magazzino", a.id, dalFurgone > 0 ? {quantita: r2(num(a.quantita) - (m.qta - dalFurgone)), furgoni: furgSet(a, tec, furgQ(a, tec) - dalFurgone)} : {quantita: r2(num(a.quantita) - m.qta)}); } catch(e){} } }
       }
+      if (imp && (v.lavori || []).some(l => /controllo perdite/i.test(l))) { try { await patch("impianti", imp.id, {ultimoControlloPerdite: x.data || today()}); } catch(e){} }
+      posizione().then(pos => { if (pos) patch("interventi", x.id, {"rapportino.finePos": pos}).catch(() => {}); });
       if (imp && v.aggiornaMan) { try { await patch("impianti", imp.id, {ultimaManutenzione: x.data, prossimaManutenzione: addMonths(x.data || today(), num(imp.frequenzaMesi) || 12)}); } catch(e){} }
       toast("✅ Rapportino inviato all'ufficio"); render();
       setTimeout(() => offerCopy(x.id), 80);
@@ -644,7 +656,7 @@ function formArticolo(a = {}){
   });
 }
 function formImpostazioni(){
-  openForm({ title: "Impostazioni", values: {waUfficio: CFG.waUfficio || "", pinUfficio: CFG.pinUfficio || "", postazioni: (CFG.postazioni || []).join("\n"), lavori: CFG.lavori.join("\n"), scontoAcquisto: CFG.scontoAcquisto || "", scontoCliente: CFG.scontoCliente || "", costoOra: CFG.costoOra, costoGiornata: CFG.costoGiornata, titolare: CFG.titolare || "", respAB: CFG.respAB || "", respCE: CFG.respCE || "", fgas: CFG.fgas || "", cciaa: CFG.cciaa || "Torino", rea: CFG.rea || "", alboArt: CFG.alboArt || "", abilitazioni: CFG.abilitazioni || [], manodopera: CFG.manodopera.map(m => m.descrizione + " | " + (num(m.prezzo) ? String(m.prezzo).replace(".", ",") : "")).join("\n")},
+  openForm({ title: "Impostazioni", values: {waUfficio: CFG.waUfficio || "", pinUfficio: CFG.pinUfficio || "", postazioni: (CFG.postazioni || []).join("\n"), lavori: CFG.lavori.join("\n"), scontoAcquisto: CFG.scontoAcquisto || "", scontoCliente: CFG.scontoCliente || "", costoOra: CFG.costoOra, costoGiornata: CFG.costoGiornata, costoInterno: CFG.costoInterno || "", titolare: CFG.titolare || "", respAB: CFG.respAB || "", respCE: CFG.respCE || "", fgas: CFG.fgas || "", cciaa: CFG.cciaa || "Torino", rea: CFG.rea || "", alboArt: CFG.alboArt || "", abilitazioni: CFG.abilitazioni || [], manodopera: CFG.manodopera.map(m => m.descrizione + " | " + (num(m.prezzo) ? String(m.prezzo).replace(".", ",") : "")).join("\n")},
     fields: [
       {k:"tecinfo", type:"info", label:"Tecnici", html: () => `${TEC().length} tecnici registrati · si gestiscono dal pulsante 👷 in alto`},
       {k:"exp", type:"info", label:"Esporta dati (backup in Excel)", html: () => `<div class="row wrap" style="gap:6px"><button type="button" class="btn sm" data-exp="expcli">Clienti</button><button type="button" class="btn sm" data-exp="expint">Interventi</button><button type="button" class="btn sm" data-exp="expmag">Magazzino</button><button type="button" class="btn sm" data-exp="expfat">Fatture</button></div>`},
@@ -661,6 +673,7 @@ function formImpostazioni(){
       {k:"abilitazioni", label:"Abilitazioni DM 37/2008 (art. 1 c. 2)", type:"checks", options: DICO_LETTERE.map(l => l[0])},
       {k:"costoOra", label:"Costo orario tecnico €", type:"number", half:true},
       {k:"costoGiornata", label:"Costo giornata tecnico €", type:"number", half:true},
+      {k:"costoInterno", label:"Costo interno di un'ora di tecnico € (quanto ti costa davvero: serve per i margini)", type:"number"},
       {k:"scontoAcquisto", label:"Preventivatore: tuo sconto d'acquisto sul listino %", type:"number", half:true},
       {k:"scontoCliente", label:"Sconto al cliente predefinito %", type:"number", half:true},
       {k:"manodopera", label:"Voci di manodopera del preventivatore (una per riga: descrizione | prezzo)", type:"textarea"}
@@ -669,7 +682,7 @@ function formImpostazioni(){
       const split = s => s.split("\n").map(x => x.trim()).filter(Boolean);
       const mano = split(v.manodopera).map(l => { const [d, pr] = l.split("|"); return {descrizione: (d || "").trim(), prezzo: num(pr)}; }).filter(m => m.descrizione);
       ls.set("uffPin", String(v.pinUfficio || "").trim());
-      try { await db.doc("config/impostazioni").set({tecnici: CFG.tecnici, waUfficio: String(v.waUfficio || "").trim(), pinUfficio: String(v.pinUfficio || "").trim(), postazioni: split(v.postazioni).length ? split(v.postazioni) : ["Tommy", "Irene", "Alessandro"], lavori: split(v.lavori), scontoAcquisto: num(v.scontoAcquisto), scontoCliente: num(v.scontoCliente), costoOra: num(v.costoOra), costoGiornata: num(v.costoGiornata), titolare: v.titolare || "", respAB: v.respAB || "", respCE: v.respCE || "", fgas: v.fgas || "", abilVer: 2, cciaa: v.cciaa || "", rea: v.rea || "", alboArt: v.alboArt || "", abilitazioni: v.abilitazioni || [], manodopera: mano}); toast("Impostazioni salvate"); }
+      try { await db.doc("config/impostazioni").set({tecnici: CFG.tecnici, waUfficio: String(v.waUfficio || "").trim(), pinUfficio: String(v.pinUfficio || "").trim(), postazioni: split(v.postazioni).length ? split(v.postazioni) : ["Tommy", "Irene", "Alessandro"], lavori: split(v.lavori), scontoAcquisto: num(v.scontoAcquisto), scontoCliente: num(v.scontoCliente), costoOra: num(v.costoOra), costoGiornata: num(v.costoGiornata), costoInterno: num(v.costoInterno), fornitori: CFG.fornitori || [], titolare: v.titolare || "", respAB: v.respAB || "", respCE: v.respCE || "", fgas: v.fgas || "", abilVer: 2, cciaa: v.cciaa || "", rea: v.rea || "", alboArt: v.alboArt || "", abilitazioni: v.abilitazioni || [], manodopera: mano}); toast("Impostazioni salvate"); }
       catch(e){ writeErr(e); throw e; }
     }
   });
@@ -1261,7 +1274,7 @@ function fatturaDaRapportino(x){
     onSave: async v => {
       const lav = v.modo === "ore" ? num(v.ore) * CFG.costoOra : v.modo === "giorni" ? num(v.giorni) * CFG.costoGiornata : 0;
       const dl = v.modo === "ore" ? `${num(v.ore)} h × ${eur(CFG.costoOra)}` : v.modo === "giorni" ? `${num(v.giorni)} gg × ${eur(CFG.costoGiornata)}` : "";
-      setTimeout(() => formFattura({clienteId: x.clienteId, descrizione: `${x.tipo} del ${fd(x.data)}${dl ? " — manodopera " + dl : ""}${num(v.materiali) ? " + materiali" : ""}`, imponibile: r2(lav + num(v.materiali)) || ""}), 60);
+      setTimeout(() => formFattura({clienteId: x.clienteId, interventoId: x.id, descrizione: `${x.tipo} del ${fd(x.data)}${dl ? " — manodopera " + dl : ""}${num(v.materiali) ? " + materiali" : ""}`, imponibile: r2(lav + num(v.materiali)) || ""}), 60);
     }
   });
 }
@@ -1430,6 +1443,7 @@ function rapportinoHtml(x){
     <span class="k">Esito</span><span>${esitoChip(r.esito)}</span>
     <span class="k">Inviato</span><span>${esc(fdt(r.inviatoIl))}${r.inviatoDa ? " da " + esc(r.inviatoDa) : ""}</span>
     ${r.firmatoDa ? `<span class="k">Confermato da</span><span>${esc(r.firmatoDa)}</span>` : ""}
+    ${ui.modo === "ufficio" && (x.inizioPos || r.finePos) ? `<span class="k">Posizione</span><span>${[posLink(x.inizioPos, "📍 inizio"), posLink(r.finePos, "📍 fine")].filter(Boolean).join("<br>")}</span>` : ""}
   </div>
   ${(r.lavori || []).length ? `<p style="margin:10px 0 4px" class="m">Lavori eseguiti</p><ul style="margin:0;padding-left:20px">${r.lavori.map(l => `<li>${esc(l)}</li>`).join("")}</ul>` : ""}
   ${r.altro ? `<p style="margin:8px 0 0">${esc(r.altro)}</p>` : ""}
@@ -1533,6 +1547,7 @@ async function startJob(x){
   const r = Object.assign({}, x.rapportino || {}, {inizio: nowTime()});
   await patch("interventi", x.id, {stato: "In corso", rapportino: r.inviatoIl ? r : undefined, inizioReale: nowTime(), tecnico: x.tecnico || ui.tecnico});
   toast("Lavoro iniziato alle " + nowTime());
+  posizione().then(pos => { if (pos) patch("interventi", x.id, {inizioPos: pos}).catch(() => {}); });
 }
 
 // ---------- viste ----------
@@ -1595,6 +1610,7 @@ function vOggi(){
     <div class="tile" data-scroll="scad"><div class="n">${scad.length}</div><div class="l">Manutenzioni entro 30 gg</div></div>
     <div class="tile" data-go="documenti:fatture"><div class="n money" style="font-size:19px;padding-top:4px">${eur(daInc)}</div><div class="l">Da incassare${fatScad.length ? ` · <b style="color:var(--bad)">${fatScad.length} scadute</b>` : ""}</div></div>
   </div>
+  ${extraOggi()}
   <h3>Rapportini arrivati dal campo</h3>
   ${daVer.length ? daVer.slice(0, 8).map(x => intCard(x, {data: true})).join("") : empty("Nessun rapportino da verificare. Appena un tecnico invia un lavoro, compare qui in tempo reale.")}
   <h3>Interventi di oggi</h3>
@@ -1774,9 +1790,10 @@ function detPreventivo(p){
     <div class="row" style="padding-top:6px"><span class="sp"></span><span class="m">Imponibile ${eur(t.imp)} · IVA ${esc(p.iva ?? 22)}% ${eur(t.iva)}</span></div>
     <div class="row"><span class="sp"></span><b style="font-size:17px">Totale ${eur(t.tot)}</b></div></div>
     ${p.note ? `<p class="m">${esc(p.note)}</p>` : ""}
+    ${ui.modo === "ufficio" ? (() => { const m = marginePrev(p); return m.note ? `<div class="info" style="margin-top:8px">📈 Margine stimato (solo ufficio): ${margChip(m.margine, m.imp)} · costo ${eur(m.costo)} su ${m.note} voci di ${m.tot}</div>` : ""; })() : ""}
     ${p.firmaCliente ? `<p class="m" style="margin:6px 0 2px">Accettato e firmato da ${esc(p.firmatoDa || "cliente")} il ${esc(fdt(p.firmatoIl))}</p><img src="${esc(p.firmaCliente)}" style="max-width:220px;border:1px solid var(--line);border-radius:8px;background:#fff">` : ""}
     <div class="acts"><button class="btn" data-a="edit">Modifica</button><button class="btn" data-a="pdf">📄 PDF</button><button class="btn" data-a="copy">Copia testo</button>${(p.righe || []).some(r => r.img) ? `<button class="btn" data-a="show">🖼 Mostra prodotti</button>` : ""}${waBtn(c?.telefono, `Buongiorno ${c?.nome || ""}, le inviamo il preventivo n. ${p.numero}${p.oggetto ? " per " + p.oggetto : ""}: totale ${eur(t.tot)} IVA inclusa. Le mando il PDF qui di seguito. ${AZIENDA.nome}`)}<span class="sp"></span>
-    ${p.stato !== "Accettato" ? `<button class="btn" data-a="firma">✍️ Firma cliente</button><button class="btn ok" data-a="acc">Accettato</button>` : (ui.modo === "ufficio" ? `<button class="btn pri" data-a="fat">Crea fattura</button>` : "")}</div>`);
+    ${p.stato !== "Accettato" ? `<button class="btn" data-a="firma">✍️ Firma cliente</button><button class="btn ok" data-a="acc">Accettato</button>` : (ui.modo === "ufficio" ? `<button class="btn" data-a="ord">📦 Ordina materiale</button><button class="btn pri" data-a="fat">Crea fattura</button>` : "")}</div>`);
   ov.addEventListener("click", async e => {
     const a = e.target.closest("[data-a]")?.dataset.a; if (!a) return;
     if (a === "edit") formPreventivo(p);
@@ -1784,6 +1801,7 @@ function detPreventivo(p){
     if (a === "firma") firmaPreventivo(p);
     if (a === "show") showProducts((p.righe || []).map(r => ({img: r.img, descrizione: r.descrizione, potenza: r.potenza, prezzo: r.prezzo, qta: r.qta})), "Preventivo n. " + p.numero);
     if (a === "acc") { await patch("preventivi", p.id, {stato: "Accettato"}); closeModal(); toast("Preventivo accettato"); }
+    if (a === "ord") { closeModal(); ordiniDaPreventivo(p); }
     if (a === "fat") formFattura({clienteId: p.clienteId, descrizione: "Rif. preventivo n. " + p.numero + (p.oggetto ? " — " + p.oggetto : ""), imponibile: Math.round(t.imp * 100) / 100, iva: String(p.iva ?? 22)});
     if (a === "copy") {
       const txt = aziendaTxt() + `\n\nPREVENTIVO N. ${p.numero} del ${fd(p.data)}\nCliente: ${c?.nome || ""}\n${p.oggetto ? "Oggetto: " + p.oggetto + "\n" : ""}\n` + (p.righe || []).map(r => `- ${r.descrizione}: ${r.qta} x ${eur(r.prezzo)} = ${eur(num(r.qta) * num(r.prezzo))}`).join("\n") + `\n\n${num(p.sconto) ? "Sconto " + p.sconto + "%\n" : ""}Imponibile: ${eur(t.imp)}\nIVA ${p.iva ?? 22}%: ${eur(t.iva)}\nTOTALE: ${eur(t.tot)}\n${p.validita ? "\nValidità: " + p.validita + " giorni" : ""}${p.note ? "\n" + p.note : ""}`;
@@ -2246,7 +2264,7 @@ function vCalc(){
   <div class="row" style="gap:8px;margin-bottom:8px"><select class="search" style="margin:0;flex:1" data-qbrand><option value="">Tutti i cataloghi</option>${brands.map(b => `<option ${ui.qBrand === b ? "selected" : ""}>${esc(b)}</option>`).join("")}</select>
   <select class="search" style="margin:0;flex:1.4" data-qcat><option value="">— Scegli categoria —</option>${cats.map(c => `<option ${ui.qCat === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div>
   <input class="search" placeholder="…oppure cerca modello, codice, BTU" value="${esc(ui.q)}" data-q>
-  ${res.length ? res.map(it => `<div class="card row" style="padding:9px 12px">${thumb(imgOrIcon(it), it.descrizione)}<div class="sp"><div class="t" style="font-size:14px">${esc(it.descrizione)}</div><div class="m">${esc([it.marca, it.codice, it.potenza, !ui.qCat && it.categoria].filter(Boolean).join(" · "))} · <b>${eur(it.prezzo)}</b></div></div><button class="btn sm pri" data-qadd="${esc(it._c)}:${it._i}">+</button></div>`).join("") : q.length >= 2 ? `<div class="m" style="padding:4px">Nessun prodotto trovato.</div>` : `<div class="m" style="padding:4px 2px 8px">Scegli una categoria per vedere i prodotti, poi tocca + per aggiungerli.</div>`}
+  ${res.length ? res.map(it => `<div class="card row" style="padding:9px 12px">${thumb(imgOrIcon(it), it.descrizione)}<div class="sp"><div class="t" style="font-size:14px">${esc(it.descrizione)}</div><div class="m">${esc([it.marca, it.codice, it.potenza, !ui.qCat && it.categoria].filter(Boolean).join(" · "))} · <b>${eur(it.prezzo)}</b></div>${hintPrezzo(it)}</div><button class="btn sm pri" data-qadd="${esc(it._c)}:${it._i}">+</button></div>`).join("") : q.length >= 2 ? `<div class="m" style="padding:4px">Nessun prodotto trovato.</div>` : `<div class="m" style="padding:4px 2px 8px">Scegli una categoria per vedere i prodotti, poi tocca + per aggiungerli.</div>`}
   <h3>Manodopera tecnico</h3>
   <div class="row" style="gap:8px"><button class="btn" style="flex:1" data-a="qora">⏱ A ore<br><b>${eur(CFG.costoOra)}/ora</b></button><button class="btn" style="flex:1" data-a="qgiorno">📅 A giornata<br><b>${eur(CFG.costoGiornata)}/giorno</b></button></div>
   <h3>Lavori e accessori</h3>
@@ -2272,7 +2290,7 @@ async function qtCreate(){
   const y = new Date().getFullYear();
   const ns = S.preventivi.map(q => String(q.numero || "")).filter(n => n.endsWith("/" + y)).map(n => parseInt(n));
   const p = {clienteId: QT.clienteId, numero: (ns.length ? Math.max(...ns) + 1 : 1) + "/" + y, data: today(), oggetto: QT.oggetto, iva: QT.iva, sconto: 0, stato: "Bozza", validita: 30, note: QT.note,
-    creatoDa: ui.modo === "comm" ? ui.comm : (ui.modo === "tecnico" ? ui.tecnico : (ui.uff || "Ufficio")), righe: QT.righe.map(r => ({descrizione: (r.codice && !r.descrizione.includes(r.codice.split("+")[0]) ? r.codice + " - " : "") + r.descrizione + (r.unita === "ore" ? ` (${num(r.qta)} h × ${eur(r.listino)})` : r.unita === "giorni" ? ` (${num(r.qta)} gg × ${eur(r.listino)})` : ""), qta: num(r.qta) || 1, prezzo: r2(rowNet(r)), ...(r.img ? {img: r.img, potenza: r.potenza || ""} : {})})), daPreventivatore: true};
+    creatoDa: ui.modo === "comm" ? ui.comm : (ui.modo === "tecnico" ? ui.tecnico : (ui.uff || "Ufficio")), righe: QT.righe.map(r => ({descrizione: (r.codice && !r.descrizione.includes(r.codice.split("+")[0]) ? r.codice + " - " : "") + r.descrizione + (r.unita === "ore" ? ` (${num(r.qta)} h × ${eur(r.listino)})` : r.unita === "giorni" ? ` (${num(r.qta)} gg × ${eur(r.listino)})` : ""), qta: num(r.qta) || 1, prezzo: r2(rowNet(r)), ...(r.img ? {img: r.img, potenza: r.potenza || ""} : {}), ...(r.codice ? {codice: r.codice} : {}), ...(num(r.costo) ? {costo: num(r.costo)} : {}), ...(r.marca ? {marca: r.marca} : {}), ...(r.unita ? {unita: r.unita} : {})})), daPreventivatore: true};
   const id = await save("preventivi", null, p);
   QT = QT_EMPTY(); qtSave(); ui.q = ""; ui.docTab = "preventivi"; if (ui.modo === "comm") ui.cF = "miei"; render();
   toast("Preventivo n. " + p.numero + " creato");
@@ -2296,7 +2314,7 @@ document.addEventListener("click", async e => {
   const b = e.target.closest("[data-qadd],[data-qman],[data-qdel],[data-lit]"); if (!b || b.closest(".ov")) return;
   const d = b.dataset;
   if (d.lit) { const [c, i] = d.lit.split(":"); const it = LISTINO.find(x => x._c === c && x._i === +i); if (it) formListinoItem(it); return; }
-  if (d.qadd) { const [c, i] = d.qadd.split(":"); const it = LISTINO.find(x => x._c === c && x._i === +i); if (!it) return; const ex = QT.righe.find(r => r.tipo === "prod" && r.codice && r.codice === it.codice && r.descrizione === it.descrizione); if (ex) ex.qta = num(ex.qta) + 1; else QT.righe.push({tipo: "prod", codice: it.codice, descrizione: it.descrizione, potenza: it.potenza || "", img: imgOf(it), qta: 1, listino: it.prezzo, sconto: CFG.scontoCliente || 0}); qtSave(); toast("Aggiunto: " + it.descrizione, 1500); }
+  if (d.qadd) { const [c, i] = d.qadd.split(":"); const it = LISTINO.find(x => x._c === c && x._i === +i); if (!it) return; const ex = QT.righe.find(r => r.tipo === "prod" && r.codice && r.codice === it.codice && r.descrizione === it.descrizione); if (ex) ex.qta = num(ex.qta) + 1; else QT.righe.push({tipo: "prod", codice: it.codice, descrizione: it.descrizione, potenza: it.potenza || "", img: imgOf(it), qta: 1, listino: it.prezzo, sconto: CFG.scontoCliente || 0, costo: num(it.costo) || num(S.magazzino.find(m => it.codice && normC(m.codice) === normC(it.codice))?.prezzoAcquisto) || "", marca: it.marca || ""}); qtSave(); toast("Aggiunto: " + it.descrizione, 1500); }
   if (d.qman !== undefined) { const m = CFG.manodopera[+d.qman]; QT.righe.push({tipo: "man", codice: "", descrizione: m.descrizione, qta: 1, listino: num(m.prezzo) || "", sconto: 0}); qtSave(); }
   if (d.qdel !== undefined) { QT.righe.splice(+d.qdel, 1); qtSave(); }
   render();
@@ -2679,8 +2697,8 @@ function vTecnico(){
   };
   return `<h2>Ciao ${esc(me)}</h2>
   ${boxNotifiche()}
-  <div class="seg"><button class="${ui.tecF === "oggi" ? "on" : ""}" data-tecf="oggi">Da fare oggi (${F.oggi.filter(x => x.stato !== "Completato").length})</button><button class="${ui.tecF === "prossimi" ? "on" : ""}" data-tecf="prossimi">Prossimi (${F.prossimi.length})</button><button class="${ui.tecF === "cal" ? "on" : ""}" data-tecf="cal">Calendario</button><button class="${ui.tecF === "cli" ? "on" : ""}" data-tecf="cli">Clienti</button><button class="${ui.tecF === "inviati" ? "on" : ""}" data-tecf="inviati">Inviati</button></div>
-  ${ui.tecF === "cal" ? vCalendario(me) : ui.tecF === "cli" ? vTecClienti() : `
+  <div class="seg"><button class="${ui.tecF === "oggi" ? "on" : ""}" data-tecf="oggi">Da fare oggi (${F.oggi.filter(x => x.stato !== "Completato").length})</button><button class="${ui.tecF === "prossimi" ? "on" : ""}" data-tecf="prossimi">Prossimi (${F.prossimi.length})</button><button class="${ui.tecF === "cal" ? "on" : ""}" data-tecf="cal">Calendario</button><button class="${ui.tecF === "cli" ? "on" : ""}" data-tecf="cli">Clienti</button><button class="${ui.tecF === "inviati" ? "on" : ""}" data-tecf="inviati">Inviati</button><button class="${ui.tecF === "furgone" ? "on" : ""}" data-tecf="furgone">🚐 Furgone</button></div>
+  ${ui.tecF === "cal" ? vCalendario(me) : ui.tecF === "cli" ? vTecClienti() : ui.tecF === "furgone" ? vTecFurgone() : `
   ${ui.tecF === "prossimi" && list.length ? `<button class="btn" style="width:100%;margin-bottom:10px" data-ics="all">📅 Metti tutti i miei appuntamenti nel calendario del telefono</button>` : ""}
   ${list.length ? (ui.tecF === "prossimi" ? groupByDate(list, {noTec: true, addr: true}) : list.map(x => intCard(x, {noTec: true, addr: true, data: x.data !== t, actions: ui.tecF === "inviati" ? "" : act(x)})).join("")) : empty(ui.tecF === "oggi" ? "Nessun lavoro assegnato per oggi." : "Niente qui.")}
   ${ui.tecF === "oggi" && free.length ? `<h3>Da assegnare</h3>${free.map(x => intCard(x, {noTec: true, data: true, addr: true, actions: `<div style="margin-top:8px"><button class="btn sm" data-take="${x.id}">Prendo io</button></div>`})).join("")}` : ""}
@@ -2788,10 +2806,504 @@ function vChoose(){
   <button class="btn big" data-mode="comm">Entra come preventivatore</button></div>` : ""}</div>`;
 }
 
+// ---------- gestione: margini, prezzi fornitori, incassi, ordini, furgoni, contratti, F-gas, contabilità ----------
+// Pagina "Altro" dell'ufficio. Dati: ordini/{id}, contratti/{id}, contabilita/{id} (solo titolare e chi ha utenti.contabilita),
+// magazzino.furgoni = {nomeTecnico: quantità}, impianti.ultimoControlloPerdite, interventi.inizioPos / rapportino.finePos.
+const ruolo = () => (mioAccount() || {}).ruolo || "";
+const sonoTitolare = () => !!(window.ITEAM && window.ITEAM.isOwner && window.ITEAM.isOwner());
+const puoContab = () => sonoTitolare() || !!(mioAccount() || {}).contabilita;
+const COLS_SOLO_UFFICIO = ["fatture", "ordini", "contratti"];
+const colsPerMe = () => { const r = ruolo(); return COLS.filter(c => !((r === "tecnico" || r === "preventivatore") && COLS_SOLO_UFFICIO.includes(c))); };
+const fornitoriNoti = () => [...new Set([...(CFG.fornitori || []).map(f => f.nome), ...S.magazzino.map(m => m.fornitore), ...BUNDLES.filter(b => b.costo).map(b => b.marca), ...(S.contabilita || []).map(d => d.fornitore)].filter(Boolean))].sort((a, b) => a.localeCompare(b));
+const fornitoreInfo = n => (CFG.fornitori || []).find(f => sameTec(f.nome, n)) || {nome: n};
+const mailLink = (to, subj, body) => `mailto:${encodeURIComponent(to || "")}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+const mailBtn = (to, subj, body, label = "✉️ Email") => `<a class="btn sm" style="text-decoration:none" href="${esc(mailLink(to, subj, body))}">${label}</a>`;
+const giorniDa = s => Math.round((new Date(today() + "T12:00:00") - new Date(s + "T12:00:00")) / 86400000);
+const perc = (a, b) => b ? Math.round(a / b * 100) : 0;
+
+// ---- posizione GPS (timbratura di inizio e fine lavoro) ----
+function posizione(){
+  return new Promise(res => {
+    if (!navigator.geolocation) return res(null);
+    let fatto = false; const fine = v => { if (!fatto) { fatto = true; res(v); } };
+    setTimeout(() => fine(null), 10000);
+    try { navigator.geolocation.getCurrentPosition(p => fine({lat: +p.coords.latitude.toFixed(6), lng: +p.coords.longitude.toFixed(6), acc: Math.round(p.coords.accuracy || 0), il: new Date().toISOString()}), () => fine(null), {enableHighAccuracy: true, timeout: 9000, maximumAge: 60000}); } catch(e) { fine(null); }
+  });
+}
+const posLink = (p, label) => p && p.lat ? `<a href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}" target="_blank" rel="noopener">${esc(label)}</a> <span class="m">(${esc(fdt(p.il))}${p.acc ? ", ±" + p.acc + " m" : ""})</span>` : "";
+
+// ---- margini ----
+const costoMat = m => { if (m.costo != null && m.costo !== "") return num(m.costo); const a = byId("magazzino", m.articoloId); return a ? num(a.prezzoAcquisto) : 0; };
+function margineInt(x){
+  const r = x.rapportino || {}; const ore = num(r.minutiLavoro) / 60;
+  const matV = (r.materiali || []).reduce((s, m) => s + num(m.prezzo) * num(m.qta), 0);
+  const matC = (r.materiali || []).reduce((s, m) => s + costoMat(m) * num(m.qta), 0);
+  const lavC = ore * num(CFG.costoInterno) * Math.max(1, tecDi(x).length);
+  const fat = S.fatture.filter(f => f.interventoId === x.id);
+  const ric = fat.length ? fat.reduce((s, f) => s + num(f.imponibile), 0) : matV + ore * num(CFG.costoOra);
+  const costo = matC + lavC;
+  return {ore, matV, matC, lavC, ric, costo, margine: ric - costo, stimato: !fat.length};
+}
+const rigaOre = r => /\(\s*[\d.,]+\s*h\s*×/.test(r.descrizione || "") || r.unita === "ore";
+const rigaGiorni = r => /\(\s*[\d.,]+\s*gg\s*×/.test(r.descrizione || "") || r.unita === "giorni";
+function marginePrev(p){
+  const t = prevTot(p); let costo = 0, note = 0, tot = 0;
+  (p.righe || []).forEach(r => {
+    tot++;
+    if (rigaOre(r)) { costo += num(r.qta) * num(CFG.costoInterno); if (num(CFG.costoInterno)) note++; return; }
+    if (rigaGiorni(r)) { costo += num(r.qta) * 8 * num(CFG.costoInterno); if (num(CFG.costoInterno)) note++; return; }
+    const c = r.costo != null && r.costo !== "" ? num(r.costo) : costoDaListino(r);
+    if (c) { costo += c * num(r.qta); note++; }
+  });
+  return {imp: t.imp, costo, margine: t.imp - costo, note, tot};
+}
+function costoDaListino(r){
+  const cod = r.codice || ((r.descrizione || "").match(/^([A-Z0-9][A-Z0-9+\/\-.]{3,}) - /) || [])[1] || "";
+  if (!cod) return 0;
+  const offerte = fontiPrezzo().filter(o => o.codice && (normC(o.codice) === normC(cod) || (normC(cod).length >= 6 && (normC(o.codice).endsWith(normC(cod)) || normC(cod).endsWith(normC(o.codice))))));
+  return offerte.length ? Math.min(...offerte.map(o => o.costo)) : 0;
+}
+const margChip = (m, base) => { const pc = perc(m, base); return `<span class="chip ${m < 0 ? "bad" : pc < 15 ? "warn" : "ok"}">${m < 0 ? "−" : ""}${eur(Math.abs(m))} · ${pc}%</span>`; };
+function vMargini(){
+  if (!ui.marM) ui.marM = today().slice(0, 7);
+  const mName = new Date(ui.marM + "-15T12:00:00").toLocaleDateString("it-IT", {month: "long", year: "numeric"});
+  const ints = S.interventi.filter(x => x.rapportino && (x.data || "").startsWith(ui.marM)).sort(sortInt);
+  const M = ints.map(x => [x, margineInt(x)]);
+  const prev = S.preventivi.filter(p => p.stato === "Accettato" && ((p.firmatoIl || p.data || "").startsWith(ui.marM))).map(p => [p, marginePrev(p)]);
+  const tRic = M.reduce((s, [, m]) => s + m.ric, 0), tCos = M.reduce((s, [, m]) => s + m.costo, 0);
+  return `${!num(CFG.costoInterno) ? `<div class="banner warn">Per un margine preciso scrivi in <b>⚙︎ Impostazioni → Costo interno di un'ora di tecnico</b> quanto ti costa davvero un'ora di lavoro (stipendio, contributi, furgone). Adesso le ore non sono contate come costo.</div>` : ""}
+  <div class="calnav"><button class="btn sm" data-marm="-1">‹</button><b>${esc(mName)}</b><button class="btn sm" data-marm="1">›</button></div>
+  <div class="tiles" style="margin-bottom:10px"><div class="tile"><div class="n money" style="font-size:19px">${eur(tRic)}</div><div class="l">Ricavi interventi</div></div><div class="tile"><div class="n money" style="font-size:19px">${eur(tCos)}</div><div class="l">Costi (materiali + ore)</div></div>
+  <div class="tile"><div class="n money" style="font-size:19px;color:${tRic - tCos < 0 ? "var(--bad)" : "var(--ok)"}">${eur(tRic - tCos)}</div><div class="l">Margine · ${perc(tRic - tCos, tRic)}%</div></div><div class="tile"><div class="n">${ints.length}</div><div class="l">Interventi con rapportino</div></div></div>
+  <h3>Interventi del mese</h3>
+  ${M.length ? M.map(([x, m]) => `<div class="card tap" data-int="${x.id}"><div class="row"><span class="t">${esc(cliName(x.clienteId))}</span><span class="sp"></span>${margChip(m.margine, m.ric)}</div>
+    <div class="m">${esc(fd(x.data))} · ${esc(x.tipo || "")} · ${esc(tecTxt(x))} · ${hm(m.ore * 60)}</div>
+    <div class="m">Ricavo ${eur(m.ric)}${m.stimato ? " <i>(stimato: non ancora fatturato)</i>" : ""} · materiali ${eur(m.matC)} · ore ${eur(m.lavC)}</div></div>`).join("") : empty("Nessun rapportino in questo mese.")}
+  <h3>Preventivi accettati nel mese</h3>
+  ${prev.length ? prev.map(([p, m]) => `<div class="card tap" data-prev="${p.id}"><div class="row"><span class="t">N. ${esc(p.numero)} · ${esc(cliName(p.clienteId))}</span><span class="sp"></span>${margChip(m.margine, m.imp)}</div>
+    <div class="m">Imponibile ${eur(m.imp)} · costo noto ${eur(m.costo)} (${m.note} voci su ${m.tot})</div></div>`).join("") : empty("Nessun preventivo accettato in questo mese.")}
+  <p class="m">Il costo dei materiali è il tuo prezzo d'acquisto (magazzino o listini dei fornitori). Il ricavo è la fattura collegata all'intervento; se non c'è ancora, è stimato con materiali a prezzo cliente + ore a ${eur(CFG.costoOra)}.</p>`;
+}
+
+// ---- confronto prezzi tra fornitori ----
+const normC = c => String(c || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+const STOP = new Set(["per", "con", "da", "di", "del", "della", "al", "metro", "the", "and", "in", "su", "tipo", "serie", "mm", "conf", "pz"]);
+const parole = d => String(d || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\([^)]*\)/g, " ").split(/[^a-z0-9/]+/).filter(w => w.length >= 3 && !STOP.has(w) && !/^\d/.test(w));
+const misura = d => { const s = String(d || "").toLowerCase(); const m = s.match(/(\d+\s?\d*\/\d+)"?|(?:d\.|ø|diam\.?\s?|dn\s?)\s?(\d+)/); return m ? (m[1] || "d" + m[2]).replace(/\s/g, "") : ""; };
+let FONTI = null, FONTI_K = "";
+function fontiPrezzo(){
+  const k = LISTINO.length + ":" + S.magazzino.length;
+  if (FONTI && FONTI_K === k) return FONTI;
+  const L = [], vis = new Set();
+  const add = o => { const key = o.fornitore + "|" + normC(o.codice || o.descrizione); if (vis.has(key) || !o.costo) return; vis.add(key); L.push({...o, w: parole(o.descrizione), mis: misura(o.descrizione)}); };
+  LISTINO.filter(i => num(i.costo)).forEach(i => add({fornitore: i.marca, codice: i.codice, descrizione: i.descrizione, costo: num(i.costo), fonte: i.fonte || ""}));
+  S.magazzino.filter(m => num(m.prezzoAcquisto) && m.fornitore).forEach(m => add({fornitore: m.fornitore, codice: m.codice, descrizione: m.descrizione, costo: num(m.prezzoAcquisto)}));
+  FONTI = L; FONTI_K = k; return L;
+}
+function stessoArticolo(a, b){
+  if (a.fornitore === b.fornitore) return false;
+  const ca = normC(a.codice), cb = normC(b.codice);
+  if (ca.length >= 6 && cb.length >= 6 && (ca === cb || ca.endsWith(cb) || cb.endsWith(ca))) return true;
+  if (!a.mis || a.mis !== b.mis || !a.w.length || !b.w.length || a.w[0] !== b.w[0]) return false;
+  const inter = a.w.filter(w => b.w.includes(w)).length;
+  return inter >= 2 && inter / Math.min(a.w.length, b.w.length) >= 0.6;
+}
+function alternative(it){
+  const o = {fornitore: it.marca || it.fornitore, codice: it.codice, descrizione: it.descrizione}; o.w = parole(o.descrizione); o.mis = misura(o.descrizione);
+  return fontiPrezzo().filter(x => stessoArticolo(o, x)).sort((a, b) => a.costo - b.costo);
+}
+function hintPrezzo(it){
+  if (ui.modo !== "ufficio") return "";
+  const mio = num(it.costo) || num(it.prezzoAcquisto); if (!mio) return "";
+  const alt = alternative(it).filter(a => a.costo < mio - 0.005);
+  return alt.length ? `<div class="m" style="color:var(--ok)">💡 Costa meno da <b>${esc(alt[0].fornitore)}</b>: ${eur(alt[0].costo)} invece di ${eur(mio)}</div>` : "";
+}
+function vPrezzi(){
+  const q = (ui.q || "").trim().toLowerCase();
+  const F = fontiPrezzo(), usati = new Set(), gruppi = [];
+  F.forEach((a, i) => { if (usati.has(i)) return; const g = [a]; F.forEach((b, j) => { if (j > i && !usati.has(j) && g.every(x => stessoArticolo(x, b) || stessoArticolo(b, x))) { g.push(b); usati.add(j); } }); if (new Set(g.map(x => x.fornitore)).size > 1) gruppi.push(g.sort((x, y) => x.costo - y.costo)); });
+  const vis = gruppi.filter(g => !q || g.some(x => (x.descrizione + " " + x.codice + " " + x.fornitore).toLowerCase().includes(q))).sort((a, b) => (b[b.length - 1].costo - b[0].costo) - (a[a.length - 1].costo - a[0].costo));
+  return `<p class="m">Lo stesso articolo venduto da più fornitori, con il tuo prezzo d'acquisto. In verde il più conveniente. Confronto fatto su ${F.length} prezzi dei listini fornitori e del magazzino.</p>
+  <input class="search" placeholder="Cerca articolo (es. rame 3/8, spiro 250)…" value="${esc(ui.q)}" data-q>
+  ${vis.length ? vis.slice(0, 80).map(g => `<div class="card"><div class="t">${esc(g[0].descrizione)}</div>${g.map((x, i) => `<div class="row" style="padding:3px 0;border-top:${i ? "1px solid var(--line)" : "0"}"><span style="flex:1">${i === 0 ? "✅ " : ""}<b>${esc(x.fornitore)}</b> <span class="m">${esc(x.codice || "")}</span></span><b class="money" style="color:${i === 0 ? "var(--ok)" : "inherit"}">${eur(x.costo)}</b></div>`).join("")}
+    ${g.length > 1 ? `<div class="m" style="margin-top:4px">Risparmio scegliendo ${esc(g[0].fornitore)}: <b>${eur(g[g.length - 1].costo - g[0].costo)}</b> a pezzo (${perc(g[g.length - 1].costo - g[0].costo, g[g.length - 1].costo)}%)</div>` : ""}</div>`).join("") : empty(F.length ? "Nessun articolo in comune tra fornitori diversi." : "Carica prima i listini dei fornitori (Preventivi → Listino).")}`;
+}
+
+// ---- incassi e solleciti ----
+function testoSollecito(c, fs){
+  const tot = fs.reduce((s, f) => s + fatTot(f), 0);
+  return `Buongiorno ${c?.nome || ""},\nvi scriviamo da ${AZIENDA.nome} per ricordarvi ${fs.length === 1 ? "la fattura" : "le fatture"} ancora da saldare:\n` +
+    fs.map(f => `- n. ${f.numero} del ${fd(f.data)}: ${eur(fatTot(f))}${f.scadenza ? " (scadenza " + fd(f.scadenza) + ")" : ""}`).join("\n") +
+    `\nTotale ${eur(tot)}.\nSe avete già provveduto, ignorate pure questo messaggio. Per qualsiasi chiarimento siamo a disposizione.\nGrazie e buona giornata,\n${AZIENDA.nome} - Tel. ${AZIENDA.tel}`;
+}
+function vIncassi(){
+  const t = today(), aperte = S.fatture.filter(f => !f.pagata);
+  const per = {}; aperte.forEach(f => (per[f.clienteId] = per[f.clienteId] || []).push(f));
+  const righe = Object.entries(per).map(([cid, fs]) => ({cid, fs: fs.sort((a, b) => (a.scadenza || "").localeCompare(b.scadenza || "")), tot: fs.reduce((s, f) => s + fatTot(f), 0), scad: fs.filter(f => f.scadenza && f.scadenza < t)})).sort((a, b) => b.scad.length - a.scad.length || b.tot - a.tot);
+  const totScad = aperte.filter(f => f.scadenza && f.scadenza < t).reduce((s, f) => s + fatTot(f), 0);
+  return `<div class="tiles" style="margin-bottom:10px"><div class="tile"><div class="n money" style="font-size:19px">${eur(aperte.reduce((s, f) => s + fatTot(f), 0))}</div><div class="l">Da incassare (${aperte.length})</div></div><div class="tile"><div class="n money" style="font-size:19px;color:${totScad ? "var(--bad)" : "inherit"}">${eur(totScad)}</div><div class="l">Già scadute</div></div></div>
+  ${righe.length ? righe.map(r => { const c = byId("clienti", r.cid), txt = testoSollecito(c, r.scad.length ? r.scad : r.fs), ult = r.fs.map(f => f.ultimoSollecito).filter(Boolean).sort().pop();
+    return `<div class="card"><div class="row"><span class="t">${esc(c?.nome || "Cliente")}</span><span class="sp"></span><b class="money">${eur(r.tot)}</b></div>
+    ${r.fs.map(f => { const gg = f.scadenza ? giorniDa(f.scadenza) : 0; return `<div class="row m" style="padding:2px 0"><span class="tap" data-fat="${f.id}" style="flex:1;cursor:pointer">N. ${esc(f.numero)} · ${eur(fatTot(f))}</span>${f.scadenza ? `<span class="chip ${gg > 0 ? "bad" : "warn"}">${gg > 0 ? "scaduta da " + gg + " gg" : "scade " + fd(f.scadenza)}</span>` : ""}<button class="btn sm" data-pagata="${f.id}">✓ Pagata</button></div>`; }).join("")}
+    ${ult ? `<div class="m">Ultimo sollecito: ${esc(fd(ult))}</div>` : ""}
+    <div class="row wrap" style="gap:6px;margin-top:8px">${waBtn(c?.telefono, txt, "💬 Sollecito WhatsApp")}${c?.email ? mailBtn(c.email, `${AZIENDA.nome} - promemoria pagamento`, txt, "✉️ Sollecito email") : ""}<button class="btn sm" data-sollecitato="${esc(r.cid)}">Segna sollecitato oggi</button></div></div>`; }).join("") : empty("Nessuna fattura da incassare. 🎉")}`;
+}
+
+// ---- fornitori e ordini ----
+function formFornitori(){
+  openForm({ title: "Fornitori", values: {lista: (CFG.fornitori || []).length ? CFG.fornitori : fornitoriNoti().map(n => ({nome: n, referente: "", telefono: "", email: ""}))},
+    intro: `<p class="m" style="margin-top:-6px">Contatti dei fornitori: servono per mandare gli ordini via WhatsApp o email con un tocco.</p>`,
+    fields: [{k:"lista", label:"Fornitori", type:"rows", addLabel:"Aggiungi fornitore", newRow: () => ({nome:"", referente:"", telefono:"", email:""}),
+      cols:[{k:"nome", label:"Nome", w:2}, {k:"referente", label:"Referente", w:2}, {k:"telefono", label:"Telefono", w:2}, {k:"email", label:"Email", w:3}]}],
+    onSave: async v => { const l = (v.lista || []).filter(f => (f.nome || "").trim()).map(f => ({nome: f.nome.trim(), referente: (f.referente || "").trim(), telefono: (f.telefono || "").trim(), email: (f.email || "").trim()})); try { await db.doc("config/impostazioni").set({fornitori: l}, {merge: true}); toast("Fornitori salvati"); } catch(e) { writeErr(e); throw e; } }
+  });
+}
+// a quale fornitore comprare un articolo: il più conveniente tra listini e magazzino, altrimenti quello del magazzino
+function fornitorePer(r){
+  const a = r.articoloId && byId("magazzino", r.articoloId);
+  const alt = alternative({marca: "", codice: r.codice || a?.codice || "", descrizione: r.descrizione || a?.descrizione || ""});
+  const diretto = fontiPrezzo().filter(o => o.codice && normC(o.codice) === normC(r.codice || a?.codice || ""));
+  const tutte = [...diretto, ...alt].sort((x, y) => x.costo - y.costo);
+  if (tutte.length) return {fornitore: tutte[0].fornitore, costo: tutte[0].costo};
+  if (a && a.fornitore) return {fornitore: a.fornitore, costo: num(a.prezzoAcquisto)};
+  return {fornitore: "", costo: num(r.costo)};
+}
+const ordTot = o => (o.righe || []).reduce((s, r) => s + num(r.qta) * num(r.prezzo), 0);
+const statoOrdChip = s => `<span class="chip ${s === "Ricevuto" ? "ok" : s === "Inviato" ? "warn" : "pri"}">${esc(s || "Da inviare")}</span>`;
+function testoOrdine(o){
+  const f = fornitoreInfo(o.fornitore);
+  return `Buongiorno${f.referente ? " " + f.referente : ""},\nvi inviamo un ordine da ${AZIENDA.ragione}${o.rif ? " (rif. " + o.rif + ")" : ""}:\n\n` +
+    (o.righe || []).map(r => `- ${num(r.qta)} × ${r.codice ? r.codice + " - " : ""}${r.descrizione}`).join("\n") +
+    `${o.note ? "\n\nNote: " + o.note : ""}\n\nConsegna presso: ${o.consegna || AZIENDA.operativa}\nGrazie,\n${ui.uff || AZIENDA.nome} - ${AZIENDA.nome} - Tel. ${AZIENDA.tel}`;
+}
+async function creaOrdini(righe, rif){
+  const per = {};
+  righe.forEach(r => { const f = r.fornitore || "Da scegliere"; (per[f] = per[f] || []).push(r); });
+  const ids = [];
+  for (const [forn, rs] of Object.entries(per)) ids.push(await save("ordini", null, {fornitore: forn === "Da scegliere" ? "" : forn, data: today(), stato: "Da inviare", rif: rif || "", righe: rs.map(r => ({articoloId: r.articoloId || "", codice: r.codice || "", descrizione: r.descrizione || "", qta: num(r.qta) || 1, prezzo: r2(num(r.costo))})), creatoDa: ui.uff || "Ufficio"}));
+  toast(`📦 ${ids.length} ${ids.length === 1 ? "ordine creato" : "ordini creati (uno per fornitore)"}`);
+  ui.tab = "altro"; ui.altro = "ordini"; render();
+}
+function ordiniDaScorta(){
+  const low = S.magazzino.filter(m => num(m.scortaMinima) > 0 && num(m.quantita) <= num(m.scortaMinima));
+  if (!low.length) { toast("Nessun articolo sotto la scorta minima"); return; }
+  creaOrdini(low.map(m => { const f = fornitorePer({articoloId: m.id, codice: m.codice, descrizione: m.descrizione}); return {articoloId: m.id, codice: m.codice, descrizione: m.descrizione, qta: Math.max(1, num(m.scortaMinima) * 2 - num(m.quantita)), fornitore: f.fornitore, costo: f.costo || num(m.prezzoAcquisto)}; }), "riordino scorte");
+}
+function ordiniDaPreventivo(p){
+  const righe = (p.righe || []).filter(r => !rigaOre(r) && !rigaGiorni(r) && r.tipo !== "man").map(r => {
+    const cod = r.codice || ((r.descrizione || "").match(/^([A-Z0-9][A-Z0-9+\/\-.]{3,}) - /) || [])[1] || "";
+    const desc = cod && (r.descrizione || "").startsWith(cod + " - ") ? r.descrizione.slice(cod.length + 3) : r.descrizione;
+    const a = S.magazzino.find(m => cod && normC(m.codice) === normC(cod));
+    const f = fornitorePer({articoloId: a?.id, codice: cod, descrizione: desc});
+    return {articoloId: a?.id || "", codice: cod, descrizione: desc, qta: num(r.qta) || 1, fornitore: f.fornitore, costo: f.costo || num(r.costo)};
+  }).filter(r => (r.descrizione || "").trim());
+  if (!righe.length) { toast("Nel preventivo non ci sono materiali da ordinare"); return; }
+  creaOrdini(righe, "preventivo n. " + p.numero + " - " + cliName(p.clienteId));
+}
+function formOrdine(o = {}){
+  openForm({ title: o.id ? "Ordine " + (o.fornitore || "") : "Nuovo ordine", values: {data: today(), stato: "Da inviare", righe: [{descrizione: "", qta: 1, prezzo: ""}], ...o},
+    fields: [
+      {k:"fornitore", label:"Fornitore", list: fornitoriNoti, req:true, half:true}, {k:"data", label:"Data", type:"date", half:true},
+      {k:"rif", label:"Riferimento (cantiere, cliente…)"},
+      {k:"righe", label:"Articoli", type:"rows", addLabel:"Aggiungi articolo", newRow: () => ({codice:"", descrizione:"", qta:1, prezzo:""}),
+        cols:[{k:"codice", label:"Codice", w:2}, {k:"descrizione", label:"Descrizione", w:4}, {k:"qta", label:"Q.tà", type:"number", w:1}, {k:"prezzo", label:"€ cad.", type:"number", w:1}]},
+      {k:"tot", type:"info", html: v => `Totale stimato <b>${eur(ordTot(v))}</b> + IVA`},
+      {k:"consegna", label:"Consegna presso", ph: AZIENDA.operativa},
+      {k:"stato", label:"Stato", type:"select", options:["Da inviare", "Inviato", "Ricevuto"], half:true},
+      {k:"note", label:"Note", type:"textarea"}
+    ],
+    onSave: async v => { v.righe = (v.righe || []).filter(r => (r.descrizione || r.codice || "").trim()); await save("ordini", o.id, v); toast("Ordine salvato"); render(); },
+    onDelete: o.id ? async () => { await remove("ordini", o.id); closeModal(); render(); } : null
+  });
+}
+function detOrdine(o){
+  const f = fornitoreInfo(o.fornitore), txt = testoOrdine(o);
+  const ov = modal(`<div class="row"><h2 style="flex:1">Ordine · ${esc(o.fornitore || "fornitore da scegliere")}</h2>${statoOrdChip(o.stato)}</div>
+    <div class="m">${esc(fd(o.data))}${o.rif ? " · " + esc(o.rif) : ""}</div>
+    <div class="card" style="margin-top:10px">${(o.righe || []).map(r => `<div class="row" style="padding:4px 0;border-bottom:1px solid var(--line)"><span style="flex:1">${esc(r.descrizione)}${r.codice ? ` <span class="m">${esc(r.codice)}</span>` : ""}</span><span class="m">${esc(r.qta)} × ${eur(r.prezzo)}</span></div>`).join("")}
+    <div class="row" style="padding-top:6px"><span class="sp"></span><b>Totale ${eur(ordTot(o))}</b></div></div>
+    ${!f.telefono && !f.email ? `<div class="banner info">Aggiungi telefono o email di ${esc(o.fornitore || "questo fornitore")} in <b>Fornitori</b> per mandare l'ordine con un tocco.</div>` : ""}
+    <div class="acts"><button class="btn" data-a="edit">Modifica</button><button class="btn" data-a="copy">Copia testo</button>${waBtn(f.telefono, txt, "💬 WhatsApp")}${f.email ? mailBtn(f.email, `Ordine ${AZIENDA.ragione}${o.rif ? " - " + o.rif : ""}`, txt) : ""}
+    <span class="sp"></span>${o.stato !== "Inviato" && o.stato !== "Ricevuto" ? `<button class="btn" data-a="inv">Segna inviato</button>` : ""}${o.stato !== "Ricevuto" ? `<button class="btn ok" data-a="ric">📥 Ricevuto: carica in magazzino</button>` : ""}</div>`);
+  ov.addEventListener("click", async e => {
+    const a = e.target.closest("[data-a]")?.dataset.a; if (!a) return;
+    if (a === "edit") formOrdine(o);
+    if (a === "copy") { try { await navigator.clipboard.writeText(txt); toast("Testo copiato"); } catch(err) { toast("Copia non consentita da questo browser"); } }
+    if (a === "inv") { await patch("ordini", o.id, {stato: "Inviato", inviatoIl: new Date().toISOString()}); closeModal(); toast("Ordine segnato come inviato"); }
+    if (a === "ric") {
+      let n = 0, nuovi = 0;
+      for (const r of (o.righe || [])) {
+        const m = (r.articoloId && byId("magazzino", r.articoloId)) || S.magazzino.find(x => r.codice && normC(x.codice) === normC(r.codice));
+        try {
+          if (m) { await patch("magazzino", m.id, {quantita: num(m.quantita) + num(r.qta), ...(num(r.prezzo) ? {prezzoAcquisto: num(r.prezzo)} : {})}); n++; }
+          else if ((r.descrizione || "").trim()) { await save("magazzino", null, {descrizione: r.descrizione, codice: r.codice || "", quantita: num(r.qta), unita: "pz", categoria: "Accessori", fornitore: o.fornitore || "", prezzoAcquisto: num(r.prezzo), scortaMinima: 0}); nuovi++; }
+        } catch(err){}
+      }
+      await patch("ordini", o.id, {stato: "Ricevuto", ricevutoIl: new Date().toISOString()});
+      closeModal(); toast(`📥 Magazzino aggiornato: ${n} articoli caricati${nuovi ? `, ${nuovi} nuovi creati` : ""}`, 4000);
+    }
+  });
+}
+function vOrdini(){
+  const l = S.ordini.slice().sort((a, b) => (a.stato === "Ricevuto") - (b.stato === "Ricevuto") || (b.data || "").localeCompare(a.data || ""));
+  const nLow = S.magazzino.filter(m => num(m.scortaMinima) > 0 && num(m.quantita) <= num(m.scortaMinima)).length;
+  const acc = S.preventivi.filter(p => p.stato === "Accettato").sort((a, b) => (b.data || "").localeCompare(a.data || "")).slice(0, 15);
+  return `<div class="row wrap" style="gap:8px;margin-bottom:10px"><button class="btn pri" data-ord="scorta">📉 Riordina sotto scorta (${nLow})</button><button class="btn" data-ord="nuovo">+ Ordine libero</button><button class="btn" data-ord="fornitori">📇 Fornitori</button></div>
+  ${acc.length ? `<details class="card"><summary style="cursor:pointer;font-weight:650">📄 Ordina il materiale di un preventivo accettato</summary>${acc.map(p => `<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><span style="flex:1">N. ${esc(p.numero)} · ${esc(cliName(p.clienteId))}</span><button class="btn sm" data-ordprev="${p.id}">Crea ordini</button></div>`).join("")}</details>` : ""}
+  ${l.length ? l.map(o => `<div class="card tap" data-ordine="${o.id}"><div class="row"><span class="t">${esc(o.fornitore || "Fornitore da scegliere")}</span><span class="sp"></span>${statoOrdChip(o.stato)}</div><div class="m">${esc(fd(o.data))} · ${(o.righe || []).length} articoli · ${eur(ordTot(o))}${o.rif ? " · " + esc(o.rif) : ""}</div></div>`).join("") : empty("Nessun ordine. Creane uno dalle scorte, da un preventivo accettato o libero.")}
+  <p class="m">Quando scegli il fornitore, il gestionale propone quello con il prezzo d'acquisto più basso tra i listini caricati. Con "Ricevuto" le quantità entrano in magazzino.</p>`;
+}
+
+// ---- furgoni dei tecnici ----
+const furgQ = (m, t) => num(((m && m.furgoni) || {})[t]);
+const furgSet = (m, t, q) => { const f = Object.assign({}, m.furgoni || {}); if (q > 0) f[t] = r2(q); else delete f[t]; return f; };
+function formCaricoFurgone(tec, dir = 1){
+  openForm({ title: (dir > 0 ? "Carica sul furgone di " : "Riporta in sede dal furgone di ") + tec, values: {qta: 1},
+    fields: [{k:"articoloId", label:"Articolo", type:"select", search:true, req:true, options: () => (dir > 0 ? S.magazzino : S.magazzino.filter(m => furgQ(m, tec) > 0)).slice().sort((a, b) => (a.descrizione || "").localeCompare(b.descrizione || "")).map(m => [m.id, `${m.descrizione} · sede ${num(m.quantita)} · furgone ${furgQ(m, tec)}`])},
+      {k:"qta", label:"Quantità", type:"number", req:true}],
+    onSave: async v => {
+      const m = byId("magazzino", v.articoloId); if (!m) return; const q = num(v.qta);
+      if (dir < 0 && q > furgQ(m, tec)) { toast("Sul furgone ce ne sono solo " + furgQ(m, tec)); throw new Error("x"); }
+      await patch("magazzino", m.id, {quantita: r2(num(m.quantita) - dir * q), furgoni: furgSet(m, tec, furgQ(m, tec) + dir * q)});
+      toast(dir > 0 ? "Caricato sul furgone" : "Riportato in sede"); render();
+    }});
+}
+function vFurgoni(){
+  const T = tecnici(); if (!ui.furT || !T.includes(ui.furT)) ui.furT = T[0] || "";
+  const l = S.magazzino.filter(m => furgQ(m, ui.furT) > 0).sort((a, b) => (a.descrizione || "").localeCompare(b.descrizione || ""));
+  return `<p class="m">Ogni tecnico ha il suo furgone. Quando il tecnico usa un materiale nel rapportino, viene tolto prima dal suo furgone e poi dalla sede.</p>
+  <div class="seg">${T.map(t => `<button class="${ui.furT === t ? "on" : ""}" data-furt="${esc(t)}">🚐 ${esc(t)}</button>`).join("")}</div>
+  ${ui.furT ? `<div class="row wrap" style="gap:8px;margin-bottom:10px"><button class="btn pri" data-furc="1">+ Carica sul furgone</button><button class="btn" data-furc="-1">↩ Riporta in sede</button></div>
+  ${l.length ? l.map(m => `<div class="card row"><span style="flex:1"><b>${esc(m.descrizione)}</b><br><span class="m">${esc(m.codice || "")} · in sede ${num(m.quantita)} ${esc(m.unita || "pz")}</span></span><b>${furgQ(m, ui.furT)} ${esc(m.unita || "pz")}</b></div>`).join("") : empty("Furgone vuoto.")}` : empty("Aggiungi prima i tecnici (👷 in alto).")}`;
+}
+// materiali previsti per i prossimi lavori del tecnico, confrontati con il suo furgone
+function prossimoGiornoLavoro(me){
+  const t = today(), fut = S.interventi.filter(x => haTec(x, me) && x.stato === "Programmato" && x.data > t).map(x => x.data).sort();
+  return fut[0] || addDays(t, 1);
+}
+function vTecFurgone(){
+  const me = ui.tecnico, g = prossimoGiornoLavoro(me);
+  const ints = S.interventi.filter(x => haTec(x, me) && x.data === g && x.stato !== "Annullato").sort(sortInt);
+  const serve = {};
+  ints.forEach(x => (x.materialiPrevisti || []).forEach(r => { const k = r.articoloId || "d:" + (r.descrizione || ""); const s = serve[k] = serve[k] || {articoloId: r.articoloId, descrizione: byId("magazzino", r.articoloId)?.descrizione || r.descrizione || "", qta: 0, per: []}; s.qta += num(r.qta) || 1; s.per.push(cliName(x.clienteId)); }));
+  const mieiArt = S.magazzino.filter(m => furgQ(m, me) > 0).sort((a, b) => (a.descrizione || "").localeCompare(b.descrizione || ""));
+  return `<h3>Materiali per ${esc(fdl(g))}</h3>
+  ${ints.length ? (Object.keys(serve).length ? Object.values(serve).map(s => { const m = byId("magazzino", s.articoloId), ho = furgQ(m, me), manca = Math.max(0, s.qta - ho); return `<div class="card"><div class="row"><span class="t" style="flex:1">${esc(s.descrizione)}</span>${manca ? `<span class="chip bad">da caricare ${r2(manca)}</span>` : `<span class="chip ok">✓ sul furgone</span>`}</div><div class="m">Servono ${r2(s.qta)} · sul furgone ${ho} · per ${esc([...new Set(s.per)].join(", "))}</div></div>`; }).join("") : `<div class="empty">L'ufficio non ha indicato materiali per i lavori di ${esc(fdl(g))} (${ints.length}).</div>`) : empty("Nessun lavoro programmato.")}
+  <h3>Il mio furgone (${mieiArt.length})</h3>
+  ${mieiArt.length ? mieiArt.map(m => `<div class="card row"><span style="flex:1">${esc(m.descrizione)}</span><b>${furgQ(m, me)} ${esc(m.unita || "pz")}</b></div>`).join("") : empty("Nessun materiale registrato sul tuo furgone.")}`;
+}
+
+// ---- contratti di manutenzione ----
+const statoContr = c => { const t = today(); if (c.stato === "Disdetto") return ["Disdetto", ""]; if (!c.scadenza) return ["Attivo", "ok"]; if (c.scadenza < t) return ["Scaduto", "bad"]; if (c.scadenza <= addDays(t, 30)) return ["In scadenza", "warn"]; return ["Attivo", "ok"]; };
+function formContratto(c = {}){
+  openForm({ title: c.id ? "Contratto di manutenzione" : "Nuovo contratto di manutenzione", values: {inizio: today(), durataMesi: 12, visiteAnno: 1, rinnovoAuto: true, stato: "Attivo", ...c},
+    fields: [
+      {k:"clienteId", label:"Cliente", type:"select", search:true, options:() => cliOpts(), req:true, rerender:true},
+      {k:"impianti", label:"Impianti compresi", type:"checks", options: v => S.impianti.filter(i => i.clienteId === v.clienteId).map(i => impName(i) || "Impianto"), show: v => S.impianti.some(i => i.clienteId === v.clienteId)},
+      {k:"descrizione", label:"Cosa comprende", type:"textarea", ph:"es. 1 manutenzione annuale con pulizia filtri, sanificazione, controllo gas e perdite"},
+      {k:"canone", label:"Canone annuo € (+ IVA)", type:"number", half:true}, {k:"visiteAnno", label:"Visite all'anno", type:"number", half:true},
+      {k:"inizio", label:"Inizio", type:"date", half:true}, {k:"durataMesi", label:"Durata (mesi)", type:"number", half:true},
+      {k:"rinnovoAuto", label:"Rinnovo automatico alla scadenza", type:"checkbox"},
+      {k:"stato", label:"Stato", type:"select", options:["Attivo", "Disdetto"]},
+      {k:"note", label:"Note", type:"textarea"}
+    ],
+    onSave: async v => { v.scadenza = addMonths(v.inizio || today(), num(v.durataMesi) || 12); await save("contratti", c.id, v); toast("Contratto salvato"); render(); },
+    onDelete: c.id ? async () => { await remove("contratti", c.id); closeModal(); render(); } : null
+  });
+}
+const testoRinnovo = (c, k) => `Buongiorno ${c?.nome || ""},\nil vostro contratto di manutenzione con ${AZIENDA.nome} scade il ${fd(k.scadenza)}.\nPer rinnovarlo alle stesse condizioni (${eur(k.canone)} + IVA all'anno) basta rispondere a questo messaggio: penseremo noi a programmare la prossima visita.\nGrazie, ${AZIENDA.nome} - Tel. ${AZIENDA.tel}`;
+function vContratti(){
+  const l = S.contratti.slice().sort((a, b) => (a.scadenza || "9").localeCompare(b.scadenza || "9"));
+  const att = l.filter(c => c.stato !== "Disdetto");
+  return `<div class="tiles" style="margin-bottom:10px"><div class="tile"><div class="n">${att.length}</div><div class="l">Contratti attivi</div></div><div class="tile"><div class="n money" style="font-size:19px">${eur(att.reduce((s, c) => s + num(c.canone), 0))}</div><div class="l">Entrate fisse all'anno</div></div></div>
+  <button class="btn pri" data-contr="new" style="margin-bottom:10px">+ Nuovo contratto</button>
+  ${l.length ? l.map(k => { const c = byId("clienti", k.clienteId), [st, cl] = statoContr(k); return `<div class="card"><div class="row"><span class="t tap" data-contr="${k.id}" style="flex:1;cursor:pointer">${esc(c?.nome || "Cliente")}</span><span class="chip ${cl}">${st}</span></div>
+    <div class="m">${eur(k.canone)}/anno · ${esc(k.visiteAnno || 1)} visit${num(k.visiteAnno) === 1 ? "a" : "e"} · scade ${esc(fd(k.scadenza))}${k.rinnovoAuto ? " · rinnovo automatico" : ""}</div>
+    ${(k.impianti || []).length ? `<div class="m">${esc(k.impianti.join(", "))}</div>` : ""}
+    <div class="row wrap" style="gap:6px;margin-top:8px"><button class="btn sm" data-contrvis="${k.id}">📅 Programma visita</button>${st === "In scadenza" || st === "Scaduto" ? `${waBtn(c?.telefono, testoRinnovo(c, k), "💬 Proponi rinnovo")}<button class="btn sm ok" data-contrrin="${k.id}">Rinnova ${esc(k.durataMesi || 12)} mesi</button>` : ""}</div></div>`; }).join("") : empty("Nessun contratto. I contratti di manutenzione portano entrate fisse ogni anno.")}`;
+}
+
+// ---- registro F-gas (Reg. UE 2024/573) ----
+const fgasMesi = i => { const t = tco2(i); if (t == null || t < 5) return 0; const base = t >= 500 ? 3 : t >= 50 ? 6 : 12; return i.rilevatorePerdite ? base * 2 : base; };
+const fgasProssimo = i => { const m = fgasMesi(i); if (!m) return ""; const u = i.ultimoControlloPerdite || i.dataInstallazione || ""; return u ? addMonths(u, m) : today(); };
+function vFgas(){
+  const t = today();
+  const l = S.impianti.filter(i => fgasMesi(i) > 0).map(i => [i, fgasProssimo(i)]).sort((a, b) => a[1].localeCompare(b[1]));
+  const scad = l.filter(([, p]) => p < t).length;
+  return `<p class="m">Impianti con almeno 5 t CO₂ equivalente: controllo perdite ogni 12 mesi (6 mesi da 50 t, 3 mesi da 500 t; il doppio del tempo con rilevatore di perdite). Il controllo si aggiorna da solo quando nel rapportino è spuntato "Controllo perdite (F-gas)".</p>
+  <div class="tiles" style="margin-bottom:10px"><div class="tile"><div class="n">${l.length}</div><div class="l">Impianti soggetti</div></div><div class="tile"><div class="n" style="color:${scad ? "var(--bad)" : "inherit"}">${scad}</div><div class="l">Controlli scaduti</div></div></div>
+  ${l.length ? `<button class="btn" data-fgascsv="1" style="margin-bottom:10px">⬇ Esporta registro (Excel)</button>` + l.map(([i, p]) => `<div class="card tap" data-impd="${i.id}"><div class="row"><span class="t">${esc(cliName(i.clienteId))}</span><span class="sp"></span><span class="chip ${p < t ? "bad" : p <= addDays(t, 30) ? "warn" : "ok"}">${p < t ? "scaduto " : "entro "}${esc(fd(p))}</span></div>
+    <div class="m">${esc(impName(i))} · ${esc(i.gas)} ${esc(i.caricaKg)} kg · ${tco2(i).toFixed(2)} t CO₂ eq · ogni ${fgasMesi(i)} mesi</div><div class="m">Ultimo controllo: ${i.ultimoControlloPerdite ? esc(fd(i.ultimoControlloPerdite)) : "<b>non registrato</b>"}</div></div>`).join("") : empty("Nessun impianto sopra le 5 t CO₂ eq (servono gas e carica nella scheda impianto).")}`;
+}
+
+// ---- scheda impianto con QR ----
+const linkImpianto = id => location.origin + location.pathname + "?imp=" + encodeURIComponent(id);
+function detImpianto(i){
+  if (!i) return;
+  const c = byId("clienti", i.clienteId), t = today(), tc = tco2(i), pf = fgasProssimo(i);
+  const ints = S.interventi.filter(x => x.impiantoId === i.id).sort(sortInt).reverse();
+  const ov = modal(`<h2>${esc(impName(i) || "Impianto")}</h2>
+    <div class="kv"><span class="k">Cliente</span><span><b>${esc(c?.nome || "—")}</b>${addr(c) ? "<br>" + esc(addr(c)) : ""}</span>
+    ${i.matricola ? `<span class="k">Matricola</span><span>${esc(i.matricola)}</span>` : ""}
+    ${i.potenza ? `<span class="k">Potenza</span><span>${esc(i.potenza)}</span>` : ""}
+    ${i.gas ? `<span class="k">Gas</span><span>${esc(i.gas)}${i.caricaKg ? " · " + esc(i.caricaKg) + " kg" : ""}${tc != null ? " · " + tc.toFixed(2) + " t CO₂ eq" : ""}</span>` : ""}
+    ${i.dataInstallazione ? `<span class="k">Installato</span><span>${esc(fd(i.dataInstallazione))}</span>` : ""}
+    ${i.garanziaFino ? `<span class="k">Garanzia</span><span>fino al ${esc(fd(i.garanziaFino))}</span>` : ""}
+    ${i.prossimaManutenzione ? `<span class="k">Manutenzione</span><span>${esc(fd(i.prossimaManutenzione))}</span>` : ""}
+    ${pf ? `<span class="k">Controllo perdite</span><span><span class="chip ${pf < t ? "bad" : "ok"}">${pf < t ? "scaduto" : "entro"} ${esc(fd(pf))}</span> ogni ${fgasMesi(i)} mesi</span>` : ""}</div>
+    ${i.note ? `<div class="info" style="margin-top:8px">${esc(i.note)}</div>` : ""}
+    <h3>Storico interventi (${ints.length})</h3>
+    ${ints.length ? ints.slice(0, 15).map(x => `<div class="m" style="padding:3px 0">• ${esc(fd(x.data))} · ${esc(x.tipo || "")} · ${esc(tecTxt(x))}${x.rapportino ? " · " + esc((x.rapportino.lavori || []).slice(0, 3).join(", ")) : ""}</div>`).join("") : `<div class="m">Nessun intervento registrato.</div>`}
+    <div class="acts"><button class="btn" data-a="edit">Modifica</button><button class="btn" data-a="qr">🏷 Etichetta QR</button>${ui.modo === "ufficio" ? `<button class="btn" data-a="int">+ Intervento</button>` : ""}${pf && ui.modo === "ufficio" ? `<button class="btn" data-a="fg">✓ Controllo perdite fatto</button>` : ""}<span class="sp"></span><button class="btn pri" data-a="x">Chiudi</button></div>`);
+  ov.addEventListener("click", async e => {
+    const a = e.target.closest("[data-a]")?.dataset.a; if (!a) return;
+    if (a === "x") ov.remove();
+    if (a === "edit") formImpianto(i);
+    if (a === "int") formIntervento({clienteId: i.clienteId, impiantoId: i.id});
+    if (a === "qr") etichettaQR(i);
+    if (a === "fg") openForm({title: "Controllo perdite F-gas", values: {d: today()}, fields: [{k:"d", label:"Data del controllo", type:"date", req:true}], onSave: async v => { await patch("impianti", i.id, {ultimoControlloPerdite: v.d}); closeModal(); toast("Controllo registrato"); render(); }});
+  });
+}
+async function etichettaQR(i){
+  try { await loadQR(); } catch(e) { toast("Non riesco a creare il QR: controlla la connessione"); return; }
+  const c = byId("clienti", i.clienteId), svg = window.iteamQRsvg(linkImpianto(i.id), "M");
+  const corpo = `<div class="etq"><div class="qr">${svg}</div><div class="tx"><img src="${LOGO}" alt="iTeam"><b>${esc(impName(i) || "Impianto")}</b><span>${esc(c?.nome || "")}</span>${i.matricola ? `<span>Matr. ${esc(i.matricola)}</span>` : ""}${i.gas ? `<span>${esc(i.gas)}${i.caricaKg ? " · " + esc(i.caricaKg) + " kg" : ""}${tco2(i) != null ? " · " + tco2(i).toFixed(2) + " t CO₂eq" : ""}</span>` : ""}<span>Assistenza ${esc(AZIENDA.tel.split(" - ").pop())}</span></div></div>`;
+  const css = `.etq{display:flex;gap:10px;align-items:center;border:1.5px solid #222;border-radius:8px;padding:8px;width:86mm;height:52mm;box-sizing:border-box;font:11px/1.3 system-ui,sans-serif;color:#111;background:#fff}.etq .qr{width:40mm;flex:none}.etq .qr svg{width:100%;height:auto;display:block}.etq .tx{display:flex;flex-direction:column;gap:2px;min-width:0}.etq img{height:26px;width:auto;align-self:flex-start;margin-bottom:2px}.etq b{font-size:12px}`;
+  const ov = modal(`<h2>🏷 Etichetta per l'impianto</h2><p class="m" style="margin-top:-6px">Stampala e attaccala sull'unità: il tecnico inquadra il QR e vede subito lo storico di questo impianto.</p><style>${css}</style><div style="display:flex;justify-content:center;margin:10px 0">${corpo}</div>
+    <div class="acts"><span class="sp"></span><button class="btn" data-a="x">Chiudi</button><button class="btn pri" data-a="p">🖨 Stampa</button></div>`);
+  ov.addEventListener("click", e => {
+    const a = e.target.closest("[data-a]")?.dataset.a;
+    if (a === "x") ov.remove();
+    if (a === "p") { const f = document.createElement("iframe"); f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0"; document.body.appendChild(f); const d = f.contentWindow.document; d.open(); d.write(`<!doctype html><html><head><meta charset="utf-8"><title>Etichetta impianto</title><style>@page{margin:8mm}body{margin:0}${css}</style></head><body>${corpo}</body></html>`); d.close(); setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch(err){} setTimeout(() => f.remove(), 3000); }, 400); }
+  });
+}
+let impLinkVisto = false;
+function controllaLinkImpianto(){
+  if (impLinkVisto || !/[?&]imp=/.test(location.search) || !ui.modo || !loaded.has("impianti")) return;
+  impLinkVisto = true; const id = new URLSearchParams(location.search).get("imp");
+  try { history.replaceState(null, "", location.pathname + location.hash); } catch(e){}
+  const i = byId("impianti", id); if (i) detImpianto(i); else toast("Impianto non trovato");
+}
+
+// ---- contabilità: fatture fornitori e DDT (solo titolare e chi è abilitato) ----
+const TIPI_CONT = ["Fattura fornitore", "DDT", "Nota di credito", "Altro"];
+function caricaContab(){
+  if (!assetsNS) { toast("Il caricamento dei file non è attivo: controlla la connessione"); return; }
+  const inp = document.createElement("input"); inp.type = "file"; inp.accept = "application/pdf,image/*"; inp.multiple = true;
+  inp.onchange = async () => {
+    const files = [...inp.files]; if (!files.length) return;
+    const caricati = []; let i = 0;
+    for (const f of files) {
+      i++; toast(`Carico ${i} di ${files.length}…`, 60000);
+      try { let blob = f, type = f.type || "application/pdf"; if (type.startsWith("image/")) { const r = await shrinkImage(f, 2400); if (r) { blob = r.blob; type = r.type; } }
+        const up = await assetsNS.upload(blob, {type, cartella: "contabilita"}); caricati.push({id: up.id, url: up.url, path: up.path || "", nome: f.name, tipo: type}); }
+      catch(e) { clearToasts(); toast("Caricamento non riuscito: " + f.name + errDet(e), 5000); }
+    }
+    clearToasts(); if (!caricati.length) return;
+    const tipoDa = n => /ddt|bolla|d\.d\.t/i.test(n) ? "DDT" : "Fattura fornitore";
+    formContab({tipo: tipoDa(caricati[0].nome), file: caricati[0], altri: caricati.slice(1)});
+  };
+  inp.click();
+}
+function formContab(d = {}){
+  openForm({ title: d.id ? d.tipo + (d.numero ? " n. " + d.numero : "") : "Nuovo documento contabile", values: {data: today(), pagata: false, ...d},
+    intro: d.file ? `<div class="info" style="margin-bottom:10px">📎 <a href="${esc(d.file.url)}" target="_blank" rel="noopener">${esc(d.file.nome || "documento")}</a>${(d.altri || []).length ? ` + altri ${d.altri.length} file (li salvo come documenti separati con gli stessi dati)` : ""}</div>` : "",
+    fields: [
+      {k:"tipo", label:"Tipo", type:"select", options: TIPI_CONT, half:true, rerender:true}, {k:"fornitore", label:"Fornitore", list: fornitoriNoti, req:true, half:true},
+      {k:"numero", label:"Numero", half:true}, {k:"data", label:"Data", type:"date", half:true},
+      {k:"importo", label:"Totale € (IVA inclusa)", type:"number", half:true, show: v => v.tipo !== "DDT"}, {k:"scadenza", label:"Scadenza pagamento", type:"date", half:true, show: v => v.tipo === "Fattura fornitore"},
+      {k:"pagata", label:"Pagata", type:"checkbox", show: v => v.tipo === "Fattura fornitore", rerender:true},
+      {k:"rif", label:"Cantiere / riferimento"}, {k:"note", label:"Note", type:"textarea"}
+    ],
+    onSave: async v => {
+      const {altri, ...doc} = v; doc.caricatoDa = doc.caricatoDa || ui.uff || "Ufficio"; doc.il = doc.il || new Date().toISOString(); if (doc.pagata && !doc.pagataIl) doc.pagataIl = today();
+      await save("contabilita", d.id, doc);
+      for (const f of (altri || [])) await save("contabilita", null, {...doc, file: f, note: (doc.note ? doc.note + " · " : "") + "pagina aggiuntiva"});
+      toast("Documento salvato"); render();
+    },
+    onDelete: d.id ? async () => { await remove("contabilita", d.id); try { if (d.file && d.file.id) await assetsNS?.delete(d.file.id, "contabilita"); } catch(e){} closeModal(); render(); } : null
+  });
+}
+function vContab(){
+  if (!puoContab()) return empty("La contabilità è visibile solo al titolare e a chi è abilitato.");
+  const t = today(), q = (ui.q || "").toLowerCase(), F = ui.conF || "tutti";
+  let l = (S.contabilita || []).slice();
+  if (F === "fatture") l = l.filter(d => d.tipo === "Fattura fornitore"); if (F === "ddt") l = l.filter(d => d.tipo === "DDT"); if (F === "dapagare") l = l.filter(d => d.tipo === "Fattura fornitore" && !d.pagata);
+  if (q) l = l.filter(d => [d.fornitore, d.numero, d.rif, d.note, d.tipo].join(" ").toLowerCase().includes(q));
+  l.sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+  const dp = (S.contabilita || []).filter(d => d.tipo === "Fattura fornitore" && !d.pagata), scad = dp.filter(d => d.scadenza && d.scadenza < t);
+  return `<div class="tiles" style="margin-bottom:10px"><div class="tile" data-conf="dapagare"><div class="n money" style="font-size:19px">${eur(dp.reduce((s, d) => s + num(d.importo), 0))}</div><div class="l">Fatture fornitori da pagare (${dp.length})</div></div><div class="tile"><div class="n" style="color:${scad.length ? "var(--bad)" : "inherit"}">${scad.length}</div><div class="l">Scadute</div></div></div>
+  <button class="btn pri big" data-contab="up" style="margin-bottom:10px">⬆ Carica fatture o DDT (PDF o foto)</button>
+  <div class="seg">${[["tutti", "Tutti"], ["fatture", "Fatture"], ["ddt", "DDT"], ["dapagare", "Da pagare"]].map(([k, lb]) => `<button class="${F === k ? "on" : ""}" data-conf="${k}">${lb}</button>`).join("")}</div>
+  <input class="search" placeholder="Cerca fornitore, numero, cantiere…" value="${esc(ui.q)}" data-q>
+  ${l.length ? l.map(d => `<div class="card"><div class="row"><span class="t tap" data-contabd="${d.id}" style="flex:1;cursor:pointer">${esc(d.fornitore || "—")} · ${esc(d.tipo)}${d.numero ? " n. " + esc(d.numero) : ""}</span>${d.tipo === "Fattura fornitore" ? `<span class="chip ${d.pagata ? "ok" : d.scadenza && d.scadenza < t ? "bad" : "warn"}">${d.pagata ? "pagata" : d.scadenza ? "scade " + fd(d.scadenza) : "da pagare"}</span>` : ""}</div>
+    <div class="m">${esc(fd(d.data))}${num(d.importo) ? " · " + eur(d.importo) : ""}${d.rif ? " · " + esc(d.rif) : ""} · caricato da ${esc(d.caricatoDa || "")}</div>
+    ${d.file ? `<div style="margin-top:6px"><a class="btn sm" style="text-decoration:none" href="${esc(d.file.url)}" target="_blank" rel="noopener">📎 Apri ${esc(/pdf/.test(d.file.tipo || "") ? "PDF" : "file")}</a>${d.tipo === "Fattura fornitore" && !d.pagata ? ` <button class="btn sm" data-contabpag="${d.id}">✓ Pagata</button>` : ""}</div>` : ""}</div>`).join("") : empty("Nessun documento. Carica le fatture dei fornitori e i DDT: li vedete solo tu e chi abiliti.")}`;
+}
+
+// ---- pagina Altro ----
+const ALTRO = () => [
+  ["margini", "📈", "Margini", "Quanto guadagni su ogni intervento e preventivo"],
+  ["prezzi", "💡", "Confronto prezzi", "Chi vende meno caro lo stesso articolo"],
+  ["incassi", "💶", "Incassi e solleciti", "Fatture da incassare, solleciti pronti"],
+  ["ordini", "📦", "Ordini ai fornitori", "Da preventivi e scorte, per fornitore"],
+  ["furgoni", "🚐", "Furgoni", "Materiale sul furgone di ogni tecnico"],
+  ["contratti", "📝", "Contratti di manutenzione", "Canoni, rinnovi e visite"],
+  ["fgas", "🧊", "Registro F-gas", "Scadenze dei controlli perdite"],
+  ...(puoContab() ? [["contab", "📒", "Contabilità", "Fatture fornitori e DDT (riservato)"]] : [])
+];
+function vAltro(){
+  const V = {margini: vMargini, prezzi: vPrezzi, incassi: vIncassi, ordini: vOrdini, furgoni: vFurgoni, contratti: vContratti, fgas: vFgas, contab: vContab};
+  const cur = ALTRO().find(a => a[0] === ui.altro);
+  if (cur && V[cur[0]]) return `<button class="btn sm" data-altro="">← Gestione</button><h2 style="margin-top:12px">${cur[1]} ${esc(cur[2])}</h2>${V[cur[0]]()}`;
+  return `<h2>Gestione</h2><div class="tiles">${ALTRO().map(([k, ic, t, d]) => `<div class="tile" data-altro="${k}"><div style="font-size:24px">${ic}</div><div class="t" style="margin-top:4px">${esc(t)}</div><div class="l">${esc(d)}</div></div>`).join("")}</div>`;
+}
+function extraOggi(){
+  if (ui.modo !== "ufficio") return "";
+  const t = today(), in30 = addDays(t, 30);
+  const k = S.contratti.filter(c => c.stato !== "Disdetto" && c.scadenza && c.scadenza <= in30);
+  const fg = S.impianti.filter(i => fgasMesi(i) > 0 && fgasProssimo(i) <= in30);
+  const ord = S.ordini.filter(o => o.stato === "Da inviare");
+  if (!k.length && !fg.length && !ord.length) return "";
+  return `<h3>Da non dimenticare</h3>
+  ${k.length ? `<div class="card tap" data-altro="contratti"><b>📝 ${k.length} contratt${k.length === 1 ? "o" : "i"} di manutenzione</b> in scadenza o scadut${k.length === 1 ? "o" : "i"}: proponi il rinnovo</div>` : ""}
+  ${fg.length ? `<div class="card tap" data-altro="fgas"><b>🧊 ${fg.length} controll${fg.length === 1 ? "o" : "i"} perdite F-gas</b> da fare entro 30 giorni</div>` : ""}
+  ${ord.length ? `<div class="card tap" data-altro="ordini"><b>📦 ${ord.length} ordin${ord.length === 1 ? "e" : "i"} ai fornitori</b> ancora da inviare</div>` : ""}`;
+}
+
+// ---- eventi delle nuove pagine ----
+document.addEventListener("click", async e => {
+  if (e.target.closest(".ov")) return;
+  const el = e.target.closest("[data-altro],[data-marm],[data-pagata],[data-sollecitato],[data-ord],[data-ordprev],[data-ordine],[data-furt],[data-furc],[data-contr],[data-contrvis],[data-contrrin],[data-fgascsv],[data-impd],[data-contab],[data-contabd],[data-contabpag],[data-conf],[data-tecfur]");
+  if (!el) return; const d = el.dataset;
+  if (d.altro !== undefined) { ui.altro = d.altro; ui.q = ""; if (ui.tab !== "altro") ui.tab = "altro"; render(); window.scrollTo(0, 0); return; }
+  if (d.marm) { const x = new Date(ui.marM + "-15T12:00:00"); x.setMonth(x.getMonth() + +d.marm); ui.marM = iso(x).slice(0, 7); render(); return; }
+  if (d.pagata) { await patch("fatture", d.pagata, {pagata: true, dataPagamento: today()}); toast("Fattura segnata come pagata"); return; }
+  if (d.sollecitato) { for (const f of S.fatture.filter(f => f.clienteId === d.sollecitato && !f.pagata)) { try { await patch("fatture", f.id, {ultimoSollecito: today(), solleciti: [...(f.solleciti || []), today()]}); } catch(err){} } toast("Sollecito registrato"); return; }
+  if (d.ord === "scorta") return ordiniDaScorta();
+  if (d.ord === "nuovo") return formOrdine();
+  if (d.ord === "fornitori") return formFornitori();
+  if (d.ordprev) { const p = byId("preventivi", d.ordprev); if (p) ordiniDaPreventivo(p); return; }
+  if (d.ordine) { const o = byId("ordini", d.ordine); if (o) detOrdine(o); return; }
+  if (d.furt) { ui.furT = d.furt; render(); return; }
+  if (d.furc) return formCaricoFurgone(ui.furT, +d.furc);
+  if (d.contr === "new") return formContratto();
+  if (d.contr) { const c = byId("contratti", d.contr); if (c) formContratto(c); return; }
+  if (d.contrvis) { const k = byId("contratti", d.contrvis); if (k) { const imp = S.impianti.find(i => i.clienteId === k.clienteId && (k.impianti || []).includes(impName(i) || "Impianto")); formIntervento({clienteId: k.clienteId, impiantoId: imp?.id || "", tipo: "Manutenzione", descrizione: "Visita da contratto di manutenzione" + (k.descrizione ? ": " + k.descrizione : "")}); } return; }
+  if (d.contrrin) { const k = byId("contratti", d.contrrin); if (k) { const base = k.scadenza && k.scadenza > today() ? k.scadenza : today(); await patch("contratti", k.id, {inizio: base, scadenza: addMonths(base, num(k.durataMesi) || 12), stato: "Attivo", rinnovatoIl: today()}); toast("Contratto rinnovato"); } return; }
+  if (d.fgascsv) { const l = S.impianti.filter(i => fgasMesi(i) > 0); await saveCsv("Registro F-gas iTeam.csv", ["Cliente", "Indirizzo", "Impianto", "Matricola", "Gas", "Carica kg", "t CO2 eq", "Frequenza mesi", "Ultimo controllo", "Prossimo controllo"], l.map(i => { const c = byId("clienti", i.clienteId); return [c?.nome || "", addr(c), impName(i), i.matricola || "", i.gas || "", i.caricaKg || "", tco2(i).toFixed(2), fgasMesi(i), i.ultimoControlloPerdite || "", fgasProssimo(i)]; })); return; }
+  if (d.impd) return detImpianto(byId("impianti", d.impd));
+  if (d.contab === "up") return caricaContab();
+  if (d.contabd) { const x = (S.contabilita || []).find(y => y.id === d.contabd); if (x) formContab(x); return; }
+  if (d.contabpag) { await patch("contabilita", d.contabpag, {pagata: true, pagataIl: today()}); toast("Segnata come pagata"); return; }
+  if (d.conf) { ui.conF = d.conf; ui.altro = "contab"; render(); return; }
+  if (d.tecfur) { ui.tecF = "furgone"; render(); return; }
+});
+
 // ---------- render ----------
 function go(tab){ ui.tab = tab; ui.q = ""; if (tab !== "clienti") ui.cliente = null; location.hash = tab; render(); window.scrollTo(0, 0); }
 function render(){
-  setTimeout(controllaCondivisi, 0);
+  setTimeout(controllaCondivisi, 0); setTimeout(controllaLinkImpianto, 0);
   if (ui.modo && !modiConsentiti().includes(ui.modo)) { ui.modo = ""; ls.set("modo", ""); }
   const acc = mioAccount();
   if (acc) {
@@ -2821,7 +3333,7 @@ function render(){
   const nVer = S.interventi.filter(x => x.rapportino && !x.verificato).length;
   nav.hidden = false;
   nav.innerHTML = NAV.map(([k, l, ic]) => `<button class="${ui.tab === k ? "on" : ""}" data-tab="${k}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ic}</svg>${l}${(k === "oggi" || k === "interventi") && nVer ? `<span class="badge">${nVer}</span>` : ""}</button>`).join("");
-  const V = {oggi: vOggi, calendario: () => vCalendario(), interventi: vInterventi, clienti: vClienti, documenti: vDocumenti, magazzino: vMagazzino};
+  const V = {oggi: vOggi, calendario: () => vCalendario(), interventi: vInterventi, clienti: vClienti, documenti: vDocumenti, magazzino: vMagazzino, altro: vAltro};
   app.innerHTML = banner + (V[ui.tab] || vOggi)();
   const fabs = {oggi: ["newint", "+ Intervento"], calendario: ["calnewsel", "+ Intervento"], interventi: ["newint", "+ Intervento"], clienti: ui.cliente ? ["cliint", "+ Intervento"] : ["newcli", "+ Cliente"], documenti: ui.docTab === "dico" ? ["newdico", "+ DiCo"] : ui.docTab === "preventivi" ? ["newprev", "+ Preventivo"] : ui.docTab === "fatture" ? ["newfat", "+ Fattura"] : null, magazzino: ["newart", "+ Articolo"]};
   const fb = fabs[ui.tab]; fab.innerHTML = fb ? `<button class="fab" data-a="${fb[0]}">${fb[1]}</button>` : "";
@@ -2866,7 +3378,7 @@ document.addEventListener("click", async e => {
   if (d.take) { await patch("interventi", d.take, {tecnico: ui.tecnico}); return toast("Lavoro assegnato a te"); }
   if (d.int) return detIntervento(byId("interventi", d.int));
   if (d.cli) { ui.cliente = d.cli; render(); return window.scrollTo(0, 0); }
-  if (d.imp) return formImpianto(byId("impianti", d.imp));
+  if (d.imp) return detImpianto(byId("impianti", d.imp));
   if (d.prev) return detPreventivo(byId("preventivi", d.prev));
   if (d.fat) return formFattura(byId("fatture", d.fat));
   if (d.art) return formArticolo(byId("magazzino", d.art));

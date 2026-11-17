@@ -1,0 +1,23 @@
+# Quando cambiano firestore.rules o storage.rules, le pubblica su Firebase (scripts/regole.js).
+name: Pubblica regole di sicurezza
+on:
+  push:
+    branches: [main]
+    paths: [firestore.rules, storage.rules]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regole:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --prefix scripts --no-save --no-audit --no-fund firebase-admin@12
+      - name: Pubblica le regole
+        run: node scripts/regole.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

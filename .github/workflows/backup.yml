@@ -1,0 +1,22 @@
+# Copia di sicurezza di tutto il database ogni notte (scripts/backup.js), tenuta 30 giorni in Firebase Storage.
+name: Backup notturno
+on:
+  schedule:
+    - cron: "17 1 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --prefix scripts --no-save --no-audit --no-fund firebase-admin@12
+      - name: Salva il backup
+        run: node scripts/backup.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

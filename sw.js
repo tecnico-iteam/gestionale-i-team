@@ -1,6 +1,6 @@
 // Service worker: l'app si apre anche senza connessione e si aggiorna da sola.
 // Cambiare VERSIONE quando si vuole svuotare la cache sui dispositivi.
-const VERSIONE = "iteam-v4";
+const VERSIONE = "iteam-v5";
 const CONDIVISI = "iteam-condivisi"; // foto/video arrivati da "Condividi" (es. WhatsApp), in attesa di essere salvati
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", e => e.waitUntil(

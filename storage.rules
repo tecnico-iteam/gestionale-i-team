@@ -8,6 +8,21 @@ service firebase.storage {
         (request.auth.token.email.lower() == 'carone.t46@gmail.com' && request.auth.token.email_verified == true)
         || firestore.get(/databases/(default)/documents/utenti/$(request.auth.uid)).data.attivo == true);
     }
+    function contab() {
+      return request.auth != null && (
+        (request.auth.token.email.lower() == 'carone.t46@gmail.com' && request.auth.token.email_verified == true)
+        || (firestore.get(/databases/(default)/documents/utenti/$(request.auth.uid)).data.attivo == true
+            && firestore.get(/databases/(default)/documents/utenti/$(request.auth.uid)).data.get('contabilita', false) == true));
+    }
+    // fatture dei fornitori e DDT: solo titolare e chi è abilitato alla contabilità
+    match /contabilita/{file} {
+      allow read, delete: if contab();
+      allow create: if contab() && request.resource.size < 50 * 1024 * 1024;
+    }
+    // copie di sicurezza notturne: le scrive solo il sistema, nessuno le legge dall'app
+    match /backups/{file} {
+      allow read, write: if false;
+    }
     match /media/{file} {
       allow read, delete: if active();
       // foto, video e documenti delle commesse (PDF, Word, Excel, DWG…), fino a 50 MB
