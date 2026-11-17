@@ -330,7 +330,7 @@ async function initDb(){
       scontoAcquisto: num(d.scontoAcquisto), scontoCliente: d.scontoCliente === undefined || d.scontoCliente === "" ? 0 : num(d.scontoCliente),
       manodopera: Array.isArray(d.manodopera) && d.manodopera.length ? d.manodopera : DEFAULT_MANODOPERA.map(x => ({...x})),
       costoOra: d.costoOra === undefined || d.costoOra === "" ? 45 : num(d.costoOra), costoGiornata: d.costoGiornata === undefined || d.costoGiornata === "" ? 300 : num(d.costoGiornata),
-      costoInterno: num(d.costoInterno), fornitori: Array.isArray(d.fornitori) ? d.fornitori : [],
+      costoInterno: num(d.costoInterno), fornitori: Array.isArray(d.fornitori) ? d.fornitori : [], iban: d.iban || "", banca: d.banca || "", intestatario: d.intestatario || "",
       titolare: d.titolare || "Carone Tommaso", respAB: d.respAB || d.respTecnico || "Carone Tommaso", respCE: d.respCE || "Sasso Francesco", fgas: d.fgas || "FGAS-A18879", cciaa: d.cciaa || "Torino", rea: d.rea || "TO-1331174", alboArt: d.alboArt || "", abilitazioni: d.abilVer >= 2 && Array.isArray(d.abilitazioni) && d.abilitazioni.length ? d.abilitazioni : ["a) elettrici", "b) radiotelevisivi ed elettronici", "c) riscaldamento e climatizzazione", "e) gas"]};
     render();
   }, () => {});
@@ -676,7 +676,7 @@ function formArticolo(a = {}){
   });
 }
 function formImpostazioni(){
-  openForm({ title: "Impostazioni", values: {waUfficio: CFG.waUfficio || "", pinUfficio: CFG.pinUfficio || "", postazioni: (CFG.postazioni || []).join("\n"), lavori: CFG.lavori.join("\n"), scontoAcquisto: CFG.scontoAcquisto || "", scontoCliente: CFG.scontoCliente || "", costoOra: CFG.costoOra, costoGiornata: CFG.costoGiornata, costoInterno: CFG.costoInterno || "", titolare: CFG.titolare || "", respAB: CFG.respAB || "", respCE: CFG.respCE || "", fgas: CFG.fgas || "", cciaa: CFG.cciaa || "Torino", rea: CFG.rea || "", alboArt: CFG.alboArt || "", abilitazioni: CFG.abilitazioni || [], manodopera: CFG.manodopera.map(m => m.descrizione + " | " + (num(m.prezzo) ? String(m.prezzo).replace(".", ",") : "")).join("\n")},
+  openForm({ title: "Impostazioni", values: {waUfficio: CFG.waUfficio || "", pinUfficio: CFG.pinUfficio || "", postazioni: (CFG.postazioni || []).join("\n"), lavori: CFG.lavori.join("\n"), scontoAcquisto: CFG.scontoAcquisto || "", scontoCliente: CFG.scontoCliente || "", costoOra: CFG.costoOra, costoGiornata: CFG.costoGiornata, costoInterno: CFG.costoInterno || "", iban: CFG.iban || "", banca: CFG.banca || "", intestatario: CFG.intestatario || "", titolare: CFG.titolare || "", respAB: CFG.respAB || "", respCE: CFG.respCE || "", fgas: CFG.fgas || "", cciaa: CFG.cciaa || "Torino", rea: CFG.rea || "", alboArt: CFG.alboArt || "", abilitazioni: CFG.abilitazioni || [], manodopera: CFG.manodopera.map(m => m.descrizione + " | " + (num(m.prezzo) ? String(m.prezzo).replace(".", ",") : "")).join("\n")},
     fields: [
       {k:"tecinfo", type:"info", label:"Tecnici", html: () => `${TEC().length} tecnici registrati · si gestiscono dal pulsante 👷 in alto`},
       {k:"exp", type:"info", label:"Esporta dati (backup in Excel)", html: () => `<div class="row wrap" style="gap:6px"><button type="button" class="btn sm" data-exp="expcli">Clienti</button><button type="button" class="btn sm" data-exp="expint">Interventi</button><button type="button" class="btn sm" data-exp="expmag">Magazzino</button><button type="button" class="btn sm" data-exp="expfat">Fatture</button></div>`},
@@ -684,6 +684,9 @@ function formImpostazioni(){
       {k:"waUfficio", label:"WhatsApp dell'ufficio (per i messaggi dei tecnici)", type:"tel", ph:"+39 345 0736526", half:true},
       {k:"pinUfficio", label:"PIN per entrare in Ufficio (vuoto = nessun PIN)", ph:"es. 2580", half:true},
       {k:"lavori", label:"Elenco lavori selezionabili dai tecnici (uno per riga)", type:"textarea"},
+      {k:"datiPag", type:"info", label:"Dati per i pagamenti (compaiono nel QR di Tommy e Irene)", html: () => `Ragione sociale, P.IVA, codice SDI e PEC ci sono già: qui sotto aggiungi i dati del conto.`},
+      {k:"iban", label:"IBAN", ph:"IT00 X000 0000 0000 0000 0000 000"},
+      {k:"banca", label:"Banca", half:true}, {k:"intestatario", label:"Intestatario del conto", ph: AZIENDA.ragione, half:true},
       {k:"titolare", label:"DiCo: titolare / legale rappresentante", half:true},
       {k:"respAB", label:"Resp. tecnico lettere A, B", half:true},
       {k:"respCE", label:"Resp. tecnico lettere C, E", half:true},
@@ -702,7 +705,7 @@ function formImpostazioni(){
       const split = s => s.split("\n").map(x => x.trim()).filter(Boolean);
       const mano = split(v.manodopera).map(l => { const [d, pr] = l.split("|"); return {descrizione: (d || "").trim(), prezzo: num(pr)}; }).filter(m => m.descrizione);
       ls.set("uffPin", String(v.pinUfficio || "").trim());
-      try { await db.doc("config/impostazioni").set({tecnici: CFG.tecnici, waUfficio: String(v.waUfficio || "").trim(), pinUfficio: String(v.pinUfficio || "").trim(), postazioni: split(v.postazioni).length ? split(v.postazioni) : ["Tommy", "Irene", "Alessandro"], lavori: split(v.lavori), scontoAcquisto: num(v.scontoAcquisto), scontoCliente: num(v.scontoCliente), costoOra: num(v.costoOra), costoGiornata: num(v.costoGiornata), costoInterno: num(v.costoInterno), fornitori: CFG.fornitori || [], titolare: v.titolare || "", respAB: v.respAB || "", respCE: v.respCE || "", fgas: v.fgas || "", abilVer: 2, cciaa: v.cciaa || "", rea: v.rea || "", alboArt: v.alboArt || "", abilitazioni: v.abilitazioni || [], manodopera: mano}); toast("Impostazioni salvate"); }
+      try { await db.doc("config/impostazioni").set({tecnici: CFG.tecnici, waUfficio: String(v.waUfficio || "").trim(), pinUfficio: String(v.pinUfficio || "").trim(), postazioni: split(v.postazioni).length ? split(v.postazioni) : ["Tommy", "Irene", "Alessandro"], lavori: split(v.lavori), scontoAcquisto: num(v.scontoAcquisto), scontoCliente: num(v.scontoCliente), costoOra: num(v.costoOra), costoGiornata: num(v.costoGiornata), costoInterno: num(v.costoInterno), fornitori: CFG.fornitori || [], iban: String(v.iban || "").toUpperCase().replace(/\s+/g, " ").trim(), banca: String(v.banca || "").trim(), intestatario: String(v.intestatario || "").trim(), titolare: v.titolare || "", respAB: v.respAB || "", respCE: v.respCE || "", fgas: v.fgas || "", abilVer: 2, cciaa: v.cciaa || "", rea: v.rea || "", alboArt: v.alboArt || "", abilitazioni: v.abilitazioni || [], manodopera: mano}); toast("Impostazioni salvate"); }
       catch(e){ writeErr(e); throw e; }
     }
   });
@@ -2704,15 +2707,21 @@ function bigliettoDati(){
   if (ui.modo === "ufficio") { const t = TEC().find(x => sameTec(x.nome, (acc && acc.nome) || ui.uff) || sameTec(primoNome(x.nome), primoNome(ui.uff))) || {}; return {nome: (acc && acc.nome) || ui.uff || "Ufficio", ruolo: t.ruolo || "Ufficio", tel: t.telefono || "", email: t.email || emailAcc}; }
   return {nome: (acc && acc.nome) || ui.comm || "", ruolo: "Preventivi", tel: "", email: emailAcc};
 }
+// Tommy (titolare) e Irene (ufficio): nel QR anche i dati per fatture e pagamenti
+const conDatiFatt = d => /\b(carone|tommaso|tommy|irene|cavicchio)\b/i.test(d.nome || "") || (mioAccount() || {}).email === "carone.t46@gmail.com";
+const ibanFmt = s => String(s || "").replace(/\s+/g, "").replace(/(.{4})/g, "$1 ").trim();
+const datiFattRighe = () => [["Ragione sociale", AZIENDA.ragione], ["P.IVA e C.F.", AZIENDA.piva], ["Codice SDI", AZIENDA.sdi], ["PEC", AZIENDA.pec], ["Sede legale", AZIENDA.legale],
+  ...(CFG.iban ? [["IBAN", ibanFmt(CFG.iban)], ["Intestato a", CFG.intestatario || AZIENDA.ragione]] : []), ...(CFG.iban && CFG.banca ? [["Banca", CFG.banca]] : [])];
+const datiFattTesto = () => datiFattRighe().map(([k, v]) => k + ": " + v).join("\n");
 function vcardTesto(d){
   const e = v => String(v || "").replace(/\\/g, "\\\\").replace(/([,;])/g, "\\$1").replace(/\r?\n/g, " ");
   const parti = String(d.nome || "").trim().split(/\s+/), nome = parti.shift() || "", cognome = parti.join(" ");
-  const L = ["BEGIN:VCARD", "VERSION:3.0", `N:${e(cognome)};${e(nome)};;;`, `FN:${e(d.nome)}`, "ORG:iTeam", `TITLE:${e(d.ruolo)}`];
+  const L = ["BEGIN:VCARD", "VERSION:3.0", `N:${e(cognome)};${e(nome)};;;`, `FN:${e(d.nome)}`, "ORG:" + (d.fatt ? e(AZIENDA.ragione) : "iTeam"), `TITLE:${e(d.ruolo)}`];
   if (d.tel) L.push("TEL;TYPE=CELL:" + d.tel.replace(/[^\d+]/g, ""));
   AZIENDA.tel.split(/\s+-\s+/).filter(Boolean).forEach(n => L.push("TEL;TYPE=WORK:" + n.replace(/[^\d+]/g, "")));
   if (d.foto) L.push(...foldV("PHOTO;ENCODING=b;TYPE=JPEG:" + d.foto));
   if (d.email && d.email.toLowerCase() !== BIGLIETTO.email) L.push("EMAIL;TYPE=WORK,pref:" + d.email);
-  L.push("EMAIL;TYPE=WORK:" + BIGLIETTO.email, `ADR;TYPE=WORK:;;${e(BIGLIETTO.via)};${e(BIGLIETTO.citta)};${BIGLIETTO.prov};${BIGLIETTO.cap};Italia`, "NOTE:" + e(BIGLIETTO.servizi), "END:VCARD");
+  L.push("EMAIL;TYPE=WORK:" + BIGLIETTO.email, `ADR;TYPE=WORK:;;${e(BIGLIETTO.via)};${e(BIGLIETTO.citta)};${BIGLIETTO.prov};${BIGLIETTO.cap};Italia`, "NOTE:" + (d.fatt ? e(BIGLIETTO.servizi) + "\\n\\nDATI PER FATTURE E PAGAMENTI\\n" + datiFattRighe().map(([k, v]) => e(k + ": " + v)).join("\\n") : e(BIGLIETTO.servizi)), "END:VCARD");
   return L.join("\r\n");
 }
 // Foto del contatto: il logo iTeam piccolo (deve stare dentro al QR, quindi pochi byte)
@@ -2728,7 +2737,8 @@ function logoFoto(){
 }
 async function vBiglietto(){
   const d = bigliettoDati();
-  d.foto = await logoFoto();
+  d.fatt = conDatiFatt(d);
+  d.foto = d.fatt ? "" : await logoFoto(); // con i dati di fatturazione il QR è già pieno: niente foto
   try { await loadQR(); } catch(e) { toast("Non riesco a creare il QR: controlla la connessione e riprova", 4000); return; }
   const ov = modal(`<div class="qrcard"><img class="logo" src="${LOGO}" alt="iTeam" style="margin:0 auto 8px">
     <div class="qn">${esc(d.nome)}</div><div class="qr">${esc(d.ruolo)}</div>
@@ -2736,8 +2746,12 @@ async function vBiglietto(){
     <p class="qh">Fai inquadrare al cliente con la fotocamera: si salva il contatto in rubrica</p>
     ${d.email ? `<p class="m" style="margin:0 0 2px">Email: ${esc(d.email)}</p>` : ""}${d.tel ? `<p class="m" style="margin:0">Cellulare: ${esc(d.tel)}</p>` : `<p class="m" style="margin:0">Il tuo cellulare non è inserito: chiedi all’ufficio di aggiungerlo (👷 Tecnici).</p>`}
     <div class="qu"><b>Ufficio iTeam</b>Tel. ${esc(AZIENDA.tel)}<br>${esc(BIGLIETTO.email)}<br>${esc(AZIENDA.legale)}</div>
+    ${d.fatt ? `<div class="qu"><b>Dati per fatture e pagamenti (inclusi nel QR)</b>${datiFattRighe().map(([k, v]) => `${esc(k)}: <b style="display:inline">${esc(v)}</b>`).join("<br>")}
+      ${CFG.iban ? "" : `<div class="m" style="margin-top:6px;color:var(--warn)">IBAN non ancora inserito: aggiungilo da ⚙︎ Impostazioni.</div>`}
+      <div class="row wrap" style="gap:6px;margin-top:8px"><button class="btn sm" data-a="copiafatt">📋 Copia i dati</button><a class="btn sm" style="text-decoration:none;color:#128c4a;border-color:#bfe5cf" href="https://wa.me/?text=${encodeURIComponent(datiFattTesto())}" target="_blank" rel="noopener">💬 Manda su WhatsApp</a></div></div>` : ""}
     <div class="acts"><span class="sp"></span><button class="btn pri big" data-a="close" style="flex:1">Chiudi</button></div></div>`);
-  ov.addEventListener("click", e => { if (e.target.closest("[data-a=close]")) ov.remove(); });
+  ov.addEventListener("click", e => { if (e.target.closest("[data-a=close]")) ov.remove();
+    if (e.target.closest("[data-a=copiafatt]")) { const t = datiFattTesto(); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast("Dati copiati: incollali dove vuoi"), () => toast("Non riesco a copiare")); } });
 }
 
 // ---------- vista tecnico ----------
