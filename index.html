@@ -243,6 +243,13 @@ const pad = n => String(n).padStart(2, "0");
 const iso = d => d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate());
 const today = () => iso(new Date());
 const addDays = (s, n) => { const d = new Date(s + "T12:00:00"); d.setDate(d.getDate() + n); return iso(d); };
+// cantieri di più giorni: data = inizio, dataFine = fine, giorniLav 5 (lun-ven) | 6 (lun-sab) | 7 (tutti), orario oraDa-oraFine
+const isCant = x => !!(x && x.cantiere && x.data && x.dataFine && x.dataFine > x.data);
+const giornoLav = (d, gl) => { const w = new Date(d + "T12:00:00").getDay(); return +gl === 7 || (+gl === 6 ? w !== 0 : w !== 0 && w !== 6); };
+const inGiorno = (x, d) => x.data === d || (isCant(x) && d > x.data && d <= x.dataFine && giornoLav(d, x.giorniLav || 5));
+const giorniInt = x => { if (!isCant(x)) return x.data ? [x.data] : []; const o = []; for (let d = x.data, k = 0; d <= x.dataFine && k < 800; d = addDays(d, 1), k++) if (d === x.data || giornoLav(d, x.giorniLav || 5)) o.push(d); return o; };
+const fineDaDurata = (da, n, gl) => { let d = da, c = 1; for (let k = 0; c < n && k < 800; k++) { d = addDays(d, 1); if (giornoLav(d, gl || 5)) c++; } return d; };
+const oraDelGiorno = (x, d) => isCant(x) && d && d !== x.data ? (x.oraDa || "08:00") : (x.ora || "");
 const addMonths = (s, n) => { const d = new Date(s + "T12:00:00"); d.setMonth(d.getMonth() + n); return iso(d); };
 const nowTime = () => { const d = new Date(); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
 const fd = s => { if (!s) return ""; const d = new Date(s.length > 10 ? s : s + "T12:00:00"); return isNaN(d) ? s : d.toLocaleDateString("it-IT", {day:"2-digit", month:"short", year:"numeric"}); };
@@ -525,8 +532,16 @@ function formIntervento(x = {}){
     fields: [
       {k:"clienteId", label:"Cliente", type:"select", search:true, options:() => cliOpts(), req:true, rerender:true, onChange: v => { v.impiantoId = ""; }},
       {k:"impiantoId", label:"Impianto", type:"select", options: v => impOpts(v.clienteId)},
-      {k:"data", label:"Data", type:"date", def: today, req:true, half:true},
-      {k:"ora", label:"Ora", type:"time", half:true},
+      {k:"data", label: "Data (inizio)", type:"date", def: today, req:true, half:true, rerender:true, onChange: v => { if (v.cantiere && num(v.durataGg) > 1) v.dataFine = fineDaDurata(v.data, num(v.durataGg), v.giorniLav); }},
+      {k:"ora", label:"Ora (inizio)", type:"time", half:true},
+      {k:"cantiere", label:"🏗️ Cantiere di più giorni (resta segnato in agenda ogni giorno fino alla fine)", type:"checkbox", onChange: v => { if (v.cantiere) { if (!v.ora) v.ora = "08:00"; if (!v.oraDa) v.oraDa = "08:00"; if (!v.oraFine) v.oraFine = "17:00"; if (!v.giorniLav) v.giorniLav = "5"; } }},
+      {k:"durataGg", label:"Durata (giorni di lavoro)", type:"number", half:true, rerender:true, show: v => !!v.cantiere, onChange: v => { if (num(v.durataGg) >= 1 && v.data) v.dataFine = fineDaDurata(v.data, Math.round(num(v.durataGg)), v.giorniLav); }},
+      {k:"dataFine", label:"Data fine", type:"date", half:true, rerender:true, show: v => !!v.cantiere, onChange: v => { v.durataGg = v.data && v.dataFine >= v.data ? giorniInt({...v, cantiere: true, dataFine: v.dataFine > v.data ? v.dataFine : ""}).length : ""; }},
+      {k:"oraDa", label:"Orario di lavoro: dalle", type:"time", half:true, show: v => !!v.cantiere},
+      {k:"oraFine", label:"alle", type:"time", half:true, show: v => !!v.cantiere},
+      {k:"giorniLav", label:"Giorni di lavoro", type:"select", rerender:true, show: v => !!v.cantiere, options:[["5", "Da lunedì a venerdì"], ["6", "Da lunedì a sabato"], ["7", "Tutti i giorni"]],
+        onChange: v => { if (num(v.durataGg) > 1 && v.data) v.dataFine = fineDaDurata(v.data, num(v.durataGg), v.giorniLav); }},
+      {k:"riepCant", type:"info", show: v => !!v.cantiere, html: v => { const x = {...v, cantiere: true}; if (!isCant(x)) return "Scegli la <b>durata</b> o la <b>data di fine</b> del cantiere."; const g = giorniInt(x); return `🏗️ Dal <b>${esc(fdl(x.data))}</b> al <b>${esc(fdl(x.dataFine))}</b> · <b>${g.length} giorni</b> di lavoro · ${esc(x.oraDa || "08:00")}–${esc(x.oraFine || "17:00")}${x.ora && x.ora !== (x.oraDa || "08:00") ? ` (il primo giorno dalle ${esc(x.ora)})` : ""}`; }},
       {k:"tipo", label:"Tipo", type:"select", options:TIPI_INT, def:"Manutenzione", half:true},
       {k:"tecnico", label:"Tecnico", type:"select", options:() => [["", "— Da assegnare —"], ...tecnici()], half:true, rerender:true},
       {k:"tecnico2", label:"Secondo tecnico (facoltativo)", type:"select", options: v => [["", "— Nessuno —"], ...tecnici().filter(t => !sameTec(t, v.tecnico))], half:true, show: v => !!v.tecnico},
@@ -536,7 +551,9 @@ function formIntervento(x = {}){
       {k:"stato", label:"Stato", type:"select", options:STATI_INT, def:"Programmato"},
       {k:"promemoria", label:"⚠️ Manda al cliente il promemoria il giorno prima (email e WhatsApp)", type:"checkbox", def:true}
     ],
-    onSave: async v => { if (!v.tecnico || sameTec(v.tecnico2, v.tecnico)) v.tecnico2 = ""; v.materialiPrevisti = (v.materialiPrevisti || []).filter(m => m.articoloId || (m.descrizione || "").trim()); await save("interventi", x.id, v); if (x.id) closeModal(); toast("Appuntamento salvato"); render(); },
+    onSave: async v => { if (v.cantiere && !isCant(v)) { toast("Metti la durata o una data di fine dopo la data di inizio"); throw new Error("fine"); }
+      if (!v.cantiere) { v.dataFine = ""; v.durataGg = ""; } else v.durataGg = giorniInt(v).length;
+      if (!v.tecnico || sameTec(v.tecnico2, v.tecnico)) v.tecnico2 = ""; v.materialiPrevisti = (v.materialiPrevisti || []).filter(m => m.articoloId || (m.descrizione || "").trim()); await save("interventi", x.id, v); if (x.id) closeModal(); toast("Appuntamento salvato"); render(); },
     onDelete: x.id ? async () => { await remove("interventi", x.id); closeModal(); toast("Intervento eliminato"); render(); } : null
   });
 }
@@ -1302,7 +1319,7 @@ async function saveCsv(name, header, rows){
 async function toDataURL(src){
   try { const b = await (await fetch(src)).blob(); return await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.onerror = () => r(null); fr.readAsDataURL(b); }); } catch(e) { return null; }
 }
-const msgAppuntamento = x => { const c = byId("clienti", x.clienteId) || {}; return `Buongiorno${c.nome ? " " + c.nome : ""}, le ricordiamo l'appuntamento con ${AZIENDA.nome} per ${String(x.tipo || "intervento").toLowerCase()} ${x.data === today() ? "oggi" : "il " + fdl(x.data)}${x.ora ? " alle " + x.ora : ""}${addr(c) ? " in " + addr(c) : ""}.${tecDi(x).length > 1 ? " I tecnici saranno " + tecTxt(x) + "." : x.tecnico ? " Il tecnico sarà " + x.tecnico + "." : ""} Per qualsiasi necessità ci contatti al ${waUff()} (anche WhatsApp). Grazie!`; };
+const msgAppuntamento = x => { const c = byId("clienti", x.clienteId) || {}; return `Buongiorno${c.nome ? " " + c.nome : ""}, le ricordiamo l'appuntamento con ${AZIENDA.nome} per ${String(x.tipo || "intervento").toLowerCase()} ${x.data === today() ? "oggi" : "il " + fdl(x.data)}${x.ora ? " alle " + x.ora : ""}${isCant(x) ? ` (il cantiere proseguirà fino a ${fdl(x.dataFine)}, ${x.oraDa || "08:00"}–${x.oraFine || "17:00"})` : ""}${addr(c) ? " in " + addr(c) : ""}.${tecDi(x).length > 1 ? " I tecnici saranno " + tecTxt(x) + "." : x.tecnico ? " Il tecnico sarà " + x.tecnico + "." : ""} Per qualsiasi necessità ci contatti al ${waUff()} (anche WhatsApp). Grazie!`; };
 const msgManutenzione = i => { const c = byId("clienti", i.clienteId) || {}; return `Buongiorno${c.nome ? " " + c.nome : ""}, la manutenzione periodica del suo impianto ${impName(i)} è prevista entro il ${fd(i.prossimaManutenzione)}. Una corretta manutenzione mantiene efficienza, consumi bassi e garanzia. Vuole fissare un appuntamento? ${AZIENDA.nome} - ${AZIENDA.tel.split(" - ")[0]}`; };
 
 // ---------- DiCo (DM 37/2008, allegato I) ----------
@@ -1458,22 +1475,23 @@ const statoChip = x => { if (x.rapportino && !x.verificato && ui.modo === "uffic
 function icsEsc(v){ return String(v || "").replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/([,;])/g, "\\$1"); }
 function icsFold(l){ let o = ""; while (l.length > 73) { o += l.slice(0, 73) + "\r\n "; l = l.slice(73); } return o + l; }
 function icsEvento(x){
+  if (isCant(x)) return giorniInt(x).map((d, i, a) => icsEvento({...x, cantiere: false, _uid: x.id + "-" + d, data: d, ora: oraDelGiorno(x, d), _fine: x.oraFine || "17:00", _giorno: `giorno ${i + 1} di ${a.length}`, _noAllarme: i > 0})).join("\r\n");
   const c = byId("clienti", x.clienteId), imp = byId("impianti", x.impiantoId);
   const d = (x.data || today()).replace(/-/g, ""), pad = n => String(n).padStart(2, "0");
   const stamp = new Date().toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
   const conOra = /^\d{1,2}:\d{2}$/.test(x.ora || "");
-  const L = ["BEGIN:VEVENT", "UID:" + x.id + "@gestionale-iteam", "DTSTAMP:" + stamp];
+  const L = ["BEGIN:VEVENT", "UID:" + (x._uid || x.id) + "@gestionale-iteam", "DTSTAMP:" + stamp];
   if (/^\d{1,2}:\d{2}$/.test(x.ora || "")) {
-    const [h, m] = x.ora.split(":").map(Number), fine = h * 60 + m + 60;
+    const [h, m] = x.ora.split(":").map(Number), fine = /^\d{1,2}:\d{2}$/.test(x._fine || "") && minsBetween(x.ora, x._fine) > 0 ? h * 60 + m + minsBetween(x.ora, x._fine) : h * 60 + m + 60;
     const dFine = fine >= 1440 ? addDays(x.data, 1).replace(/-/g, "") : d;
     L.push(`DTSTART:${d}T${pad(h)}${pad(m)}00`, `DTEND:${dFine}T${pad(Math.floor(fine / 60) % 24)}${pad(fine % 60)}00`);
   } else {
     L.push(`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${addDays(x.data || today(), 1).replace(/-/g, "")}`);
   }
-  L.push("SUMMARY:" + icsEsc(`iTeam · ${x.tipo || "Intervento"} · ${c?.nome || "Cliente"}`));
+  L.push("SUMMARY:" + icsEsc(`iTeam · ${x._giorno ? "Cantiere (" + x._giorno + ")" : x.tipo || "Intervento"} · ${c?.nome || "Cliente"}`));
   if (c && addr(c)) L.push("LOCATION:" + icsEsc(addr(c)));
   L.push("DESCRIPTION:" + icsEsc([imp && "Impianto: " + impName(imp), x.descrizione, c?.telefono && "Tel. cliente: " + c.telefono, tecTxt(x) && (tecDi(x).length > 1 ? "Tecnici: " : "Tecnico: ") + tecTxt(x)].filter(Boolean).join("\n")));
-  L.push("BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + (conOra ? "Appuntamento tra 1 ora" : "Appuntamento domani"), "TRIGGER:" + (conOra ? "-PT1H" : "-PT6H"), "END:VALARM");
+  if (!x._noAllarme) L.push("BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + (conOra ? "Appuntamento tra 1 ora" : "Appuntamento domani"), "TRIGGER:" + (conOra ? "-PT1H" : "-PT6H"), "END:VALARM");
   L.push("END:VEVENT");
   return L.map(icsFold).join("\r\n");
 }
@@ -1504,7 +1522,7 @@ function detIntervento(x){
   const storico = imp ? S.interventi.filter(i => i.impiantoId === imp.id && i.id !== x.id && i.rapportino).sort((a,b) => (b.data||"").localeCompare(a.data||"")).slice(0, 3) : [];
   const ov = modal(`<div class="row"><h2 style="flex:1">${esc(x.tipo || "Intervento")}</h2>${statoChip(x)}</div>
     <div class="kv">
-      <span class="k">Quando</span><span>${esc(fdl(x.data))}${x.ora ? " · " + esc(x.ora) : ""}</span>
+      <span class="k">Quando</span><span>${isCant(x) ? `🏗️ Cantiere dal <b>${esc(fdl(x.data))}</b>${x.ora ? " ore " + esc(x.ora) : ""} al <b>${esc(fdl(x.dataFine))}</b><br><span class="m">${giorniInt(x).length} giorni di lavoro · ${esc(x.oraDa || "08:00")}–${esc(x.oraFine || "17:00")} · ${esc({6: "lunedì–sabato", 7: "tutti i giorni"}[x.giorniLav] || "lunedì–venerdì")}</span>` : esc(fdl(x.data)) + (x.ora ? " · " + esc(x.ora) : "")}</span>
       <span class="k">Cliente</span><span><b>${esc(c?.nome || "—")}</b></span>
       ${c?.telefono ? `<span class="k">Telefono</span><span><a href="tel:${esc(c.telefono)}">${esc(c.telefono)}</a></span>` : ""}
       ${addr(c) ? `<span class="k">Indirizzo</span><span>${esc(addr(c))}<br>${mapLink(c)}</span>` : ""}
@@ -1555,8 +1573,9 @@ function intCard(x, opts = {}){
   const c = byId("clienti", x.clienteId), imp = byId("impianti", x.impiantoId);
   const nuovo = ui.modo === "ufficio" && x.rapportino && !x.verificato;
   return `<div class="card tap" data-int="${x.id}">
-    <div class="row">${nuovo ? '<span class="new-dot"></span>' : ""}<span class="t">${x.ora ? esc(x.ora) + " · " : ""}${esc(c?.nome || "Cliente")}</span><span class="sp"></span>${statoChip(x)}</div>
+    <div class="row">${nuovo ? '<span class="new-dot"></span>' : ""}<span class="t">${oraDelGiorno(x, opts.giorno) ? esc(oraDelGiorno(x, opts.giorno)) + " · " : ""}${esc(c?.nome || "Cliente")}</span><span class="sp"></span>${statoChip(x)}</div>
     <div class="m">${esc(x.tipo || "")}${imp ? " · " + esc(impName(imp)) : ""}${opts.data ? " · " + esc(fd(x.data)) : ""}${!opts.noTec ? " · " + esc(tecTxt(x) || "da assegnare") : ""}</div>
+    ${isCant(x) ? (() => { const g = giorniInt(x), i = g.indexOf(opts.giorno || today()); return `<div class="m" style="margin-top:2px">🏗️ <b>Cantiere</b> ${i >= 0 ? `giorno ${i + 1} di ${g.length} · ` : ""}dal ${esc(fd(x.data))} al ${esc(fd(x.dataFine))} · ${esc(x.oraDa || "08:00")}–${esc(x.oraFine || "17:00")}</div>`; })() : ""}
     ${c && addr(c) && opts.addr ? `<div class="m">${esc(addr(c))}</div>` : ""}
     ${x.rapportino ? `<div class="m" style="margin-top:4px">⏱ ${hm(x.rapportino.minutiLavoro)} · ${esc((x.rapportino.lavori || []).length)} lavori · ${esc((x.rapportino.materiali || []).length)} materiali${(x.media || []).length ? ` · 📷 ${x.media.length}` : ""}</div>` : (x.descrizione ? `<div class="m" style="margin-top:4px">${esc(x.descrizione.slice(0, 110))}</div>` : "")}
     ${opts.actions || ""}
@@ -1592,7 +1611,7 @@ document.addEventListener("click", e => {
 }, true);
 function vOggi(){
   const t = today(), in30 = addDays(t, 30);
-  const oggi = S.interventi.filter(x => x.data === t && x.stato !== "Annullato").sort(sortInt);
+  const oggi = S.interventi.filter(x => inGiorno(x, t) && x.stato !== "Annullato").sort((a, b) => oraDelGiorno(a, t).padStart(5, "0").localeCompare(oraDelGiorno(b, t).padStart(5, "0")));
   const daVer = S.interventi.filter(x => x.rapportino && !x.verificato).sort((a,b) => (b.rapportino.inviatoIl || "").localeCompare(a.rapportino.inviatoIl || ""));
   const scad = S.impianti.filter(i => i.prossimaManutenzione && i.prossimaManutenzione <= in30).filter(i => !S.interventi.some(x => x.impiantoId === i.id && x.stato === "Programmato" && x.data >= t)).sort((a,b) => a.prossimaManutenzione.localeCompare(b.prossimaManutenzione));
   const fatScad = S.fatture.filter(f => !f.pagata && f.scadenza && f.scadenza < t);
@@ -1614,7 +1633,7 @@ function vOggi(){
   <h3>Rapportini arrivati dal campo</h3>
   ${daVer.length ? daVer.slice(0, 8).map(x => intCard(x, {data: true})).join("") : empty("Nessun rapportino da verificare. Appena un tecnico invia un lavoro, compare qui in tempo reale.")}
   <h3>Interventi di oggi</h3>
-  ${oggi.length ? oggi.map(x => intCard(x)).join("") : empty("Nessun intervento programmato per oggi.", `<button class="btn sm" data-a="newint">+ Programma intervento</button>`)}
+  ${oggi.length ? oggi.map(x => intCard(x, {giorno: t})).join("") : empty("Nessun intervento programmato per oggi.", `<button class="btn sm" data-a="newint">+ Programma intervento</button>`)}
   ${promemoriaDomani()}
   <h3 id="scad">Manutenzioni in scadenza</h3>
   ${scad.length ? scad.map(i => `<div class="card"><div class="row"><span class="t">${esc(cliName(i.clienteId))}</span><span class="sp"></span><span class="chip ${i.prossimaManutenzione < t ? "bad" : "warn"}">${esc(fd(i.prossimaManutenzione))}</span></div><div class="m">${esc(impName(i))}</div><div class="row wrap" style="margin-top:8px;gap:6px"><button class="btn sm" data-prog="${i.id}">Programma manutenzione</button>${waBtn(byId("clienti", i.clienteId)?.telefono, msgManutenzione(i), "💬 Avvisa cliente")}</div></div>`).join("") : empty("Nessuna manutenzione in scadenza nei prossimi 30 giorni.")}
@@ -1644,10 +1663,10 @@ function vInterventi(){
   const t = today(); let list = S.interventi.slice();
   if (ui.intTec) list = list.filter(x => ui.intTec === "-" ? !x.tecnico : haTec(x, ui.intTec));
   const F = {
-    oggi: l => l.filter(x => x.data === t),
+    oggi: l => l.filter(x => inGiorno(x, t)),
     prossimi: l => l.filter(x => x.data > t && x.stato !== "Annullato"),
     verifica: l => l.filter(x => x.rapportino && !x.verificato),
-    aperti: l => l.filter(x => x.data < t && (x.stato === "Programmato" || x.stato === "In corso")),
+    aperti: l => l.filter(x => x.data < t && !(isCant(x) && x.dataFine >= t) && (x.stato === "Programmato" || x.stato === "In corso")),
     completati: l => l.filter(x => x.stato === "Completato"),
     tutti: l => l
   };
@@ -1838,8 +1857,8 @@ function vCalendario(fixedTec){
   const tec = fixedTec || ui.calTec;
   let ints = S.interventi.filter(x => x.stato !== "Annullato");
   if (tec) ints = ints.filter(x => tec === "-" ? !x.tecnico : haTec(x, tec));
-  const byDay = {}; ints.forEach(x => { (byDay[x.data] = byDay[x.data] || []).push(x); });
-  Object.values(byDay).forEach(l => l.sort(sortInt));
+  const byDay = {}; ints.forEach(x => giorniInt(x).forEach(d => { (byDay[d] = byDay[d] || []).push(x); }));
+  Object.entries(byDay).forEach(([d, l]) => l.sort((a, b) => oraDelGiorno(a, d).padStart(5, "0").localeCompare(oraDelGiorno(b, d).padStart(5, "0")) || sortInt(a, b)));
   const manDay = {}; if (!fixedTec) S.impianti.forEach(i => { if (i.prossimaManutenzione) (manDay[i.prossimaManutenzione] = manDay[i.prossimaManutenzione] || []).push(i); });
   const label = x => byId("clienti", x.clienteId)?.nome || x.tipo || "Intervento";
   let head, grid;
@@ -1851,7 +1870,7 @@ function vCalendario(fixedTec){
     for (let k = 0; k < 42; k++) {
       if (k === 35 && d.slice(0, 7) !== ui.calM) break;
       const l = byDay[d] || [], mn = manDay[d] || [];
-      cells += `<div class="d ${d.slice(0, 7) !== ui.calM ? "out" : ""} ${d === t ? "today" : ""} ${d === ui.calSel ? "sel" : ""}" data-cald="${d}"><span class="dn">${+d.slice(8)}</span>${l.slice(0, 3).map(x => `<span class="ev" style="background:${tecColor(x.tecnico)}${x.stato === "Completato" ? ";opacity:.55" : ""}">${esc(label(x))}</span>`).join("")}${l.length > 3 ? `<span class="more">+${l.length - 3}</span>` : ""}${mn.length ? `<span class="mn">🔧 ${mn.length} scad.</span>` : ""}</div>`;
+      cells += `<div class="d ${d.slice(0, 7) !== ui.calM ? "out" : ""} ${d === t ? "today" : ""} ${d === ui.calSel ? "sel" : ""}" data-cald="${d}"><span class="dn">${+d.slice(8)}</span>${l.slice(0, 3).map(x => `<span class="ev" style="background:${tecColor(x.tecnico)}${x.stato === "Completato" ? ";opacity:.55" : ""}">${isCant(x) ? "🏗️ " : ""}${esc(label(x))}</span>`).join("")}${l.length > 3 ? `<span class="more">+${l.length - 3}</span>` : ""}${mn.length ? `<span class="mn">🔧 ${mn.length} scad.</span>` : ""}</div>`;
       d = addDays(d, 1);
     }
     grid = `<div class="cal">${["Lun","Mar","Mer","Gio","Ven","Sab","Dom"].map(x => `<div class="hd">${x}</div>`).join("")}${cells}</div>`;
@@ -1862,7 +1881,7 @@ function vCalendario(fixedTec){
     for (let k = 0; k < 7; k++) {
       const d = addDays(ws, k), l = byDay[d] || [], mn = manDay[d] || [];
       grid += `<div class="list-date" style="${d === t ? "color:var(--pri)" : ""}">${esc(fdl(d))}${d === t ? " · oggi" : ""}${fixedTec ? "" : ` <button class="btn sm" style="float:right;padding:2px 8px" data-calnew="${d}">+</button>`}</div>`;
-      grid += l.length ? l.map(x => intCard(x, {noTec: !!fixedTec}).replace('class="card tap"', `class="card tap wk" style="border-left-color:${tecColor(x.tecnico)}"`)).join("") : `<div class="m" style="padding:2px 4px 6px">Nessun intervento</div>`;
+      grid += l.length ? l.map(x => intCard(x, {noTec: !!fixedTec, giorno: d}).replace('class="card tap"', `class="card tap wk" style="border-left-color:${tecColor(x.tecnico)}"`)).join("") : `<div class="m" style="padding:2px 4px 6px">Nessun intervento</div>`;
       if (mn.length) grid += mn.map(i => `<div class="m" style="padding:0 4px 6px">🔧 Scade manutenzione: ${esc(cliName(i.clienteId))} · ${esc(impName(i))} <button class="btn sm" data-prog="${i.id}">Programma</button></div>`).join("");
     }
   }
@@ -1875,7 +1894,7 @@ function vCalendario(fixedTec){
   ${grid}
   ${!fixedTec && tl.length ? `<div class="legend">${tl.map(n => `<span><i style="background:${tecColor(n)}"></i>${esc(n)}</span>`).join("")}<span><i style="background:#8a99a6"></i>Da assegnare</span></div>` : ""}
   ${ui.calView === "mese" ? `<div class="list-date" style="font-size:15px;color:var(--ink)">${esc(fdl(ui.calSel).replace(/^./, c => c.toUpperCase()))}</div>
-  ${selL.length ? selL.map(x => intCard(x, {noTec: !!fixedTec, addr: !!fixedTec}).replace('class="card tap"', `class="card tap wk" style="border-left-color:${tecColor(x.tecnico)}"`)).join("") : `<div class="empty">Nessun intervento in questo giorno.</div>`}
+  ${selL.length ? selL.map(x => intCard(x, {noTec: !!fixedTec, addr: !!fixedTec, giorno: ui.calSel}).replace('class="card tap"', `class="card tap wk" style="border-left-color:${tecColor(x.tecnico)}"`)).join("") : `<div class="empty">Nessun intervento in questo giorno.</div>`}
   ${selM.map(i => `<div class="card"><div class="row"><span class="t">🔧 Scade manutenzione · ${esc(cliName(i.clienteId))}</span></div><div class="m">${esc(impName(i))}</div><div style="margin-top:8px"><button class="btn sm" data-prog="${i.id}">Programma</button></div></div>`).join("")}` : ""}`;
 }
 
@@ -2700,7 +2719,7 @@ function vTecnico(){
   <div class="seg"><button class="${ui.tecF === "oggi" ? "on" : ""}" data-tecf="oggi">Da fare oggi (${F.oggi.filter(x => x.stato !== "Completato").length})</button><button class="${ui.tecF === "prossimi" ? "on" : ""}" data-tecf="prossimi">Prossimi (${F.prossimi.length})</button><button class="${ui.tecF === "cal" ? "on" : ""}" data-tecf="cal">Calendario</button><button class="${ui.tecF === "cli" ? "on" : ""}" data-tecf="cli">Clienti</button><button class="${ui.tecF === "inviati" ? "on" : ""}" data-tecf="inviati">Inviati</button><button class="${ui.tecF === "furgone" ? "on" : ""}" data-tecf="furgone">🚐 Furgone</button></div>
   ${ui.tecF === "cal" ? vCalendario(me) : ui.tecF === "cli" ? vTecClienti() : ui.tecF === "furgone" ? vTecFurgone() : `
   ${ui.tecF === "prossimi" && list.length ? `<button class="btn" style="width:100%;margin-bottom:10px" data-ics="all">📅 Metti tutti i miei appuntamenti nel calendario del telefono</button>` : ""}
-  ${list.length ? (ui.tecF === "prossimi" ? groupByDate(list, {noTec: true, addr: true}) : list.map(x => intCard(x, {noTec: true, addr: true, data: x.data !== t, actions: ui.tecF === "inviati" ? "" : act(x)})).join("")) : empty(ui.tecF === "oggi" ? "Nessun lavoro assegnato per oggi." : "Niente qui.")}
+  ${list.length ? (ui.tecF === "prossimi" ? groupByDate(list, {noTec: true, addr: true}) : list.map(x => intCard(x, {noTec: true, addr: true, data: x.data !== t && !isCant(x), giorno: ui.tecF === "oggi" ? t : undefined, actions: ui.tecF === "inviati" ? "" : act(x)})).join("")) : empty(ui.tecF === "oggi" ? "Nessun lavoro assegnato per oggi." : "Niente qui.")}
   ${ui.tecF === "oggi" && free.length ? `<h3>Da assegnare</h3>${free.map(x => intCard(x, {noTec: true, data: true, addr: true, actions: `<div style="margin-top:8px"><button class="btn sm" data-take="${x.id}">Prendo io</button></div>`})).join("")}` : ""}
   `}
   <div style="margin-top:18px"><button class="btn big" data-a="tecnew">+ Lavoro non programmato</button></div>`;
@@ -3083,7 +3102,7 @@ function prossimoGiornoLavoro(me){
 }
 function vTecFurgone(){
   const me = ui.tecnico, g = prossimoGiornoLavoro(me);
-  const ints = S.interventi.filter(x => haTec(x, me) && x.data === g && x.stato !== "Annullato").sort(sortInt);
+  const ints = S.interventi.filter(x => haTec(x, me) && x.data === g && x.stato !== "Annullato").sort(sortInt); // materiali: solo il primo giorno del cantiere
   const serve = {};
   ints.forEach(x => (x.materialiPrevisti || []).forEach(r => { const k = r.articoloId || "d:" + (r.descrizione || ""); const s = serve[k] = serve[k] || {articoloId: r.articoloId, descrizione: byId("magazzino", r.articoloId)?.descrizione || r.descrizione || "", qta: 0, per: []}; s.qta += num(r.qta) || 1; s.per.push(cliName(x.clienteId)); }));
   const mieiArt = S.magazzino.filter(m => furgQ(m, me) > 0).sort((a, b) => (a.descrizione || "").localeCompare(b.descrizione || ""));
