@@ -8,6 +8,11 @@
 
 const ORA_INVIO = 17 * 60; // dalle 17:00
 const UFFICIO = {nome: "iTeam", email: "ufficio@iteamservice.it", tel: "+39 345 0736526", indirizzo: "Via dei Mille 2, Moncalieri (TO)"};
+// avviso di riservatezza e informativa privacy in fondo a ogni email
+const PRIVACY_MAIL = [
+  "AVVISO DI RISERVATEZZA - Questa email e gli eventuali allegati sono riservati e destinati solo al destinatario indicato. Se l'ha ricevuta per errore, la preghiamo di avvisarci e di cancellarla: è vietato ogni uso, copia o diffusione non autorizzati.",
+  "INFORMATIVA PRIVACY - I suoi dati personali sono trattati da I-TEAM S.R.L.S. (P.IVA 12990840014, Via dei Mille 2, 10024 Moncalieri - TO) secondo il Regolamento UE 2016/679 (GDPR), solo per gestire gli appuntamenti, gli interventi e il rapporto commerciale e per gli obblighi di legge. Può chiedere l'informativa completa ed esercitare i diritti previsti dagli artt. 15-22 GDPR (accesso, rettifica, cancellazione, opposizione) scrivendo a ufficio@iteamservice.it. Se non desidera più ricevere questi promemoria, risponda a questa email."
+];
 const GIORNI = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
 const MESI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
 
@@ -36,7 +41,10 @@ function componi(x, c){
     "",
     "Grazie e a domani,",
     `${UFFICIO.nome} – Climatizzazione e fotovoltaico`,
-    `${UFFICIO.indirizzo} · ${UFFICIO.tel} · ${UFFICIO.email}`
+    `${UFFICIO.indirizzo} · ${UFFICIO.tel} · ${UFFICIO.email}`,
+    "",
+    "--",
+    ...PRIVACY_MAIL
   ].filter((r, i, a) => !(r === "" && a[i - 1] === ""));
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1f2933;max-width:560px">
 <p style="background:#fff4d6;border-radius:8px;padding:10px 14px;font-weight:bold;margin:0 0 16px">⚠️ Promemoria appuntamento: ${esc(quando)}</p>
@@ -44,6 +52,8 @@ function componi(x, c){
 <p>le ricordiamo l'appuntamento con <b>${esc(UFFICIO.nome)}</b> per <b>${esc(lavoro)}</b> <b>${esc(quando)}</b>${dove ? `, in ${esc(dove)}` : ""}.${tec.length ? `<br>${tec.length > 1 ? "I tecnici saranno" : "Il tecnico sarà"} <b>${tec.map(esc).join("</b> e <b>")}</b>.` : ""}</p>
 <p>Se ha bisogno di spostarlo o annullarlo ci contatti al <a href="tel:${UFFICIO.tel.replace(/\s/g, "")}">${esc(UFFICIO.tel)}</a> (anche WhatsApp) o rispondendo a questa email.</p>
 <p>Grazie e a domani,<br><b>${esc(UFFICIO.nome)}</b> – Climatizzazione e fotovoltaico<br><span style="color:#5a6672;font-size:13px">${esc(UFFICIO.indirizzo)} · ${esc(UFFICIO.tel)} · ${esc(UFFICIO.email)}</span></p>
+<hr style="border:0;border-top:1px solid #dde3ea;margin:20px 0 10px">
+${PRIVACY_MAIL.map(t => `<p style="font-size:11px;line-height:1.45;color:#8a96a3;margin:0 0 6px">${esc(t)}</p>`).join("\n")}
 </div>`;
   return {oggetto, testo: righe.join("\n"), html};
 }
