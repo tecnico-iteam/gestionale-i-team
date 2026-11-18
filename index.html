@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>iTeam · Gestionale</title>
-<meta name="theme-color" content="#3472c2">
+<meta name="theme-color" content="#6c4cf1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -169,6 +170,54 @@ h3{font-size:14px;text-transform:uppercase;letter-spacing:.5px;color:var(--mute)
 .mc .pr{font-size:17px;font-weight:700;margin-top:3px}
 .mc-bar{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
 .new-dot{width:8px;height:8px;border-radius:5px;background:var(--bad);display:inline-block}
+/* ===== Tema "Giovane": viola, corallo e menta ===== */
+:root{
+  --bg:#f7f5ff; --card:#fff; --ink:#1f1a3d; --mute:#6b6585; --line:#ebe6fa;
+  --pri:#6c4cf1; --pri-2:#ece7ff; --brand-l:#6c4cf1; --cor:#ff6b4a; --cor-2:#ffe3da; --cor-ink:#a8361a; --menta:#1fae7a; --menta-2:#d6f5e8; --menta-ink:#0b5a3c;
+  --ok:#14915f; --ok-2:#d6f5e8; --warn:#b5520f; --warn-2:#ffead9; --bad:#d63b2f; --bad-2:#ffe0dc; --r:18px;
+  --ombra:0 2px 10px rgba(76,52,200,.07);
+}
+html,body{font-family:"Nunito",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header.top{border-bottom:0;box-shadow:0 2px 14px rgba(76,52,200,.10)}
+.hbtn{border-radius:14px;background:var(--pri-2);color:var(--pri)}
+.hqr{border-color:var(--pri);border-radius:14px}
+h2{font-weight:800;letter-spacing:-.2px}
+h3{color:var(--pri);letter-spacing:.6px;font-weight:800}
+.card,.tile,.empty{border:0;box-shadow:var(--ombra)}
+.card.tap:active{background:var(--pri-2)}
+.tile{border-radius:20px}
+.tile .n{font-weight:800;color:var(--pri)}
+.tiles>.tile:nth-child(4n+1){background:var(--cor-2)}.tiles>.tile:nth-child(4n+1) .n{color:var(--cor-ink)}.tiles>.tile:nth-child(4n+1) .l{color:var(--cor-ink)}
+.tiles>.tile:nth-child(4n+2){background:var(--menta-2)}.tiles>.tile:nth-child(4n+2) .n{color:var(--menta-ink)}.tiles>.tile:nth-child(4n+2) .l{color:var(--menta-ink)}
+.tiles>.tile:nth-child(4n+3){background:var(--pri-2)}.tiles>.tile:nth-child(4n+3) .n,.tiles>.tile:nth-child(4n+3) .l{color:#4b2fc9}
+.tiles>.tile:nth-child(4n+4){background:#fff4cc}.tiles>.tile:nth-child(4n+4) .n,.tiles>.tile:nth-child(4n+4) .l{color:#7a5600}
+.btn{border-radius:22px;border-color:var(--line);font-weight:700}
+.btn.pri{background:var(--pri);border-color:var(--pri)}
+.btn.ok{background:var(--menta);border-color:var(--menta)}
+.btn.bad{border-color:#ffc9c0}
+.fab{background:var(--cor);border-radius:30px;box-shadow:0 6px 18px rgba(255,107,74,.40);font-weight:800}
+.chip{border-radius:20px;padding:2px 10px;font-weight:700;background:#f0edf9;color:#4a4468}
+.chip.ok{background:var(--menta-2);color:var(--menta-ink)} .chip.warn{background:var(--warn-2);color:var(--warn)} .chip.bad{background:var(--bad-2);color:#a32a20}
+.seg{background:#ebe6fa;border-radius:16px}.seg button{border-radius:12px}.seg button.on{background:var(--pri);color:#fff}
+.search,.f input:not([type=checkbox]),.f select,.f textarea{border-radius:14px;border-color:#dcd5f3}
+.search:focus,.f input:focus,.f select:focus,.f textarea:focus{outline:2px solid var(--pri);outline-offset:0;border-color:var(--pri)}
+.checks label{border-radius:14px}
+.dlg{border-radius:26px 26px 0 0}
+@media(min-width:700px){.dlg{border-radius:26px}}
+.info{background:var(--pri-2);border-radius:14px}
+.banner{border-radius:16px}.banner.info{background:var(--pri-2);color:#4b2fc9}
+.empty{border-radius:20px;color:var(--mute)}
+nav.tabs{border-top:0;box-shadow:0 -2px 14px rgba(76,52,200,.08)}
+nav.tabs button.on{color:var(--pri);font-weight:800}
+nav.tabs button.on svg{background:var(--pri-2);border-radius:12px;padding:3px 10px;width:44px;height:28px;box-sizing:border-box}
+.badge{background:var(--cor)}
+.cal .d{border:0;box-shadow:var(--ombra);border-radius:12px}
+.cal .d.today .dn{background:var(--cor)}
+.toast{background:var(--ink);border-radius:18px}
+.grid2>*{min-width:0}.tnow input{min-width:0;width:auto!important}.tnow .btn{padding-left:10px;padding-right:10px}
+.hero{background:var(--pri);color:#fff;border-radius:24px;padding:16px 18px;margin:4px 0 14px;display:flex;align-items:center;gap:12px}
+.hero .hc{font-size:13px;opacity:.9}.hero .hd{font-size:20px;font-weight:800;line-height:1.2}
+.hero .hn{margin-left:auto;background:var(--cor);border-radius:18px;padding:8px 12px;text-align:center;font-weight:800;font-size:22px;line-height:1}.hero .hn small{display:block;font-size:11px;font-weight:700;margin-top:2px}
 </style>
 </head>
 <body>
@@ -1678,7 +1727,7 @@ function vOggi(){
   const empty0 = !S.clienti.length && !S.interventi.length;
   const patAl = TEC().filter(x => x.patScad && x.patScad <= addDays(t, 60));
   const prevAtt = S.preventivi.filter(p => p.stato === "Inviato" && p.data && p.data <= addDays(t, -7)).sort((a,b) => a.data.localeCompare(b.data));
-  return `<h2>${esc(fdl(t).replace(/^./, c => c.toUpperCase()))}</h2>
+  return `<div class="hero"><div><div class="hc">Ciao ${esc(primoNome(ui.uff || (mioAccount() || {}).nome || "") || "")} 👋</div><div class="hd">${esc(fdl(t).replace(/^./, c => c.toUpperCase()))}</div></div><div class="hn">${oggi.length}<small>oggi</small></div></div>
   ${patAl.length ? `<div class="banner warn">🪪 Patentini F-gas: ${patAl.map(x => `<b>${esc(x.nome)}</b> ${x.patScad < t ? "scaduto il" : "scade il"} ${esc(fd(x.patScad))}`).join(" · ")}</div>` : ""}
   ${empty0 ? `<div class="banner info">Benvenuto! Inizia aggiungendo un <b>cliente</b>, poi i suoi <b>impianti</b> e programma gli <b>interventi</b>. In <b>Impostazioni</b> inserisci i nomi dei tecnici e personalizza l'elenco dei lavori.<div style="margin-top:8px"><button class="btn pri sm" data-a="newcli">+ Primo cliente</button> <button class="btn sm" data-a="set">Impostazioni</button></div></div>` : ""}
   <div class="tiles">
