@@ -55,6 +55,9 @@ header.top .who{font-size:13px;color:var(--mute)}
 .qrcard .qh{font-weight:600;margin:12px 0 4px}.qrcard .qu{background:var(--pri-2);border-radius:12px;padding:10px 12px;margin-top:14px;text-align:left;font-size:14px}
 .qrcard .qu b{display:block;margin-bottom:2px}
 .logo-big{height:84px;width:auto;margin:0 auto 10px;display:block}
+.qimg{flex:0 0 auto;width:52px;height:52px;border-radius:10px;border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;background:#fff;text-align:center;font-size:10px;color:var(--mut,#667);line-height:1.2}.qimg img{width:100%;height:100%;object-fit:contain}.qimg.big{width:84px;height:84px}
+.pv-sheet{background:#fff;color:#1f2933;border:1px solid var(--line);border-radius:12px;padding:16px;max-height:62vh;overflow:auto}.pv-head{display:flex;gap:12px;align-items:center;justify-content:space-between;border-bottom:2px solid #3472C2;padding-bottom:10px;font-size:12px;text-align:right}.pv-head img{height:34px}.pv-tit{display:flex;justify-content:space-between;align-items:baseline;margin:12px 0 8px;font-size:17px}.pv-tit span{font-size:13px;color:#667}.pv-cli{background:#f1f5fa;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:14px}.pv-cli small{color:#3472C2;font-weight:700}
+.pv-in{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;margin-bottom:10px;box-sizing:border-box}.pv-rows{border-top:1px solid var(--line);margin:6px 0}.pv-row{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}.pv-mid{flex:1;min-width:0}.pv-mid textarea{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;font-weight:600;resize:vertical}.pv-mid input{padding:5px;border:1px solid var(--line);border-radius:7px}.pv-tot{white-space:nowrap;padding-top:6px}.pv-sum{text-align:right;margin:10px 0 14px;line-height:1.7}.pv-sum .big{font-size:18px}
 .guida details{border:1px solid var(--line,#dde5ee);border-radius:12px;margin:8px 0;background:#fff}.guida summary{cursor:pointer;padding:12px 14px;font-weight:700;list-style-position:inside}.guida details[open] summary{border-bottom:1px solid var(--line,#dde5ee)}.guida .gbody{padding:4px 14px 10px;line-height:1.5}.guida .gbody p{margin:8px 0}.guida .gbody ul{margin:8px 0;padding-left:20px}
 @media(max-width:430px){.hbtn{padding:7px 6px!important}#hguida{padding:7px 5px!important}}
 .hbtn{background:var(--pri-2);border:0;color:var(--pri);font-weight:600;border-radius:10px;padding:7px 10px;cursor:pointer;font-size:13px}
@@ -1650,7 +1653,7 @@ const GUIDA = [
   {per: "u", t: "📱 Trasferire gli appuntamenti dall'iPhone", h: `<p>Solo per il titolare. In <b>Calendario</b> tocca <b>📱 Trasferisci i miei appuntamenti dall'iPhone</b>.</p><ol><li>Sull'iPhone apri <b>Calendario</b> → <b>Calendari</b> → <b>ⓘ</b> accanto al calendario del lavoro → attiva <b>Calendario pubblico</b> → <b>Condividi link…</b> → <b>Copia</b>.</li><li>Incolla il link nel gestionale e tocca <b>Salva</b>: entro 10 minuti arrivano gli appuntamenti da oggi in avanti.</li><li>Per ognuno tocca <b>➜ Trasferisci</b> (si apre l'intervento già compilato: scegli il cliente e salva) oppure <b>Salta</b>.</li><li>Alla fine tocca <b>✓ Ho finito</b> e sull'iPhone spegni <b>Calendario pubblico</b>.</li></ol>`},
   {per: "u", t: "🔧 Interventi e rapportini", h: `<p>Filtri: <b>Oggi</b>, <b>Prossimi</b>, <b>Da verificare</b> (rapportini appena arrivati), <b>Non chiusi</b>, <b>Completati</b>, <b>Tutti</b> e <b>Ore tecnici</b> (ore lavorate del mese, esportabili in Excel).</p><p>Quando un tecnico invia il rapportino lo vedi in tempo reale, con ore, materiali, foto e firma. Controllalo e tocca <b>Segna verificato</b>. Poi puoi <b>Creare la fattura</b>, mandare la <b>📄 Copia al cliente</b> o preparare la <b>📑 DiCo</b>. Puoi vedere anche dove il tecnico ha iniziato e finito il lavoro.</p>`},
   {per: "u", t: "👥 Clienti, impianti e commesse", h: `<p>Nella scheda cliente trovi dati, impianti, storico interventi, preventivi e fatture. Ogni <b>impianto</b> ha i suoi dati (marca, matricola, gas, carica) e la prossima manutenzione, e puoi stampare un'<b>etichetta QR</b> da attaccare alla macchina.</p><p>Nella rubrica i colleghi vedono solo i clienti con lavori, preventivi o fatture dell'<b>ultimo anno</b>. Gli altri, segnati con 📁, li vedono solo Tommy e Irene.</p><p>Nelle <b>commesse</b> carichi documenti e planimetrie del cliente: scegli tu quali vedono i tecnici, che possono anche aggiungere note.</p>`},
-  {per: "up", t: "📋 Preventivi e preventivatore", h: `<p>Con il <b>Preventivatore</b> cerchi gli articoli nei listini caricati (General, Erredi, Sacchi, Tecnosystemi e gli altri), aggiungi la manodopera <b>a ore o a giornate</b>, imposti lo sconto e salvi il preventivo per il cliente.</p><p>Per ogni articolo il gestionale ti segnala anche se un altro fornitore te lo vende a meno.</p>`},
+  {per: "up", t: "📋 Preventivi e preventivatore", h: `<p>Con il <b>Preventivatore</b> cerchi gli articoli nei listini caricati (General, Erredi, Sacchi, Tecnosystemi e gli altri), aggiungi la manodopera <b>a ore o a giornate</b>, imposti lo sconto e salvi il preventivo per il cliente.</p><p>Per ogni articolo il gestionale ti segnala anche se un altro fornitore te lo vende a meno.</p><p>La <b>ricerca</b> cerca in tutti i listini e anche negli <b>articoli di magazzino</b> (📦). Con ✏️ modifichi l&#39;articolo a catalogo. Nelle voci puoi correggere la <b>descrizione</b> e toccare la <b>foto</b> per cambiarla.</p><p>Con <b>👁 Anteprima</b> vedi il preventivo come lo riceverà il cliente, con foto e descrizioni, e puoi ancora modificarlo prima di crearlo. Con <b>📄 Vedi il PDF</b> vedi il file vero.</p>`},
   {per: "u", t: "🧾 Fatture e DiCo", h: `<p>Nella pagina <b>Preventivi</b> trovi anche le schede <b>Fatture</b> (da incassare, scadute, pagate) e <b>DiCo</b> (dichiarazioni di conformità). Una fattura si crea a mano oppure, in un tocco, da un intervento verificato.</p>`},
   {per: "u", t: "📦 Magazzino", h: `<p>Elenco degli articoli con quantità, prezzi e <b>scorta minima</b>: quando un articolo scende sotto la scorta lo vedi nella pagina Oggi. Per trovare un articolo puoi leggere il <b>codice a barre</b> con la fotocamera.</p><p>Il materiale usato nei rapportini si scarica da solo, prima dal furgone del tecnico. Per caricare un listino del fornitore scegli il <b>ricarico</b> da applicare.</p><p>Con <b>📷 Fotografa articolo</b> e <b>📷 Fotografa documento</b> scatti la foto con il telefono e te la ritrovi in automatico sul computer dell'ufficio.</p>`},
   {per: "u", t: "📊 Gestione", h: `<ul><li><b>Margini</b>: quanto guadagni su interventi e preventivi.</li><li><b>Confronto prezzi</b> tra fornitori.</li><li><b>Incassi e solleciti</b> delle fatture.</li><li><b>Ordini ai fornitori</b>: quando tocchi "Ricevuto", carica da solo il magazzino.</li><li><b>Furgoni</b>: materiale caricato su ogni furgone.</li><li><b>Contratti di manutenzione</b>, con rinnovo e visite.</li><li><b>Registro F-gas</b>: interventi sul gas da comunicare alla Banca Dati entro 30 giorni (i tecnici li segnano dal rapportino) e scadenze dei controlli perdite.</li><li><b>Libretti e catasto</b>: catasto CIT, libretto da stampare e rapporti di efficienza (da 12 kW).</li><li><b>Detrazioni fiscali</b>: documenti da raccogliere e comunicazione ENEA entro 90 giorni.</li><li>F-gas, libretti e detrazioni li vedono solo Tommaso e Irene.</li><li><b>Contabilità</b>: la vedono solo il titolare e chi ha la spunta 📒.</li></ul><p>Nella <b>scheda di ogni impianto</b> l'ufficio trova anche catasto, libretto (📘 Stampa libretto), rapporto di efficienza e interventi sul gas (🧊 Intervento F-gas).</p>`},
@@ -1859,8 +1862,8 @@ function firmaPreventivo(p){
     onSave: async v => { if (!v.firma) { toast("Manca la firma"); throw new Error("x"); } await patch("preventivi", p.id, {stato: "Accettato", firmaCliente: v.firma, firmatoDa: v.firmatoDa, firmatoIl: new Date().toISOString()}); toast("✅ Preventivo accettato e firmato"); setTimeout(() => { const n = byId("preventivi", p.id); if (n) detPreventivo(n); }, 400); }
   });
 }
-async function prevPdf(p){
-  toast("Preparo il PDF…", 30000);
+async function prevPdf(p, anteprima){
+  toast(anteprima ? "Preparo l'anteprima…" : "Preparo il PDF…", 30000);
   let blob;
   try {
     const {jsPDF} = await loadJsPDF(); const t = prevTot(p), c = byId("clienti", p.clienteId) || {};
@@ -1906,6 +1909,7 @@ async function prevPdf(p){
     blob = doc.output("blob");
   } catch(e) { clearToasts(); toast("Impossibile creare il PDF: controlla la connessione e riprova", 4500); return; }
   clearToasts();
+  if (anteprima) return blob;
   let dl = null; try { dl = await claude.use("downloads"); } catch(e){}
   if (!dl) { toast("Il salvataggio del PDF non è disponibile qui", 4000); return; }
   try { await dl.save({filename: `Preventivo ${String(p.numero).replace("/", "-")} - ${cliName(p.clienteId).replace(/[\\/:*?"<>|]/g, "")}.pdf`, data: blob}); toast("PDF pronto: invialo con WhatsApp o Mail", 4000); if (p.stato === "Bozza") { try { await patch("preventivi", p.id, {stato: "Inviato"}); } catch(e){} } }
@@ -2378,16 +2382,26 @@ function qtTotHtml(){
   <div class="row" style="font-size:18px;margin-top:4px"><b>Totale</b><span class="sp"></span><b class="money">${eur(t.tot)}</b></div>
   ${CFG.scontoAcquisto && ui.modo === "ufficio" ? `<div class="m" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">Solo per te — costo macchine ${eur(t.costo)} · margine sulle macchine <b style="color:${t.margine >= 0 ? "var(--ok)" : "var(--bad)"}">${eur(t.margine)}</b></div>` : ""}`;
 }
+// articoli del magazzino cercabili nel preventivatore
+const MAGCAT = "📦 Articoli di magazzino";
+const magSearch = q => { const terms = q.toLowerCase().split(/\s+/).filter(Boolean); if (!terms.length) return []; return rankSearch(S.magazzino.filter(m => { const h = [m.codice, m.descrizione, m.categoria, m.fornitore, m.marca].join(" ").toLowerCase(); return terms.every(t => h.includes(t)); }), q); };
 function vCalc(){
   const q = ui.q.trim();
-  const brands = [...new Set(LISTINO.map(i => i.marca || "Altro"))];
+  const brands = [...new Set(LISTINO.map(i => i.marca || "Altro"))]; if (S.magazzino.length) brands.push(MAGCAT);
   if (ui.qBrand && !brands.includes(ui.qBrand)) ui.qBrand = "";
-  const pool = LISTINO.filter(i => !ui.qBrand || (i.marca || "Altro") === ui.qBrand);
-  const cats = [...new Set(pool.map(i => i.categoria).filter(Boolean))];
+  const soloMag = ui.qBrand === MAGCAT;
+  const pool = soloMag ? S.magazzino : LISTINO.filter(i => !ui.qBrand || (i.marca || "Altro") === ui.qBrand);
+  const cats = [...new Set(pool.map(i => i.categoria).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   if (ui.qCat && !cats.includes(ui.qCat)) ui.qCat = "";
-  let res = q.length >= 2 ? lsearch(q).filter(i => !ui.qBrand || (i.marca || "Altro") === ui.qBrand) : ui.qCat ? pool.filter(i => i.categoria === ui.qCat) : [];
+  let res = soloMag ? [] : q.length >= 2 ? lsearch(q).filter(i => !ui.qBrand || (i.marca || "Altro") === ui.qBrand) : ui.qCat ? pool.filter(i => i.categoria === ui.qCat) : [];
   if (ui.qCat && q.length >= 2) res = res.filter(i => i.categoria === ui.qCat);
   res = res.slice(0, 60);
+  // magazzino: con "tutti i cataloghi" si aggiungono gli articoli che non sono già nei listini mostrati
+  const giaCod = new Set(res.map(i => normC(i.codice || "")).filter(Boolean));
+  let magRes = soloMag ? (q.length >= 2 ? magSearch(q) : ui.qCat ? S.magazzino.filter(m => m.categoria === ui.qCat) : []) : (!ui.qBrand && q.length >= 2 ? magSearch(q).filter(m => !m.codice || !giaCod.has(normC(m.codice))) : []);
+  if (soloMag && ui.qCat && q.length >= 2) magRes = magRes.filter(m => m.categoria === ui.qCat);
+  magRes = magRes.slice(0, 40);
+  const magCard = m => `<div class="card row" style="padding:9px 12px">${thumb(m.fotoUrl || imgOrIcon(m), m.descrizione)}<div class="sp"><div class="t" style="font-size:14px">${esc(m.descrizione)}</div><div class="m">📦 Magazzino${m.codice ? " · " + esc(m.codice) : ""} · disp. ${esc(m.quantita ?? 0)} ${esc(m.unita || "pz")}${num(m.prezzoVendita) ? ` · <b>${eur(m.prezzoVendita)}</b>` : ""}</div></div>${ui.modo === "ufficio" ? `<button class="btn sm" data-art="${esc(m.id)}" title="Modifica l'articolo di magazzino" aria-label="Modifica articolo">✏️</button>` : ""}<button class="btn sm pri" data-qmag="${esc(m.id)}" aria-label="Aggiungi al preventivo">+</button></div>`;
   const righe = QT.righe;
   return `${!LISTINO.length ? `<div class="banner warn">Il listino è vuoto. Vai su <b>Listino</b> e importalo per cercare i prodotti General Fujitsu.</div>` : ""}
   <div class="card">
@@ -2397,15 +2411,18 @@ function vCalc(){
   <h3>Aggiungi prodotti dal listino</h3>
   <div class="row" style="gap:8px;margin-bottom:8px"><select class="search" style="margin:0;flex:1" data-qbrand><option value="">Tutti i cataloghi</option>${brands.map(b => `<option ${ui.qBrand === b ? "selected" : ""}>${esc(b)}</option>`).join("")}</select>
   <select class="search" style="margin:0;flex:1.4" data-qcat><option value="">— Scegli categoria —</option>${cats.map(c => `<option ${ui.qCat === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div>
-  <input class="search" placeholder="…oppure cerca modello, codice, BTU" value="${esc(ui.q)}" data-q>
-  ${res.length ? res.map(it => `<div class="card row" style="padding:9px 12px">${thumb(imgOrIcon(it), it.descrizione)}<div class="sp"><div class="t" style="font-size:14px">${esc(it.descrizione)}</div><div class="m">${esc([it.marca, it.codice, it.potenza, !ui.qCat && it.categoria].filter(Boolean).join(" · "))} · <b>${eur(it.prezzo)}</b></div>${hintPrezzo(it)}</div><button class="btn sm pri" data-qadd="${esc(it._c)}:${it._i}">+</button></div>`).join("") : q.length >= 2 ? `<div class="m" style="padding:4px">Nessun prodotto trovato.</div>` : `<div class="m" style="padding:4px 2px 8px">Scegli una categoria per vedere i prodotti, poi tocca + per aggiungerli.</div>`}
+  <input class="search" placeholder="🔍 Cerca in tutti i cataloghi e nel magazzino: modello, codice, BTU…" value="${esc(ui.q)}" data-q>
+  ${magRes.length && !soloMag && res.length ? `<div class="m" style="margin:2px 2px 6px">Dai listini:</div>` : ""}
+  ${res.length ? res.map(it => `<div class="card row" style="padding:9px 12px">${thumb(imgOrIcon(it), it.descrizione)}<div class="sp"><div class="t" style="font-size:14px">${esc(it.descrizione)}</div><div class="m">${esc([it.marca, it.codice, it.potenza, !ui.qCat && it.categoria].filter(Boolean).join(" · "))} · <b>${eur(it.prezzo)}</b></div>${hintPrezzo(it)}</div>${ui.modo === "ufficio" ? `<button class="btn sm" data-lit="${esc(it._c)}:${it._i}" title="Modifica l'articolo nel listino" aria-label="Modifica articolo">✏️</button>` : ""}<button class="btn sm pri" data-qadd="${esc(it._c)}:${it._i}">+</button></div>`).join("") : ""}
+  ${magRes.length ? `${!soloMag && res.length ? `<div class="m" style="margin:8px 2px 6px">Dal magazzino:</div>` : ""}${magRes.map(magCard).join("")}` : ""}
+  ${res.length || magRes.length ? "" : q.length >= 2 ? `<div class="m" style="padding:4px">Nessun prodotto trovato. Puoi aggiungerlo con <b>+ Voce libera</b> qui sotto.</div>` : `<div class="m" style="padding:4px 2px 8px">Scrivi nella ricerca oppure scegli una categoria, poi tocca + per aggiungere.</div>`}
   <h3>Manodopera tecnico</h3>
   <div class="row" style="gap:8px"><button class="btn" style="flex:1" data-a="qora">⏱ A ore<br><b>${eur(CFG.costoOra)}/ora</b></button><button class="btn" style="flex:1" data-a="qgiorno">📅 A giornata<br><b>${eur(CFG.costoGiornata)}/giorno</b></button></div>
   <h3>Lavori e accessori</h3>
   <div class="row wrap" style="gap:6px">${CFG.manodopera.map((m, i) => `<button class="btn sm" data-qman="${i}">+ ${esc(m.descrizione)}${num(m.prezzo) ? " · " + eur(m.prezzo) : ""}</button>`).join("")}<button class="btn sm" data-a="qfree">+ Voce libera</button></div>
   <h3>Voci del preventivo (${righe.length})</h3>
   ${righe.length ? righe.map((r, i) => `<div class="card" style="padding:10px 12px">
-    <div class="row">${thumb(r.img, r.descrizione)}<input data-qr="${i}" data-qf="descrizione" value="${esc(r.descrizione)}" style="flex:1;border:0;font-weight:600;padding:2px 0;min-width:0"><button class="x" data-qdel="${i}">✕</button></div>
+    <div class="row" style="align-items:flex-start">${r.tipo === "prod" || r.img ? qImgCell(r, i) : ""}<textarea data-qr="${i}" data-qf="descrizione" rows="${Math.min(4, Math.max(1, Math.ceil((r.descrizione || "").length / 60)))}" style="flex:1;border:1px solid transparent;border-radius:7px;font:inherit;font-weight:600;padding:3px 4px;min-width:0;resize:vertical;background:transparent" placeholder="Descrizione">${esc(r.descrizione)}</textarea><button class="x" data-qdel="${i}">✕</button></div>
     ${r.codice ? `<div class="m">${esc(r.codice)}</div>` : ""}
     <div class="row" style="margin-top:6px;gap:6px;font-size:13px">
       <label class="m">${r.unita === "ore" ? "Ore" : r.unita === "giorni" ? "Giorni" : "Q.tà"} <input data-qr="${i}" data-qf="qta" inputmode="decimal" value="${esc(r.qta)}" style="width:46px;padding:6px;border:1px solid var(--line);border-radius:7px"></label>
@@ -2416,15 +2433,53 @@ function vCalc(){
   ${righe.some(r => r.img) ? `<button class="btn big" style="margin-top:10px" data-a="qshow">🖼 Mostra i prodotti al cliente</button>` : ""}
   <div class="card" id="qtot" style="margin-top:12px">${qtTotHtml()}</div>
   <div class="f"><label class="lb">Note / condizioni</label><textarea data-qnote placeholder="Tempi di consegna, pagamento, detrazioni fiscali, esclusioni…">${esc(QT.note)}</textarea></div>
-  <div class="acts">${righe.length ? `<button class="btn bad" data-a="qclear">Svuota</button>` : ""}<span class="sp"></span><button class="btn pri" data-a="qsave" ${righe.length ? "" : "disabled"}>Crea preventivo</button></div>`;
+  <div class="acts">${righe.length ? `<button class="btn bad" data-a="qclear">Svuota</button>` : ""}<span class="sp"></span><button class="btn" data-a="qprev" ${righe.length ? "" : "disabled"}>👁 Anteprima</button><button class="btn pri" data-a="qsave" ${righe.length ? "" : "disabled"}>Crea preventivo</button></div>`;
+}
+function qtBuild(numero){
+  return {clienteId: QT.clienteId, numero, data: today(), oggetto: QT.oggetto, iva: QT.iva, sconto: 0, stato: "Bozza", validita: 30, note: QT.note,
+    creatoDa: ui.modo === "comm" ? ui.comm : (ui.modo === "tecnico" ? ui.tecnico : (ui.uff || "Ufficio")), righe: QT.righe.map(r => ({descrizione: (r.codice && !r.descrizione.includes(r.codice.split("+")[0]) ? r.codice + " - " : "") + r.descrizione + (r.unita === "ore" ? ` (${num(r.qta)} h × ${eur(r.listino)})` : r.unita === "giorni" ? ` (${num(r.qta)} gg × ${eur(r.listino)})` : ""), qta: num(r.qta) || 1, prezzo: r2(rowNet(r)), ...(r.img ? {img: r.img, potenza: r.potenza || ""} : {}), ...(r.codice ? {codice: r.codice} : {}), ...(num(r.costo) ? {costo: num(r.costo)} : {}), ...(r.marca ? {marca: r.marca} : {}), ...(r.unita ? {unita: r.unita} : {})})), daPreventivatore: true};
+}
+// foto di una voce del preventivo: ridotta e salvata nella voce stessa
+const fotoRidotta = file => new Promise((ok, ko) => { const fr = new FileReader(); fr.onerror = ko; fr.onload = () => { const im = new Image(); im.onerror = ko; im.onload = () => { const k = Math.min(1, 500 / Math.max(im.width, im.height)); const c = document.createElement("canvas"); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); ok(c.toDataURL("image/jpeg", 0.75)); }; im.src = fr.result; }; fr.readAsDataURL(file); });
+const qImgCell = (r, i, big) => `<label class="qimg${big ? " big" : ""}" title="Tocca per cambiare la foto">${r.img ? `<img src="${esc(r.img)}" alt="">` : `<span>📷<br>Foto</span>`}<input type="file" accept="image/*" data-qimg="${i}" hidden></label>`;
+function qtAnteprima(){
+  if (!QT.righe.length) { toast("Aggiungi almeno una voce"); return; }
+  const c = byId("clienti", QT.clienteId) || {};
+  const corpo = () => { const t = qtTotals(); return `
+    <div class="pv-head"><img src="${esc(LOGO)}" alt="iTeam"><div><b>${esc(AZIENDA.ragione)}</b><br>${esc(AZIENDA.legale)}<br>Tel. ${esc(AZIENDA.tel)}</div></div>
+    <div class="pv-tit"><b>Preventivo (bozza)</b><span>del ${esc(fd(today()))}</span></div>
+    <div class="pv-cli"><small>SPETT.LE</small><br><b>${esc(c.nome || "— cliente da scegliere —")}</b>${addr(c) ? "<br>" + esc(addr(c)) : ""}</div>
+    <label class="lb">Oggetto</label><input class="pv-in" data-qobj value="${esc(QT.oggetto)}" placeholder="Oggetto del preventivo">
+    <div class="pv-rows">${QT.righe.map((r, i) => `<div class="pv-row">${qImgCell(r, i, true)}
+      <div class="pv-mid"><textarea data-qr="${i}" data-qf="descrizione" rows="2">${esc(r.descrizione)}</textarea>${r.codice ? `<div class="m">${esc(r.codice)}</div>` : ""}
+        <div class="row" style="gap:6px;font-size:13px;margin-top:4px"><label class="m">${r.unita === "ore" ? "Ore" : r.unita === "giorni" ? "Giorni" : "Q.tà"} <input data-qr="${i}" data-qf="qta" inputmode="decimal" value="${esc(r.qta)}" style="width:50px"></label>
+        <label class="m">Prezzo € <input data-qr="${i}" data-qf="listino" inputmode="decimal" value="${esc(r.listino)}" style="width:78px"></label>
+        <label class="m">Sc.% <input data-qr="${i}" data-qf="sconto" inputmode="decimal" value="${esc(r.sconto)}" style="width:44px"></label></div></div>
+      <b class="money pv-tot" data-pvt="${i}">${eur(rowNet(r) * num(r.qta))}</b></div>`).join("")}</div>
+    <div class="pv-sum" data-pvsum><div>Imponibile <b>${eur(t.imp)}</b></div><div>IVA ${esc(QT.iva)}% <b>${eur(t.tot - t.imp)}</b></div><div class="big">TOTALE <b>${eur(t.tot)}</b></div></div>
+    <label class="lb">Note / condizioni</label><textarea class="pv-in" data-qnote rows="3" placeholder="Pagamento, tempi, garanzia…">${esc(QT.note)}</textarea>`; };
+  const ov = modal(`<h2>👁 Anteprima del preventivo</h2>
+    <p class="m" style="margin-top:-4px">Puoi cambiare qui foto, descrizioni, quantità e prezzi. Il preventivo non è ancora salvato.</p>
+    <div class="pv-sheet" data-pv>${corpo()}</div>
+    <div class="acts"><button class="btn" data-a="pvpdf">📄 Vedi il PDF</button><span class="sp"></span><button class="btn" data-a="x">Chiudi</button><button class="btn pri" data-a="qok">Crea preventivo</button></div>`);
+  const sheet = ov.querySelector("[data-pv]");
+  const aggTot = () => { QT.righe.forEach((r, i) => { const el = sheet.querySelector(`[data-pvt="${i}"]`); if (el) el.textContent = eur(rowNet(r) * num(r.qta)); }); const t = qtTotals(), sm = sheet.querySelector("[data-pvsum]"); if (sm) sm.innerHTML = `<div>Imponibile <b>${eur(t.imp)}</b></div><div>IVA ${esc(QT.iva)}% <b>${eur(t.tot - t.imp)}</b></div><div class="big">TOTALE <b>${eur(t.tot)}</b></div>`; };
+  ov.addEventListener("input", () => setTimeout(aggTot, 0));
+  ov.addEventListener("change", async e => { const t = e.target; if (t.dataset && t.dataset.qimg !== undefined && t.files && t.files[0]) { e.stopPropagation(); try { QT.righe[+t.dataset.qimg].img = await fotoRidotta(t.files[0]); qtSave(); sheet.innerHTML = corpo(); } catch(err) { toast("Non riesco a leggere la foto"); } } }, true);
+  const chiudi = () => { ov.remove(); render(); };
+  ov.addEventListener("click", async e => {
+    if (e.target.closest('[data-a="x"]')) chiudi();
+    if (e.target.closest('[data-a="qok"]')) { ov.remove(); qtCreate(); }
+    if (e.target.closest('[data-a="pvpdf"]')) { const blob = await prevPdf({...qtBuild("BOZZA"), id: ""}, true); if (!blob) return; const url = URL.createObjectURL(blob); const w = window.open(url, "_blank");
+      if (!w) { try { const dl = await claude.use("downloads"); await dl.save({filename: "Anteprima preventivo.pdf", data: blob}); } catch(err) { toast("Non riesco ad aprire il PDF"); } } setTimeout(() => URL.revokeObjectURL(url), 60000); }
+  });
 }
 async function qtCreate(){
   if (!QT.clienteId) { toast("Scegli il cliente"); return; }
   if (!QT.righe.length) return;
   const y = new Date().getFullYear();
   const ns = S.preventivi.map(q => String(q.numero || "")).filter(n => n.endsWith("/" + y)).map(n => parseInt(n));
-  const p = {clienteId: QT.clienteId, numero: (ns.length ? Math.max(...ns) + 1 : 1) + "/" + y, data: today(), oggetto: QT.oggetto, iva: QT.iva, sconto: 0, stato: "Bozza", validita: 30, note: QT.note,
-    creatoDa: ui.modo === "comm" ? ui.comm : (ui.modo === "tecnico" ? ui.tecnico : (ui.uff || "Ufficio")), righe: QT.righe.map(r => ({descrizione: (r.codice && !r.descrizione.includes(r.codice.split("+")[0]) ? r.codice + " - " : "") + r.descrizione + (r.unita === "ore" ? ` (${num(r.qta)} h × ${eur(r.listino)})` : r.unita === "giorni" ? ` (${num(r.qta)} gg × ${eur(r.listino)})` : ""), qta: num(r.qta) || 1, prezzo: r2(rowNet(r)), ...(r.img ? {img: r.img, potenza: r.potenza || ""} : {}), ...(r.codice ? {codice: r.codice} : {}), ...(num(r.costo) ? {costo: num(r.costo)} : {}), ...(r.marca ? {marca: r.marca} : {}), ...(r.unita ? {unita: r.unita} : {})})), daPreventivatore: true};
+  const p = qtBuild((ns.length ? Math.max(...ns) + 1 : 1) + "/" + y);
   const id = await save("preventivi", null, p);
   QT = QT_EMPTY(); qtSave(); ui.q = ""; ui.docTab = "preventivi"; if (ui.modo === "comm") ui.cF = "miei"; render();
   toast("Preventivo n. " + p.numero + " creato");
@@ -2436,8 +2491,9 @@ document.addEventListener("input", e => {
   else if (t.hasAttribute && t.hasAttribute("data-qobj")) { QT.oggetto = t.value; qtSave(); }
   else if (t.hasAttribute && t.hasAttribute("data-qnote")) { QT.note = t.value; qtSave(); }
 });
-document.addEventListener("change", e => {
+document.addEventListener("change", async e => {
   const t = e.target;
+  if (t.dataset && t.dataset.qimg !== undefined && t.files && t.files[0] && !t.closest(".ov")) { try { QT.righe[+t.dataset.qimg].img = await fotoRidotta(t.files[0]); qtSave(); render(); toast("Foto cambiata"); } catch(err) { toast("Non riesco a leggere la foto"); } return; }
   if (t.hasAttribute && t.hasAttribute("data-qcli")) { QT.clienteId = t.value; qtSave(); }
   if (t.hasAttribute && t.hasAttribute("data-magforn")) { ui.magForn = t.value; render(); }
   if (t.hasAttribute && t.hasAttribute("data-qbrand")) { ui.qBrand = t.value; ui.qCat = ""; render(); }
@@ -2445,8 +2501,9 @@ document.addEventListener("change", e => {
   if (t.hasAttribute && t.hasAttribute("data-qiva")) { QT.iva = t.value; qtSave(); const tt = $("#qtot"); if (tt) tt.innerHTML = qtTotHtml(); }
 });
 document.addEventListener("click", async e => {
-  const b = e.target.closest("[data-qadd],[data-qman],[data-qdel],[data-lit]"); if (!b || b.closest(".ov")) return;
+  const b = e.target.closest("[data-qadd],[data-qman],[data-qdel],[data-lit],[data-qmag]"); if (!b || b.closest(".ov")) return;
   const d = b.dataset;
+  if (d.qmag) { const m = byId("magazzino", d.qmag); if (!m) return; const ex = QT.righe.find(r => r.magId === m.id); if (ex) ex.qta = num(ex.qta) + 1; else QT.righe.push({tipo: "prod", magId: m.id, codice: m.codice || "", descrizione: m.descrizione || "", img: m.fotoUrl || "", qta: 1, listino: num(m.prezzoVendita) || num(m.prezzoListino) || "", sconto: 0, costo: num(m.prezzoAcquisto) || ""}); qtSave(); toast("Aggiunto: " + (m.descrizione || "articolo")); render(); return; }
   if (d.lit) { const [c, i] = d.lit.split(":"); const it = LISTINO.find(x => x._c === c && x._i === +i); if (it) formListinoItem(it); return; }
   if (d.qadd) { const [c, i] = d.qadd.split(":"); const it = LISTINO.find(x => x._c === c && x._i === +i); if (!it) return; const ex = QT.righe.find(r => r.tipo === "prod" && r.codice && r.codice === it.codice && r.descrizione === it.descrizione); if (ex) ex.qta = num(ex.qta) + 1; else QT.righe.push({tipo: "prod", codice: it.codice, descrizione: it.descrizione, potenza: it.potenza || "", img: imgOf(it), qta: 1, listino: it.prezzo, sconto: CFG.scontoCliente || 0, costo: num(it.costo) || num(S.magazzino.find(m => it.codice && normC(m.codice) === normC(it.codice))?.prezzoAcquisto) || "", marca: it.marca || ""}); qtSave(); toast("Aggiunto: " + it.descrizione, 1500); }
   if (d.qman !== undefined) { const m = CFG.manodopera[+d.qman]; QT.righe.push({tipo: "man", codice: "", descrizione: m.descrizione, qta: 1, listino: num(m.prezzo) || "", sconto: 0}); qtSave(); }
@@ -2930,7 +2987,8 @@ function entraModo(m){
   if (m === "ufficio") { ui.uff = miaPostazione(); ls.set("uff", ui.uff); }
   if (m === "tecnico") { ui.tecnico = mioTecnico(); ls.set("tecnico", ui.tecnico); }
   if (m === "comm") { ui.comm = p.nome || ui.comm || "Preventivatore"; ls.set("comm", ui.comm); }
-  ui.modo = m; ui.q = ""; ls.set("modo", m);
+  if (ui.modo !== m) ui.q = ""; // svuota la ricerca solo cambiando area (render() la richiama a ogni aggiornamento)
+  ui.modo = m; ls.set("modo", m);
 }
 function vChoose(){
   const tl = tecnici(), mc = modiConsentiti(), acc = mioAccount();
@@ -3852,6 +3910,7 @@ document.addEventListener("click", async e => {
   if (a === "qfree") { QT.righe.push({tipo: "libera", codice: "", descrizione: "", qta: 1, listino: "", sconto: 0}); qtSave(); render(); setTimeout(() => { const el = document.querySelectorAll('[data-qf="descrizione"]'); el[el.length - 1]?.focus(); }, 50); }
   if (a === "qclear") { if (await ask("Svuotare il preventivatore?", "Svuota")) { QT = QT_EMPTY(); qtSave(); render(); } }
   if (a === "qsave") qtCreate();
+  if (a === "qprev") qtAnteprima();
   if (a === "qshow") showProducts(QT.righe.filter(r => r.tipo === "prod").map(r => ({img: r.img, descrizione: r.descrizione, potenza: r.potenza, prezzo: r2(rowNet(r)), qta: r.qta})), byId("clienti", QT.clienteId)?.nome ? "Proposta per " + byId("clienti", QT.clienteId).nome : "");
   if (a === "qora" || a === "qgiorno") { const ore = a === "qora"; QT.righe.push({tipo: "man", unita: ore ? "ore" : "giorni", codice: "", descrizione: ore ? "Manodopera tecnico (a ore)" : "Manodopera tecnico (a giornata)", qta: 1, listino: ore ? CFG.costoOra : CFG.costoGiornata, sconto: 0}); qtSave(); render(); toast(ore ? "Aggiunte ore tecnico: imposta il numero di ore" : "Aggiunta giornata tecnico: imposta il numero di giorni", 2200); }
   if (a === "tecnewcli") formCliente({});
