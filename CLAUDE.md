@@ -53,6 +53,11 @@ in italiano semplice, senza gergo tecnico.
   Registro F-gas (`fgasMesi`: ≥5 t → 12 mesi, ≥50 → 6, ≥500 → 3, doppio con `rilevatorePerdite`; `ultimoControlloPerdite`
   si aggiorna dal rapportino), Contabilità (`contabilita`, file in Storage `contabilita/`; solo titolare e utenti con
   `utenti.contabilita` = spunta 📒 che vede solo il titolare in 👤 Utenti).
+- Solo ufficio vero (Tommaso e Irene = titolare/admin e ruolo `ufficio`, NON `ufficio_tecnico` né tecnici): `uffVero()`.
+  Registro F-gas (`fgasOps/{id}`: interventi sul gas da comunicare alla Banca Dati entro 30 gg; il tecnico li crea dal
+  rapportino con `campiFgasRap`/`salvaFgasRap`, id = id intervento, ma non li legge), Libretti e catasto (`vLibretti`,
+  campi impianto `potenzaKw, codiceCatasto, statoCatasto, dataLibretto, ultimoREE, reeAnni, reeInviato`; REE da 12 kW,
+  `stampaLibretto()`), Detrazioni (`detrazioni/{id}`, ENEA entro 90 gg da `fineLavori`). Avvisi in `extraOggiUff()`.
 - Scheda impianto `detImpianto()` con etichetta QR (link `?imp=ID`, `controllaLinkImpianto()`).
 - Timbratura: `posizione()` salva `interventi.inizioPos` (▶ Inizia) e `rapportino.finePos` (invio), visibili solo all'ufficio.
 - Ruoli: tecnico e preventivatore non caricano fatture, ordini, contratti (`colsPerMe()`), e le regole lo impediscono.

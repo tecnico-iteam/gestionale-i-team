@@ -222,7 +222,7 @@ const NAV = [
 ];
 
 // ---------- stato ----------
-const S = Object.fromEntries(COLS.map(c => [c, []])); S.contabilita = [];
+const S = Object.fromEntries(COLS.map(c => [c, []])); S.contabilita = []; S.fgasOps = []; S.detrazioni = [];
 const DEFAULT_MANODOPERA = ["Installazione monosplit (fino a 3 m di linee)","Installazione dual split","Installazione trial split","Metro aggiuntivo linee frigorifere","Staffa per unità esterna","Pompa scarico condensa","Canalina (al metro)","Carotaggio muro","Linea elettrica dedicata","Smontaggio e smaltimento vecchio impianto","Dichiarazione di conformità e pratiche F-gas"].map(d => ({descrizione: d, prezzo: 0}));
 let CFG = {postazioni: ["Tommy", "Irene", "Alessandro"], titolare: "Carone Tommaso", respAB: "Carone Tommaso", respCE: "Sasso Francesco", fgas: "FGAS-A18879", cciaa: "Torino", rea: "TO-1331174", alboArt: "", abilitazioni: ["a) elettrici", "b) radiotelevisivi ed elettronici", "c) riscaldamento e climatizzazione", "e) gas"], tecnici: [], lavori: DEFAULT_LAVORI.slice(), scontoAcquisto: 0, scontoCliente: 0, costoOra: 45, costoGiornata: 300, manodopera: DEFAULT_MANODOPERA.map(x => ({...x}))};
 let assetsNS = null;
@@ -315,6 +315,7 @@ async function initDb(){
   const MIE = colsPerMe();
   const timer = setTimeout(() => { if (loaded.size < MIE.length) { ui.stale = true; render(); } }, 10000);
   if (puoContab()) db.collection("contabilita").onSnapshot(snap => { S.contabilita = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
+  if (uffVero()) ["fgasOps", "detrazioni"].forEach(c => db.collection(c).onSnapshot(snap => { S[c] = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}));
   MIE.forEach(c => {
     db.collection(c).onSnapshot(snap => {
       S[c] = snap.docs.map(d => ({id: d.id, ...d.data()}));
@@ -533,6 +534,7 @@ function formImpianto(i = {}){
       {k:"prossimaManutenzione", label:"Prossima manutenzione", type:"date", half:true},
       {k:"ultimoControlloPerdite", label:"Ultimo controllo perdite F-gas", type:"date", half:true, show: v => (tco2(v) || 0) >= 5},
       {k:"rilevatorePerdite", label:"Ha un sistema di rilevamento perdite (controlli a intervallo doppio)", type:"checkbox", show: v => (tco2(v) || 0) >= 5},
+      ...campiLibretto(),
       {k:"note", label:"Note", type:"textarea"}
     ],
     onSave: async v => { await save("impianti", i.id, v); toast("Impianto salvato"); render(); },
@@ -576,7 +578,7 @@ function formRapportino(x){
   const already = !!r.scaricato;
   const v0 = {inizio: r.inizio || x.inizioReale || x.ora || "", fine: r.fine || nowTime(), pausaMin: r.pausaMin ?? "", viaggioMin: r.viaggioMin ?? "",
     lavori: r.lavori || [], altro: r.altro || "", materiali: r.materiali || [], esito: r.esito || "Risolto",
-    note: r.note || "", firmatoDa: r.firmatoDa || "", firma: r.firma || "", clienteAssente: !!r.clienteAssente, emailCliente: r.emailCliente || byId("clienti", x.clienteId)?.email || "", aggiornaMan: imp ? (x.tipo === "Manutenzione") : false};
+    note: r.note || "", firmatoDa: r.firmatoDa || "", firma: r.firma || "", clienteAssente: !!r.clienteAssente, emailCliente: r.emailCliente || byId("clienti", x.clienteId)?.email || "", fgOp: (r.fgas || {}).operazione || "", fgCar: (r.fgas || {}).kgCaricati || "", fgRec: (r.fgas || {}).kgRecuperati || "", fgPerd: (r.fgas || {}).perdite || "", aggiornaMan: imp ? (x.tipo === "Manutenzione") : false};
   openForm({ title: "Rapportino · " + cliName(x.clienteId),
     intro: `<p class="m" style="margin-top:-6px">${esc(fdl(x.data))}${imp ? " · " + esc(impName(imp)) : ""}</p>${commVisibili(x.clienteId).length ? commBox(x.clienteId) : ""}${mediaBox(x)}`,
     values: v0, saveLabel: "Invia all'ufficio",
@@ -592,6 +594,7 @@ function formRapportino(x){
         cols:[{k:"articoloId", type:"select", options: magOpts, w:3}, {k:"descrizione", label:"Descrizione (se altro)", w:2}, {k:"qta", label:"Q.tà", type:"number", w:1}]},
       {k:"matprev", type:"info", html: v => { const ms = (v.materiali || []).map(m => byId("magazzino", m.articoloId)).filter(Boolean); return ms.length ? `<div class="row wrap" style="gap:8px">${ms.map(a => `<div style="width:96px;text-align:center"><img src="${esc(magImg(a) || iconFor(a.descrizione))}" style="width:96px;height:64px;object-fit:contain;background:#fff;border-radius:8px"><div class="m" style="font-size:11px;line-height:1.2">${esc(a.descrizione.slice(0, 40))}</div></div>`).join("")}</div>` : `<span class="m">Le foto dei materiali scelti compaiono qui.</span>`; }},
       ...(already ? [{k:"nota", type:"info", html: () => "I materiali sono già stati scaricati dal magazzino al primo invio: le modifiche qui non cambiano le giacenze."}] : []),
+      ...campiFgasRap(imp),
       {k:"esito", label:"Esito", type:"select", options:ESITI},
       {k:"note", label:"Note per l'ufficio", type:"textarea", ph:"Problemi riscontrati, ricambi da ordinare, richieste del cliente…"},
       {k:"clienteAssente", label:"Cliente non presente (nessuna firma)", type:"checkbox", rerender:true},
@@ -610,12 +613,13 @@ function formRapportino(x){
       const rap = {inizio: v.inizio, fine: v.fine, pausaMin: num(v.pausaMin), viaggioMin: num(v.viaggioMin), minutiLavoro: minuti,
         lavori: v.lavori, altro: v.altro, materiali, esito: v.esito, note: v.note, firmatoDa: v.clienteAssente ? "" : v.firmatoDa, firma: v.clienteAssente ? "" : v.firma, clienteAssente: !!v.clienteAssente, firmatoIl: v.clienteAssente ? "" : new Date().toISOString(),
         inviatoIl: new Date().toISOString(), inviatoDa: ui.tecnico || x.tecnico || "", scaricato: true};
+      const fg = await salvaFgasRap(x, imp, v, r); if (fg) rap.fgas = fg; else if (r.fgas) rap.fgas = r.fgas;
       await patch("interventi", x.id, {rapportino: rap, stato: v.esito === "Da completare" ? "In corso" : "Completato", verificato: false, tecnico: x.tecnico || ui.tecnico || ""});
       if (!already) {
         const tec = ui.tecnico || x.tecnico || "";
         for (const m of materiali) { const a = byId("magazzino", m.articoloId); if (a) { const dalFurgone = Math.min(furgQ(a, tec), m.qta); try { await patch("magazzino", a.id, dalFurgone > 0 ? {quantita: r2(num(a.quantita) - (m.qta - dalFurgone)), furgoni: furgSet(a, tec, furgQ(a, tec) - dalFurgone)} : {quantita: r2(num(a.quantita) - m.qta)}); } catch(e){} } }
       }
-      if (imp && (v.lavori || []).some(l => /controllo perdite/i.test(l))) { try { await patch("impianti", imp.id, {ultimoControlloPerdite: x.data || today()}); } catch(e){} }
+      if (imp && ((v.lavori || []).some(l => /controllo perdite/i.test(l)) || v.fgOp === "Controllo perdite")) { try { await patch("impianti", imp.id, {ultimoControlloPerdite: x.data || today()}); } catch(e){} }
       posizione().then(pos => { if (pos) patch("interventi", x.id, {"rapportino.finePos": pos}).catch(() => {}); });
       if (imp && v.aggiornaMan) { try { await patch("impianti", imp.id, {ultimaManutenzione: x.data, prossimaManutenzione: addMonths(x.data || today(), num(imp.frequenzaMesi) || 12)}); } catch(e){} }
       toast("✅ Rapportino inviato all'ufficio"); render();
@@ -1598,7 +1602,7 @@ const GUIDA = [
   {per: "up", t: "📋 Preventivi e preventivatore", h: `<p>Con il <b>Preventivatore</b> cerchi gli articoli nei listini caricati (General, Erredi, Sacchi, Tecnosystemi e gli altri), aggiungi la manodopera <b>a ore o a giornate</b>, imposti lo sconto e salvi il preventivo per il cliente.</p><p>Per ogni articolo il gestionale ti segnala anche se un altro fornitore te lo vende a meno.</p>`},
   {per: "u", t: "🧾 Fatture e DiCo", h: `<p>Nella pagina <b>Preventivi</b> trovi anche le schede <b>Fatture</b> (da incassare, scadute, pagate) e <b>DiCo</b> (dichiarazioni di conformità). Una fattura si crea a mano oppure, in un tocco, da un intervento verificato.</p>`},
   {per: "u", t: "📦 Magazzino", h: `<p>Elenco degli articoli con quantità, prezzi e <b>scorta minima</b>: quando un articolo scende sotto la scorta lo vedi nella pagina Oggi. Per trovare un articolo puoi leggere il <b>codice a barre</b> con la fotocamera.</p><p>Il materiale usato nei rapportini si scarica da solo, prima dal furgone del tecnico. Per caricare un listino del fornitore scegli il <b>ricarico</b> da applicare.</p><p>Con <b>📷 Fotografa articolo</b> e <b>📷 Fotografa documento</b> scatti la foto con il telefono e te la ritrovi in automatico sul computer dell'ufficio.</p>`},
-  {per: "u", t: "📊 Gestione", h: `<ul><li><b>Margini</b>: quanto guadagni su interventi e preventivi.</li><li><b>Confronto prezzi</b> tra fornitori.</li><li><b>Incassi e solleciti</b> delle fatture.</li><li><b>Ordini ai fornitori</b>: quando tocchi "Ricevuto", carica da solo il magazzino.</li><li><b>Furgoni</b>: materiale caricato su ogni furgone.</li><li><b>Contratti di manutenzione</b>, con rinnovo e visite.</li><li><b>Registro F-gas</b>: scadenze dei controlli perdite.</li><li><b>Contabilità</b>: la vedono solo il titolare e chi ha la spunta 📒.</li></ul>`},
+  {per: "u", t: "📊 Gestione", h: `<ul><li><b>Margini</b>: quanto guadagni su interventi e preventivi.</li><li><b>Confronto prezzi</b> tra fornitori.</li><li><b>Incassi e solleciti</b> delle fatture.</li><li><b>Ordini ai fornitori</b>: quando tocchi "Ricevuto", carica da solo il magazzino.</li><li><b>Furgoni</b>: materiale caricato su ogni furgone.</li><li><b>Contratti di manutenzione</b>, con rinnovo e visite.</li><li><b>Registro F-gas</b>: interventi sul gas da comunicare alla Banca Dati entro 30 giorni (i tecnici li segnano dal rapportino) e scadenze dei controlli perdite.</li><li><b>Libretti e catasto</b>: catasto CIT, libretto da stampare e rapporti di efficienza (da 12 kW).</li><li><b>Detrazioni fiscali</b>: documenti da raccogliere e comunicazione ENEA entro 90 giorni.</li><li>F-gas, libretti e detrazioni li vedono solo Tommaso e Irene.</li><li><b>Contabilità</b>: la vedono solo il titolare e chi ha la spunta 📒.</li></ul>`},
   {per: "u", t: "✉️ Promemoria ai clienti", h: `<p>Il giorno prima dell'appuntamento, dalle 17, il cliente riceve <b>in automatico un'email</b> da ufficio@iteamservice.it. Il <b>WhatsApp</b> lo mandi tu con un tocco dalla pagina Oggi.</p><p>Il promemoria si toglie per un singolo appuntamento (spunta ⚠️) oppure per sempre nella scheda del cliente.</p>`},
   {per: "u", t: "👷 Tecnici e ⚙︎ Impostazioni", h: `<p>Con il pulsante <b>👷</b> aggiungi e modifichi i tecnici (codice, telefono, patentino F-gas con scadenza). Con <b>⚙︎</b> cambi i dati dell'azienda, i costi e le altre impostazioni del gestionale.</p>`},
   {per: "u", t: "💾 Sicurezza dei dati", h: `<p>Ogni notte il gestionale fa da solo una <b>copia di sicurezza</b> di tutti i dati e la conserva per 30 giorni. Ogni ruolo vede solo le sue parti: i tecnici, per esempio, non vedono fatture, ordini e contabilità.</p>`},
@@ -3238,16 +3242,20 @@ function detImpianto(i){
     ${i.garanziaFino ? `<span class="k">Garanzia</span><span>fino al ${esc(fd(i.garanziaFino))}</span>` : ""}
     ${i.prossimaManutenzione ? `<span class="k">Manutenzione</span><span>${esc(fd(i.prossimaManutenzione))}</span>` : ""}
     ${pf ? `<span class="k">Controllo perdite</span><span><span class="chip ${pf < t ? "bad" : "ok"}">${pf < t ? "scaduto" : "entro"} ${esc(fd(pf))}</span> ogni ${fgasMesi(i)} mesi</span>` : ""}</div>
+    ${ui.modo === "ufficio" && uffVero() ? `<div class="kv" style="margin-top:6px"><span class="k">Catasto</span><span>${esc(statoCat(i))}${i.codiceCatasto ? " · " + esc(i.codiceCatasto) : ""}</span><span class="k">Libretto</span><span>${i.dataLibretto ? "compilato il " + esc(fd(i.dataLibretto)) : "non compilato"}</span>${serveREE(i) ? `<span class="k">Efficienza</span><span>${i.ultimoREE ? "ultimo " + esc(fd(i.ultimoREE)) + " · prossimo entro " + esc(fd(reeProssimo(i))) + (i.reeInviato ? "" : " · <b>da inviare al catasto</b>") : "<b>rapporto da fare</b>"}</span>` : ""}</div>
+    ${(S.fgasOps || []).filter(o => o.impiantoId === i.id).length ? `<h3>Interventi sul gas</h3>${(S.fgasOps || []).filter(o => o.impiantoId === i.id).sort((a, b) => (b.data || "").localeCompare(a.data || "")).slice(0, 10).map(o => `<div class="m" style="padding:3px 0">• ${esc(fd(o.data))} · ${esc(o.operazione || "")}${num(o.kgCaricati) ? " · +" + esc(o.kgCaricati) + " kg" : ""}${num(o.kgRecuperati) ? " · recuperati " + esc(o.kgRecuperati) + " kg" : ""} · ${o.comunicato ? "comunicato" : "<b>da comunicare entro " + esc(fd(bdfScad(o))) + "</b>"}</div>`).join("")}` : ""}` : ""}
     ${i.note ? `<div class="info" style="margin-top:8px">${esc(i.note)}</div>` : ""}
     <h3>Storico interventi (${ints.length})</h3>
     ${ints.length ? ints.slice(0, 15).map(x => `<div class="m" style="padding:3px 0">• ${esc(fd(x.data))} · ${esc(x.tipo || "")} · ${esc(tecTxt(x))}${x.rapportino ? " · " + esc((x.rapportino.lavori || []).slice(0, 3).join(", ")) : ""}</div>`).join("") : `<div class="m">Nessun intervento registrato.</div>`}
-    <div class="acts"><button class="btn" data-a="edit">Modifica</button><button class="btn" data-a="qr">🏷 Etichetta QR</button>${ui.modo === "ufficio" ? `<button class="btn" data-a="int">+ Intervento</button>` : ""}${pf && ui.modo === "ufficio" ? `<button class="btn" data-a="fg">✓ Controllo perdite fatto</button>` : ""}<span class="sp"></span><button class="btn pri" data-a="x">Chiudi</button></div>`);
+    <div class="acts"><button class="btn" data-a="edit">Modifica</button><button class="btn" data-a="qr">🏷 Etichetta QR</button>${ui.modo === "ufficio" ? `<button class="btn" data-a="int">+ Intervento</button>` : ""}${pf && ui.modo === "ufficio" && uffVero() ? `<button class="btn" data-a="fg">✓ Controllo perdite fatto</button>` : ""}${ui.modo === "ufficio" && uffVero() ? `<button class="btn" data-a="lib">📘 Stampa libretto</button>${i.gas ? `<button class="btn" data-a="fgop">🧊 Intervento F-gas</button>` : ""}` : ""}<span class="sp"></span><button class="btn pri" data-a="x">Chiudi</button></div>`);
   ov.addEventListener("click", async e => {
     const a = e.target.closest("[data-a]")?.dataset.a; if (!a) return;
     if (a === "x") ov.remove();
     if (a === "edit") formImpianto(i);
     if (a === "int") formIntervento({clienteId: i.clienteId, impiantoId: i.id});
     if (a === "qr") etichettaQR(i);
+    if (a === "lib") stampaLibretto(i);
+    if (a === "fgop") formFgasOp({impiantoId: i.id, clienteId: i.clienteId});
     if (a === "fg") openForm({title: "Controllo perdite F-gas", values: {d: today()}, fields: [{k:"d", label:"Data del controllo", type:"date", req:true}], onSave: async v => { await patch("impianti", i.id, {ultimoControlloPerdite: v.d}); closeModal(); toast("Controllo registrato"); render(); }});
   });
 }
@@ -3328,6 +3336,184 @@ function vContab(){
     ${d.file ? `<div style="margin-top:6px"><a class="btn sm" style="text-decoration:none" href="${esc(d.file.url)}" target="_blank" rel="noopener">📎 Apri ${esc(/pdf/.test(d.file.tipo || "") ? "PDF" : "file")}</a>${d.tipo === "Fattura fornitore" && !d.pagata ? ` <button class="btn sm" data-contabpag="${d.id}">✓ Pagata</button>` : ""}</div>` : ""}</div>`).join("") : empty("Nessun documento. Carica le fatture dei fornitori e i DDT: li vedete solo tu e chi abiliti.")}`;
 }
 
+// ---- solo ufficio vero (Tommaso e Irene): F-gas completo, libretto e catasto, detrazioni fiscali ----
+// Le vedono solo il titolare, gli amministratori e gli account con ruolo "ufficio" (non "ufficio_tecnico", non i tecnici).
+// fgasOps/{id} = {impiantoId, clienteId, interventoId, data, operazione, kgCaricati, kgRecuperati, tecnico, comunicato, comunicatoIl}
+//   (i tecnici li creano dal rapportino ma non li vedono). detrazioni/{id} = pratica per le detrazioni fiscali.
+// impianti: potenzaKw, codiceCatasto, statoCatasto, dataLibretto, ultimoREE, reeAnni, reeInviato.
+const uffVero = () => { const a = mioAccount(); if (!a) return true; return sonoTitolare() || ["admin", "ufficio"].includes(a.ruolo); };
+const FGAS_OP = ["Installazione", "Controllo perdite", "Manutenzione / riparazione", "Ricarica", "Recupero gas / smantellamento"];
+const bdfScad = o => addDays(o.data || today(), 30);
+const kwImp = i => { if (num(i.potenzaKw) > 0) return num(i.potenzaKw); const s = String(i.potenza || "").toLowerCase().replace(/\./g, "").replace(",", ".");
+  let m = s.match(/([\d.]+)\s*kw/); if (m) return parseFloat(m[1]); m = s.match(/([\d.]+)\s*btu/); if (m) return Math.round(parseFloat(m[1]) / 341.2) / 10; return 0; };
+const serveREE = i => kwImp(i) >= 12;
+const reeProssimo = i => serveREE(i) ? (i.ultimoREE ? addMonths(i.ultimoREE, 12 * (num(i.reeAnni) || 4)) : today()) : "";
+const statoCat = i => i.statoCatasto || (i.codiceCatasto ? "Registrato" : "Da registrare");
+const impUff = () => (S.impianti || []).filter(i => i.gas || i.tipo || i.marca);
+const DOC_DETR = ["Fattura con descrizione dei lavori", "Bonifico parlante", "Schede tecniche delle macchine", "Dati catastali dell'immobile", "Codice fiscale del beneficiario", "Dichiarazione / asseverazione del tecnico"];
+const eneaScad = d => d.fineLavori ? addDays(d.fineLavori, 90) : "";
+const detrServeEnea = d => d.serveEnea !== false;
+const statoDetr = d => d.stato || "Aperta";
+
+// campi in più nella scheda impianto (solo ufficio vero)
+const campiLibretto = () => uffVero() ? [
+  {k:"tLib", type:"info", label:"📘 Libretto d'impianto e catasto (solo ufficio)", html: v => { const k = kwImp(v); return k ? `Potenza <b>${String(k).replace(".", ",")} kW</b> — ${k >= 12 ? "da 12 kW in su: serve il rapporto di efficienza energetica" : "sotto i 12 kW: niente rapporto di efficienza"}` : "Scrivi la potenza in kW per sapere se serve il rapporto di efficienza energetica (da 12 kW in su)."; }},
+  {k:"potenzaKw", label:"Potenza frigorifera (kW)", type:"number", half:true, rerender:true},
+  {k:"codiceCatasto", label:"Codice impianto catasto (CIT)", half:true},
+  {k:"statoCatasto", label:"Catasto", type:"select", options:["Da registrare", "Registrato", "Da aggiornare"], def:"Da registrare", half:true},
+  {k:"dataLibretto", label:"Libretto compilato il", type:"date", half:true},
+  {k:"ultimoREE", label:"Ultimo rapporto di efficienza", type:"date", half:true, show: v => serveREE(v)},
+  {k:"reeAnni", label:"Rapporto di efficienza ogni (anni)", type:"number", def:4, half:true, show: v => serveREE(v)},
+  {k:"reeInviato", label:"L'ultimo rapporto di efficienza è stato inviato al catasto", type:"checkbox", show: v => serveREE(v)}
+] : [];
+
+// campi F-gas nel rapportino del tecnico: lui scrive, l'ufficio vede
+const campiFgasRap = imp => imp ? [
+  {k:"fgOp", label:"🧊 Gas refrigerante: operazione fatta", type:"select", options:[["", "Nessuna operazione sul gas"], ...FGAS_OP], half:true, rerender:true},
+  {k:"fgCar", label:`Gas caricato (kg)${imp.gas ? " · " + imp.gas : ""}`, type:"number", half:true, show: v => !!v.fgOp},
+  {k:"fgRec", label:"Gas recuperato (kg)", type:"number", half:true, show: v => !!v.fgOp},
+  {k:"fgPerd", label:"Controllo perdite: trovate perdite", type:"select", options:[["", "—"], ["no", "Nessuna perdita"], ["si", "Perdita trovata"], ["riparata", "Perdita trovata e riparata"]], half:true, show: v => v.fgOp === "Controllo perdite"}
+] : [];
+async function salvaFgasRap(x, imp, v, r){
+  if (!imp || !v.fgOp || (r.fgas && r.fgas.registrato)) return null;
+  const op = {impiantoId: imp.id, clienteId: x.clienteId, interventoId: x.id, data: x.data || today(), operazione: v.fgOp, gas: imp.gas || "",
+    kgCaricati: num(v.fgCar), kgRecuperati: num(v.fgRec), perdite: v.fgPerd || "", tecnico: ui.tecnico || x.tecnico || "", comunicato: false};
+  try { await save("fgasOps", x.id, op); } catch(e) { return null; }
+  return {operazione: v.fgOp, kgCaricati: num(v.fgCar), kgRecuperati: num(v.fgRec), perdite: v.fgPerd || "", registrato: true};
+}
+
+// form intervento F-gas (ufficio)
+function formFgasOp(o = {}){
+  openForm({title: o.id ? "Intervento F-gas" : "Nuovo intervento F-gas", values: o,
+    fields: [
+      {k:"impiantoId", label:"Impianto", type:"select", search:true, req:true, options: () => [["", "— Scegli —"], ...S.impianti.filter(i => i.gas).map(i => [i.id, cliName(i.clienteId) + " · " + (impName(i) || "Impianto")])]},
+      {k:"data", label:"Data dell'intervento", type:"date", def: today, req:true, half:true},
+      {k:"operazione", label:"Operazione", type:"select", options: FGAS_OP, def:"Controllo perdite", half:true},
+      {k:"kgCaricati", label:"Gas caricato (kg)", type:"number", half:true},
+      {k:"kgRecuperati", label:"Gas recuperato (kg)", type:"number", half:true},
+      {k:"tecnico", label:"Tecnico", type:"select", options: () => [["", "—"], ...tecnici()], half:true},
+      {k:"perdite", label:"Esito controllo perdite", type:"select", options:[["", "—"], ["no", "Nessuna perdita"], ["si", "Perdita trovata"], ["riparata", "Perdita trovata e riparata"]], half:true},
+      {k:"comunicato", label:"Comunicato alla Banca Dati F-gas", type:"checkbox", rerender:true},
+      {k:"comunicatoIl", label:"Comunicato il", type:"date", half:true, show: v => !!v.comunicato},
+      {k:"note", label:"Note", type:"textarea"}
+    ],
+    onSave: async v => { const i = byId("impianti", v.impiantoId); v.clienteId = i ? i.clienteId : v.clienteId || ""; v.gas = i ? i.gas || "" : v.gas || ""; v.kgCaricati = num(v.kgCaricati); v.kgRecuperati = num(v.kgRecuperati); if (v.comunicato && !v.comunicatoIl) v.comunicatoIl = today(); if (!v.comunicato) v.comunicatoIl = "";
+      await save("fgasOps", o.id || null, v); if (i && v.operazione === "Controllo perdite" && (!i.ultimoControlloPerdite || v.data > i.ultimoControlloPerdite)) { try { await patch("impianti", i.id, {ultimoControlloPerdite: v.data}); } catch(e){} } toast("Intervento F-gas salvato"); render(); },
+    onDelete: o.id ? async () => { await remove("fgasOps", o.id); closeModal(); toast("Eliminato"); render(); } : null
+  });
+}
+const opRiga = o => { const t = today(), sc = bdfScad(o), i = byId("impianti", o.impiantoId);
+  const chip = o.comunicato ? `<span class="chip ok">comunicato${o.comunicatoIl ? " il " + esc(fd(o.comunicatoIl)) : ""}</span>` : `<span class="chip ${sc < t ? "bad" : sc <= addDays(t, 7) ? "warn" : ""}">${sc < t ? "scaduto il" : "da comunicare entro"} ${esc(fd(sc))}</span>`;
+  return `<div class="card"><div class="row"><span class="t tap" data-fgop="${o.id}" style="flex:1;cursor:pointer">${esc(fd(o.data))} · ${esc(o.operazione || "")}</span>${chip}</div>
+    <div class="m">${esc(cliName(o.clienteId))}${i ? " · " + esc(impName(i)) : ""}${o.gas ? " · " + esc(o.gas) : ""}${num(o.kgCaricati) ? " · caricati " + esc(o.kgCaricati) + " kg" : ""}${num(o.kgRecuperati) ? " · recuperati " + esc(o.kgRecuperati) + " kg" : ""}${o.perdite === "si" ? " · ⚠️ perdita trovata" : o.perdite === "riparata" ? " · perdita riparata" : o.perdite === "no" ? " · nessuna perdita" : ""}${o.tecnico ? " · " + esc(o.tecnico) : ""}</div>
+    ${o.comunicato ? "" : `<div class="row" style="margin-top:6px"><button class="btn sm ok" data-fgcom="${o.id}">✓ Comunicato alla Banca Dati</button></div>`}</div>`; };
+function vFgasOps(){
+  const l = (S.fgasOps || []).slice().sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+  const da = l.filter(o => !o.comunicato).sort((a, b) => bdfScad(a).localeCompare(bdfScad(b)));
+  return `<h3>Interventi da comunicare alla Banca Dati F-gas</h3>
+  <p class="m">Ogni intervento sul gas (installazione, controllo perdite, riparazione, ricarica, recupero) va comunicato alla Banca Dati F-gas entro 30 giorni. I tecnici lo segnano dal rapportino e arriva qui.</p>
+  <div class="row wrap" style="gap:8px;margin-bottom:10px"><button class="btn pri" data-fgop="new">+ Registra intervento F-gas</button>${l.length ? `<button class="btn" data-fgopcsv="1">⬇ Esporta interventi (Excel)</button>` : ""}</div>
+  ${da.length ? da.map(opRiga).join("") : empty("Niente da comunicare.")}
+  ${l.length > da.length ? `<h3>Già comunicati</h3>${l.filter(o => o.comunicato).slice(0, 30).map(opRiga).join("")}` : ""}
+  <h3 style="margin-top:18px">Controlli perdite periodici</h3>`;
+}
+
+// ---- libretti e catasto ----
+function vLibretti(){
+  const t = today(), in60 = addDays(t, 60), l = impUff();
+  const daReg = l.filter(i => statoCat(i) !== "Registrato");
+  const ree = l.filter(serveREE).map(i => [i, reeProssimo(i)]);
+  const reeAl = ree.filter(([i, p]) => p <= in60 || (i.ultimoREE && !i.reeInviato));
+  const tutti = ui.libTutti;
+  const riga = i => { const p = reeProssimo(i), sc = statoCat(i);
+    return `<div class="card tap" data-impd="${i.id}"><div class="row"><span class="t">${esc(cliName(i.clienteId))}</span><span class="sp"></span><span class="chip ${sc === "Registrato" ? "ok" : sc === "Da aggiornare" ? "warn" : "bad"}">${esc(sc)}</span></div>
+    <div class="m">${esc(impName(i) || "Impianto")}${kwImp(i) ? " · " + String(kwImp(i)).replace(".", ",") + " kW" : ""}${i.codiceCatasto ? " · codice " + esc(i.codiceCatasto) : ""}${i.dataLibretto ? " · libretto del " + esc(fd(i.dataLibretto)) : " · <b>libretto non compilato</b>"}</div>
+    ${p ? `<div class="m">Rapporto di efficienza: <b style="color:${p < t ? "var(--bad)" : p <= in60 ? "var(--warn)" : "var(--ok)"}">${i.ultimoREE ? (p < t ? "scaduto il " : "prossimo entro il ") + esc(fd(p)) : "da fare"}</b>${i.ultimoREE ? (i.reeInviato ? " · inviato al catasto" : " · <b>da inviare al catasto</b>") : ""}</div>` : ""}</div>`; };
+  const lista = tutti ? l : [...new Set([...daReg, ...reeAl.map(x => x[0])])];
+  return `<p class="m">Ogni impianto di climatizzazione ha il suo libretto e va registrato nel catasto impianti della Regione Piemonte (CIT). Da 12 kW in su serve anche il rapporto di efficienza energetica, da mandare al catasto. Apri un impianto per compilare i dati o stampare il libretto.</p>
+  <div class="tiles" style="margin-bottom:10px"><div class="tile"><div class="n" style="color:${daReg.length ? "var(--bad)" : "inherit"}">${daReg.length}</div><div class="l">Da registrare o aggiornare</div></div><div class="tile"><div class="n" style="color:${reeAl.length ? "var(--warn)" : "inherit"}">${reeAl.length}</div><div class="l">Rapporti di efficienza da fare o inviare</div></div></div>
+  <div class="row" style="gap:8px;margin-bottom:10px"><button class="btn sm ${tutti ? "" : "pri"}" data-libtutti="0">Da sistemare</button><button class="btn sm ${tutti ? "pri" : ""}" data-libtutti="1">Tutti gli impianti (${l.length})</button></div>
+  ${lista.length ? lista.map(riga).join("") : empty(tutti ? "Nessun impianto." : "Tutto in ordine 👍")}`;
+}
+function stampaLibretto(i){
+  const c = byId("clienti", i.clienteId) || {}, tc = tco2(i);
+  const ints = S.interventi.filter(x => x.impiantoId === i.id).sort(sortInt);
+  const ops = (S.fgasOps || []).filter(o => o.impiantoId === i.id).sort((a, b) => (a.data || "").localeCompare(b.data || ""));
+  const r = (k, v) => v ? `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>` : "";
+  const corpo = `<h1>Libretto di impianto di climatizzazione</h1><p class="s">Riepilogo dei dati (schema D.M. 10/02/2014) — da riportare sul libretto ufficiale del catasto impianti CIT Piemonte</p>
+  <h2>1. Scheda identificativa</h2><table>${r("Codice catasto", i.codiceCatasto || "da registrare")}${r("Responsabile / cliente", c.nome)}${r("Codice fiscale / P.IVA", c.piva)}${r("Indirizzo impianto", addr(c))}${r("Ubicazione", i.ubicazione)}${r("Libretto compilato il", i.dataLibretto ? fd(i.dataLibretto) : "")}</table>
+  <h2>2. Impresa installatrice / manutentrice</h2><table>${r("Ragione sociale", AZIENDA.ragione)}${r("Sede", AZIENDA.legale)}${r("P.IVA", AZIENDA.piva)}${r("Certificato F-gas impresa", CFG.fgas)}${r("Telefono", AZIENDA.tel)}</table>
+  <h2>3. Macchina frigorifera / pompa di calore</h2><table>${r("Tipo", i.tipo)}${r("Marca", i.marca)}${r("Modello", i.modello)}${r("Matricola", i.matricola)}${r("Potenza", kwImp(i) ? String(kwImp(i)).replace(".", ",") + " kW" : i.potenza)}${r("Gas refrigerante", i.gas)}${r("Carica", i.caricaKg ? i.caricaKg + " kg" : "")}${r("CO₂ equivalente", tc != null ? tc.toFixed(2) + " t" : "")}${r("Data installazione", i.dataInstallazione ? fd(i.dataInstallazione) : "")}</table>
+  ${serveREE(i) ? `<h2>4. Controllo di efficienza energetica</h2><table>${r("Ultimo rapporto", i.ultimoREE ? fd(i.ultimoREE) : "da fare")}${r("Frequenza", (num(i.reeAnni) || 4) + " anni")}${r("Prossimo entro", fd(reeProssimo(i)))}${r("Inviato al catasto", i.ultimoREE ? (i.reeInviato ? "sì" : "no") : "")}</table>` : ""}
+  <h2>${serveREE(i) ? 5 : 4}. Registro degli interventi</h2>${ints.length ? `<table class="g"><tr><th>Data</th><th>Tipo</th><th>Tecnico</th><th>Lavori</th></tr>${ints.map(x => `<tr><td>${esc(fd(x.data))}</td><td>${esc(x.tipo || "")}</td><td>${esc(tecTxt(x))}</td><td>${esc(x.rapportino ? [...(x.rapportino.lavori || []), x.rapportino.altro].filter(Boolean).join(", ") : x.descrizione || "")}</td></tr>`).join("")}</table>` : "<p>Nessun intervento.</p>"}
+  ${ops.length ? `<h2>${serveREE(i) ? 6 : 5}. Interventi sul gas (F-gas)</h2><table class="g"><tr><th>Data</th><th>Operazione</th><th>Caricato</th><th>Recuperato</th><th>Tecnico</th></tr>${ops.map(o => `<tr><td>${esc(fd(o.data))}</td><td>${esc(o.operazione || "")}${o.perdite === "si" ? " (perdita)" : ""}</td><td>${num(o.kgCaricati) ? esc(o.kgCaricati) + " kg" : ""}</td><td>${num(o.kgRecuperati) ? esc(o.kgRecuperati) + " kg" : ""}</td><td>${esc(o.tecnico || "")}</td></tr>`).join("")}</table>` : ""}`;
+  const css = `body{font:12px/1.4 system-ui,sans-serif;color:#111;margin:0}h1{font-size:18px;margin:0}h2{font-size:13px;margin:14px 0 4px;border-bottom:1px solid #999}.s{color:#555;margin:2px 0 8px}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:3px 6px;border:1px solid #ccc;vertical-align:top}th{width:34%;background:#f3f3f3}.g th{width:auto}`;
+  const f = document.createElement("iframe"); f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0"; document.body.appendChild(f);
+  const d = f.contentWindow.document; d.open(); d.write(`<!doctype html><html><head><meta charset="utf-8"><title>Libretto impianto ${esc(c.nome || "")}</title><style>@page{margin:12mm}${css}</style></head><body>${corpo}</body></html>`); d.close();
+  setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch(err){} setTimeout(() => f.remove(), 3000); }, 400);
+}
+
+// ---- detrazioni fiscali ----
+function formDetrazione(d = {}){
+  openForm({title: d.id ? "Pratica detrazione" : "Nuova pratica detrazione", values: {docs: [], ...d},
+    fields: [
+      {k:"clienteId", label:"Cliente", type:"select", search:true, req:true, rerender:true, options: v => cliOpts(undefined, v && v.clienteId), onChange: v => { v.commessaId = ""; const c = byId("clienti", v.clienteId); if (c && !v.immobile) v.immobile = addr(c); if (c && !v.codiceFiscale) v.codiceFiscale = c.piva || ""; }},
+      {k:"commessaId", label:"Commessa (facoltativa)", type:"select", options: v => [["", "— Nessuna —"], ...commOf(v.clienteId).map(c => [c.id, (c.numero || "") + " " + (c.titolo || "")])]},
+      {k:"bonus", label:"Tipo di detrazione", type:"select", options:["Ecobonus", "Bonus casa (ristrutturazione)", "Conto termico", "Altro"], def:"Ecobonus", half:true, rerender:true, onChange: v => { v.serveEnea = v.bonus !== "Conto termico"; }},
+      {k:"importo", label:"Importo lavori (€)", type:"number", half:true},
+      {k:"fineLavori", label:"Data fine lavori", type:"date", half:true, rerender:true},
+      {k:"stato", label:"Stato", type:"select", options:["Aperta", "Documenti completi", "Comunicazione inviata", "Chiusa"], def:"Aperta", half:true},
+      {k:"immobile", label:"Indirizzo dell'immobile", half:true},
+      {k:"datiCatastali", label:"Dati catastali (foglio, particella, sub)", half:true},
+      {k:"beneficiario", label:"Beneficiario (chi paga)", half:true},
+      {k:"codiceFiscale", label:"Codice fiscale del beneficiario", half:true},
+      {k:"docs", label:"Documenti raccolti", type:"checks", options: DOC_DETR},
+      {k:"serveEnea", label:"Serve la comunicazione ENEA (entro 90 giorni dalla fine lavori)", type:"checkbox", def:true, rerender:true},
+      {k:"eneaInfo", type:"info", show: v => v.serveEnea !== false && !!v.fineLavori && !v.eneaInviata, html: v => `Scadenza comunicazione ENEA: <b>${esc(fd(eneaScad(v)))}</b>`},
+      {k:"eneaInviata", label:"Comunicazione ENEA inviata", type:"checkbox", rerender:true, show: v => v.serveEnea !== false},
+      {k:"eneaData", label:"Inviata il", type:"date", half:true, show: v => v.serveEnea !== false && !!v.eneaInviata},
+      {k:"eneaCodice", label:"Codice CPID ricevuto", half:true, show: v => v.serveEnea !== false && !!v.eneaInviata},
+      {k:"note", label:"Note", type:"textarea"}
+    ],
+    onSave: async v => { v.importo = num(v.importo); if (v.eneaInviata && !v.eneaData) v.eneaData = today(); if (v.eneaInviata && statoDetr(v) === "Aperta") v.stato = "Comunicazione inviata"; await save("detrazioni", d.id || null, v); toast("Pratica salvata"); render(); },
+    onDelete: d.id ? async () => { await remove("detrazioni", d.id); closeModal(); toast("Pratica eliminata"); render(); } : null
+  });
+}
+function vDetrazioni(){
+  const t = today(), l = (S.detrazioni || []).slice().sort((a, b) => (statoDetr(a) === "Chiusa") - (statoDetr(b) === "Chiusa") || (eneaScad(a) || "9").localeCompare(eneaScad(b) || "9"));
+  const aperte = l.filter(d => statoDetr(d) !== "Chiusa"), eneaDa = aperte.filter(d => detrServeEnea(d) && !d.eneaInviata && d.fineLavori);
+  return `<p class="m">Una pratica per ogni lavoro con detrazione: segna i documenti raccolti e la comunicazione ENEA, che va fatta entro 90 giorni dalla fine dei lavori. Le pratiche le vedono solo Tommaso e Irene.</p>
+  <div class="tiles" style="margin-bottom:10px"><div class="tile"><div class="n">${aperte.length}</div><div class="l">Pratiche aperte</div></div><div class="tile"><div class="n" style="color:${eneaDa.some(d => eneaScad(d) <= addDays(t, 15)) ? "var(--bad)" : "inherit"}">${eneaDa.length}</div><div class="l">Comunicazioni ENEA da fare</div></div></div>
+  <button class="btn pri" data-detr="new" style="margin-bottom:10px">+ Nuova pratica</button>
+  ${l.length ? l.map(d => { const sc = eneaScad(d), docs = (d.docs || []).length, st = statoDetr(d);
+    const chip = st === "Chiusa" ? `<span class="chip ok">Chiusa</span>` : detrServeEnea(d) && !d.eneaInviata && sc ? `<span class="chip ${sc < t ? "bad" : sc <= addDays(t, 15) ? "warn" : ""}">ENEA ${sc < t ? "scaduta il" : "entro"} ${esc(fd(sc))}</span>` : `<span class="chip">${esc(st)}</span>`;
+    return `<div class="card tap" data-detr="${d.id}"><div class="row"><span class="t">${esc(cliName(d.clienteId))}</span><span class="sp"></span>${chip}</div>
+    <div class="m">${esc(d.bonus || "")}${num(d.importo) ? " · " + eur(d.importo) : ""}${d.fineLavori ? " · fine lavori " + esc(fd(d.fineLavori)) : " · <b>fine lavori da inserire</b>"}</div>
+    <div class="m">Documenti ${docs}/${DOC_DETR.length}${docs < DOC_DETR.length ? " · mancano: " + esc(DOC_DETR.filter(x => !(d.docs || []).includes(x)).join(", ")) : " ✓"}${d.eneaInviata ? " · ENEA inviata" + (d.eneaData ? " il " + esc(fd(d.eneaData)) : "") : ""}</div></div>`; }).join("") : empty("Nessuna pratica di detrazione.")}`;
+}
+// avvisi per la pagina Oggi (solo ufficio vero)
+function extraOggiUff(){
+  if (!uffVero()) return "";
+  const t = today(), in7 = addDays(t, 7), in15 = addDays(t, 15), in60 = addDays(t, 60);
+  const bdf = (S.fgasOps || []).filter(o => !o.comunicato && bdfScad(o) <= in7).length;
+  const en = (S.detrazioni || []).filter(d => statoDetr(d) !== "Chiusa" && detrServeEnea(d) && !d.eneaInviata && d.fineLavori && eneaScad(d) <= in15).length;
+  const ree = impUff().filter(i => serveREE(i) && (reeProssimo(i) <= in60 || (i.ultimoREE && !i.reeInviato))).length;
+  return `${bdf ? `<div class="card tap" data-altro="fgas"><b>🧊 ${bdf} intervent${bdf === 1 ? "o" : "i"} F-gas</b> da comunicare alla Banca Dati entro 7 giorni</div>` : ""}
+  ${en ? `<div class="card tap" data-altro="detr"><b>🧾 ${en} comunicazion${en === 1 ? "e" : "i"} ENEA</b> da fare entro 15 giorni</div>` : ""}
+  ${ree ? `<div class="card tap" data-altro="libretti"><b>📘 ${ree} rapport${ree === 1 ? "o" : "i"} di efficienza</b> da fare o da inviare al catasto</div>` : ""}`;
+}
+document.addEventListener("click", async e => {
+  if (e.target.closest(".ov")) return;
+  const el = e.target.closest("[data-fgop],[data-fgcom],[data-fgopcsv],[data-libtutti],[data-detr]"); if (!el || !uffVero()) return; const d = el.dataset;
+  if (d.fgop === "new") return formFgasOp();
+  if (d.fgop) { const o = byId("fgasOps", d.fgop); if (o) formFgasOp(o); return; }
+  if (d.fgcom) { await patch("fgasOps", d.fgcom, {comunicato: true, comunicatoIl: today()}); toast("Segnato come comunicato"); return; }
+  if (d.fgopcsv) { const l = (S.fgasOps || []).slice().sort((a, b) => (a.data || "").localeCompare(b.data || "")); await saveCsv("Interventi F-gas iTeam.csv", ["Data", "Cliente", "Impianto", "Matricola", "Gas", "Operazione", "Kg caricati", "Kg recuperati", "Perdite", "Tecnico", "Comunicato", "Comunicato il"], l.map(o => { const i = byId("impianti", o.impiantoId) || {}; return [o.data || "", cliName(o.clienteId), impName(i), i.matricola || "", o.gas || "", o.operazione || "", o.kgCaricati || "", o.kgRecuperati || "", o.perdite || "", o.tecnico || "", o.comunicato ? "sì" : "no", o.comunicatoIl || ""]; })); return; }
+  if (d.libtutti !== undefined) { ui.libTutti = d.libtutti === "1"; render(); return; }
+  if (d.detr === "new") return formDetrazione();
+  if (d.detr) { const x = byId("detrazioni", d.detr); if (x) formDetrazione(x); return; }
+});
+
 // ---- pagina Altro ----
 const ALTRO = () => [
   ["margini", "📈", "Margini", "Quanto guadagni su ogni intervento e preventivo"],
@@ -3336,11 +3522,13 @@ const ALTRO = () => [
   ["ordini", "📦", "Ordini ai fornitori", "Da preventivi e scorte, per fornitore"],
   ["furgoni", "🚐", "Furgoni", "Materiale sul furgone di ogni tecnico"],
   ["contratti", "📝", "Contratti di manutenzione", "Canoni, rinnovi e visite"],
-  ["fgas", "🧊", "Registro F-gas", "Scadenze dei controlli perdite"],
+  ...(uffVero() ? [["fgas", "🧊", "Registro F-gas", "Interventi da comunicare e controlli perdite"],
+    ["libretti", "📘", "Libretti e catasto", "Catasto CIT e rapporti di efficienza"],
+    ["detr", "🧾", "Detrazioni fiscali", "Documenti e comunicazione ENEA"]] : []),
   ...(puoContab() ? [["contab", "📒", "Contabilità", "Fatture fornitori e DDT (riservato)"]] : [])
 ];
 function vAltro(){
-  const V = {margini: vMargini, prezzi: vPrezzi, incassi: vIncassi, ordini: vOrdini, furgoni: vFurgoni, contratti: vContratti, fgas: vFgas, contab: vContab};
+  const V = {margini: vMargini, prezzi: vPrezzi, incassi: vIncassi, ordini: vOrdini, furgoni: vFurgoni, contratti: vContratti, fgas: () => vFgasOps() + vFgas(), libretti: vLibretti, detr: vDetrazioni, contab: vContab};
   const cur = ALTRO().find(a => a[0] === ui.altro);
   if (cur && V[cur[0]]) return `<button class="btn sm" data-altro="">← Gestione</button><h2 style="margin-top:12px">${cur[1]} ${esc(cur[2])}</h2>${V[cur[0]]()}`;
   return `<h2>Gestione</h2><div class="tiles">${ALTRO().map(([k, ic, t, d]) => `<div class="tile" data-altro="${k}"><div style="font-size:24px">${ic}</div><div class="t" style="margin-top:4px">${esc(t)}</div><div class="l">${esc(d)}</div></div>`).join("")}</div>`;
@@ -3349,13 +3537,15 @@ function extraOggi(){
   if (ui.modo !== "ufficio") return "";
   const t = today(), in30 = addDays(t, 30);
   const k = S.contratti.filter(c => c.stato !== "Disdetto" && c.scadenza && c.scadenza <= in30);
-  const fg = S.impianti.filter(i => fgasMesi(i) > 0 && fgasProssimo(i) <= in30);
+  const fg = uffVero() ? S.impianti.filter(i => fgasMesi(i) > 0 && fgasProssimo(i) <= in30) : [];
   const ord = S.ordini.filter(o => o.stato === "Da inviare");
-  if (!k.length && !fg.length && !ord.length) return "";
+  const xu = extraOggiUff().trim();
+  if (!k.length && !fg.length && !ord.length && !xu) return "";
   return `<h3>Da non dimenticare</h3>
   ${k.length ? `<div class="card tap" data-altro="contratti"><b>📝 ${k.length} contratt${k.length === 1 ? "o" : "i"} di manutenzione</b> in scadenza o scadut${k.length === 1 ? "o" : "i"}: proponi il rinnovo</div>` : ""}
   ${fg.length ? `<div class="card tap" data-altro="fgas"><b>🧊 ${fg.length} controll${fg.length === 1 ? "o" : "i"} perdite F-gas</b> da fare entro 30 giorni</div>` : ""}
-  ${ord.length ? `<div class="card tap" data-altro="ordini"><b>📦 ${ord.length} ordin${ord.length === 1 ? "e" : "i"} ai fornitori</b> ancora da inviare</div>` : ""}`;
+  ${ord.length ? `<div class="card tap" data-altro="ordini"><b>📦 ${ord.length} ordin${ord.length === 1 ? "e" : "i"} ai fornitori</b> ancora da inviare</div>` : ""}
+  ${xu}`;
 }
 
 // ---- eventi delle nuove pagine ----
