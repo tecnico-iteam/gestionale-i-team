@@ -1590,7 +1590,7 @@ async function startJob(x){
 // ---------- guida (pulsante ❓ in alto): istruzioni a tendina per ogni funzione ----------
 // per: u = ufficio, t = tecnico, p = preventivatore
 const GUIDA = [
-  {per: "utp", t: "🔐 Accesso, account e password", h: `<p>Ognuno entra con il <b>proprio account</b> e arriva direttamente nel suo spazio. Il pulsante <b>Cambia</b> in alto compare solo a chi ha più aree (per esempio ufficio e tecnico) e serve per passare da una all'altra.</p><p>Gli account li crea il titolare dal pulsante <b>👤</b> (Utenti), dove sceglie anche il ruolo: ufficio, tecnico, ufficio e tecnico, preventivatore. Le password le cambia <b>solo il titolare</b> con il pulsante <b>🔑</b>.</p>`},
+  {per: "utp", t: "🔐 Accesso, account e password", h: `<p>Ognuno entra con il <b>proprio account</b> e arriva direttamente nel suo spazio. Il pulsante <b>Cambia</b> in alto compare solo a chi ha più aree (per esempio ufficio e tecnico) e serve per passare da una all'altra.</p><p>Gli account li crea il titolare dal pulsante <b>👤</b> (Utenti), dove sceglie anche il ruolo: ufficio, tecnico, ufficio e tecnico, tecnico e preventivatore, preventivatore. Le password le cambia <b>solo il titolare</b> con il pulsante <b>🔑</b>.</p>`},
   {per: "utp", t: "📱 Installare l'app sul telefono", h: `<p><b>iPhone:</b> apri il gestionale in Safari → tocca <b>Condividi</b> → <b>Aggiungi alla schermata Home</b>. <b>Android:</b> in Chrome tocca i tre puntini → <b>Installa app</b>.</p><p>Da quel momento si apre dall'icona iTeam come una vera app. Se manca internet si vedono i dati già salvati, e le modifiche partono appena torna la linea.</p>`},
   {per: "utp", t: "🪪 Biglietto da visita con QR", h: `<p>Il pulsante con il <b>QR</b> in alto a sinistra apre il tuo biglietto da visita. Il cliente inquadra il codice con la fotocamera e si salva in rubrica i tuoi dati e quelli dell'ufficio.</p>`},
   {per: "u", t: "🏠 Pagina Oggi", h: `<p>È il riepilogo della giornata: interventi di oggi, rapportini dei tecnici da verificare, manutenzioni in scadenza, fatture scadute e da incassare, articoli sotto scorta.</p><p>Nella parte <b>Promemoria ai clienti</b> trovi gli appuntamenti di domani: con un tocco su <b>💬</b> mandi il WhatsApp al cliente (gratis).</p>`},
@@ -2852,7 +2852,7 @@ function formTecNew(pre = {}){
 // Aree consentite in base al ruolo dell'account (👤 → Utenti). Senza account (prove) si vede tutto.
 function modiConsentiti(){
   const r = window.ITEAM && window.ITEAM.profilo && window.ITEAM.profilo() ? window.ITEAM.profilo().ruolo : "";
-  return ({tecnico: ["tecnico"], ufficio: ["ufficio"], ufficio_tecnico: ["ufficio", "tecnico"], preventivatore: ["comm"]})[r] || ["ufficio", "tecnico", "comm"];
+  return ({tecnico: ["tecnico"], ufficio: ["ufficio"], ufficio_tecnico: ["ufficio", "tecnico"], tecnico_preventivatore: ["tecnico", "comm"], preventivatore: ["comm"]})[r] || ["ufficio", "tecnico", "comm"];
 }
 // Con l'account ognuno entra come se stesso: postazione e tecnico collegati (👤 → Utenti) o ricavati dal nome.
 const mioAccount = () => (window.ITEAM && window.ITEAM.profilo && window.ITEAM.profilo()) || null;
@@ -2904,7 +2904,7 @@ const ruolo = () => (mioAccount() || {}).ruolo || "";
 const sonoTitolare = () => !!(window.ITEAM && window.ITEAM.isOwner && window.ITEAM.isOwner());
 const puoContab = () => sonoTitolare() || !!(mioAccount() || {}).contabilita;
 const COLS_SOLO_UFFICIO = ["fatture", "ordini", "contratti"];
-const colsPerMe = () => { const r = ruolo(); return COLS.filter(c => !((r === "tecnico" || r === "preventivatore") && COLS_SOLO_UFFICIO.includes(c))); };
+const colsPerMe = () => { const r = ruolo(); return COLS.filter(c => !(["tecnico", "preventivatore", "tecnico_preventivatore"].includes(r) && COLS_SOLO_UFFICIO.includes(c))); };
 const fornitoriNoti = () => [...new Set([...(CFG.fornitori || []).map(f => f.nome), ...S.magazzino.map(m => m.fornitore), ...BUNDLES.filter(b => b.costo).map(b => b.marca), ...(S.contabilita || []).map(d => d.fornitore)].filter(Boolean))].sort((a, b) => a.localeCompare(b));
 const fornitoreInfo = n => (CFG.fornitori || []).find(f => sameTec(f.nome, n)) || {nome: n};
 const mailLink = (to, subj, body) => `mailto:${encodeURIComponent(to || "")}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;

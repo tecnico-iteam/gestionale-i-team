@@ -34,7 +34,7 @@ in italiano semplice, senza gergo tecnico.
   ufficio@iteamservice.it (SMTP Hostinger, segreto GitHub `SMTP_PASSWORD`); il WhatsApp lo manda l'ufficio con un tocco dalla
   pagina Oggi (gratis, link wa.me). Stato in `promemoriaClienti/{idIntervento}` = {mail, wa} (firma data|ora); `clienti.noPromemoria` li disattiva.
 - Account: l'amministratore li crea da 👤 (nome utente → `nome@utenti.iteamservice.it`). Ruoli: admin, ufficio,
-  ufficio_tecnico, tecnico, preventivatore; ogni ruolo vede solo le sue aree (`modiConsentiti()` in index.html).
+  ufficio_tecnico, tecnico, tecnico_preventivatore (Alessandro), preventivatore; ogni ruolo vede solo le sue aree (`modiConsentiti()` in index.html).
   Con l'account si entra come se stessi: `utenti.postazione` / `utenti.tecnico` (collegati da 👤 → Utenti, se vuoti
   ricavati dal nome); con una sola area si entra direttamente (`entraModo()`), niente PIN ufficio.
 - Password: le cambia SOLO il titolare (pulsante 🔑 in alto, `openPasswords()` in firebase-app.js, visibile solo a OWNER);

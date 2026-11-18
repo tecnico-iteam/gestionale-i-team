@@ -8,7 +8,7 @@ const {chromium} = require('playwright');
     utenti: {u1:{email:'carone.t46@gmail.com', nome:'Tommy', ruolo:'admin', attivo:true},
       u2:{email:'mario@utenti.iteamservice.it', nome:'Mario Rossi', ruolo:'tecnico', attivo:true, tecnico:'Mario Rossi'},
       u3:{email:'irene@utenti.iteamservice.it', nome:'Irene', ruolo:'ufficio', attivo:true, contabilita:true},
-      u4:{email:'ale@utenti.iteamservice.it', nome:'Alessandro', ruolo:'ufficio_tecnico', attivo:true, tecnico:'Mario Rossi'}},
+      u4:{email:'ale@utenti.iteamservice.it', nome:'Alessandro', ruolo:'tecnico_preventivatore', attivo:true, tecnico:'Mario Rossi'}},
     config: {impostazioni: {tecnici:[{nome:'Mario Rossi', codice:'T01'}], costoOra:45, costoInterno:25, postazioni:['Tommy','Irene','Alessandro'], fornitori:[{nome:'Erredi', telefono:'3331112222', email:'ordini@erredi.test', referente:'Luca'}]}},
     clienti: {c1:{nome:'Cliente Prova', telefono:'3330000000', email:'cliente@prova.test', indirizzo:'Via Test 1', citta:'Vinovo'}},
     impianti: {i1:{clienteId:'c1', tipo:'Canalizzato', marca:'General', modello:'ARXCO', gas:'R410A', caricaKg:3, dataInstallazione:'2024-01-10', ultimoControlloPerdite:'2025-06-01', potenza:'14 kW'}, i2:{clienteId:'c1', tipo:'Split', marca:'Fujitsu', gas:'R32', caricaKg:1, potenza:'9000 BTU'}},
@@ -77,6 +77,7 @@ const {chromium} = require('playwright');
     const a = await apri({uid:u, email:e, emailVerified:true, displayName:n, providerData:[{providerId:'password'}]});
     await a.click('[data-mode="ufficio"] >> nth=0').catch(()=>{}); await a.waitForTimeout(300);
     await a.click('[data-tab="altro"]').catch(()=>{}); await a.waitForTimeout(300);
+    console.log(n, 'aree:', await a.$$eval('[data-mode]', l => l.map(x => x.dataset.mode).join(',')).catch(() => ''), 'barra:', (await a.innerText('header').catch(() => '')).replace(/\s+/g, ' ').slice(0, 80));
     console.log(n, 'vede F-gas/libretti/detrazioni:', await a.isVisible('[data-altro="fgas"]'), await a.isVisible('[data-altro="libretti"]'), await a.isVisible('[data-altro="detr"]'));
   }
   console.log('Errori:', errs.length ? errs : 'nessuno');

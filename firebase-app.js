@@ -4,7 +4,7 @@
 (() => {
 "use strict";
 const OWNER = "carone.t46@gmail.com";
-const RUOLI = [["admin", "Amministratore"], ["ufficio", "Ufficio"], ["ufficio_tecnico", "Ufficio + Tecnico"], ["tecnico", "Tecnico"], ["preventivatore", "Preventivatore"]];
+const RUOLI = [["admin", "Amministratore"], ["ufficio", "Ufficio"], ["ufficio_tecnico", "Ufficio + Tecnico"], ["tecnico", "Tecnico"], ["tecnico_preventivatore", "Tecnico + Preventivatore"], ["preventivatore", "Preventivatore"]];
 // Chi non ha un'email accede con un semplice nome utente (es. "maurizio"):
 // dietro le quinte diventa "maurizio@utenti.iteamservice.it" (nessuna email viene inviata lì).
 const DOMINIO_UTENTI = "utenti.iteamservice.it";
@@ -288,7 +288,7 @@ function openAccount(){
     const L = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a, b) => (a.attivo - b.attivo) || (a.nome || a.email || "").localeCompare(b.nome || b.email || ""));
     const O = (window.ITEAM_OPZIONI && window.ITEAM_OPZIONI()) || {postazioni: [], tecnici: []};
     const sel = (x, campo, lista, label) => `<label class="m" style="display:flex;align-items:center;gap:6px;margin-top:6px">${label}<select data-link="${x.id}" data-campo="${campo}" style="flex:1;min-width:0"><option value="">Automatico (dal nome)</option>${lista.map(n => `<option ${x[campo] === n ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label>`;
-    const links = x => (["admin", "ufficio", "ufficio_tecnico"].includes(x.ruolo) || (x.id === u.uid && isOwner) ? sel(x, "postazione", O.postazioni, "🏢 Postazione") : "") + (["admin", "ufficio_tecnico", "tecnico"].includes(x.ruolo) || (x.id === u.uid && isOwner) ? sel(x, "tecnico", O.tecnici, "🔧 Tecnico") : "") + (isOwner && !sonoIo(x) && x.ruolo !== "tecnico" && x.ruolo !== "nuovo" ? `<label class="m" style="display:flex;align-items:center;gap:6px;margin-top:6px"><input type="checkbox" data-contab="${x.id}" ${x.contabilita ? "checked" : ""}> 📒 Vede la contabilità (fatture fornitori e DDT)</label>` : "");
+    const links = x => (["admin", "ufficio", "ufficio_tecnico"].includes(x.ruolo) || (x.id === u.uid && isOwner) ? sel(x, "postazione", O.postazioni, "🏢 Postazione") : "") + (["admin", "ufficio_tecnico", "tecnico", "tecnico_preventivatore"].includes(x.ruolo) || (x.id === u.uid && isOwner) ? sel(x, "tecnico", O.tecnici, "🔧 Tecnico") : "") + (isOwner && !sonoIo(x) && !["tecnico", "tecnico_preventivatore", "nuovo"].includes(x.ruolo) ? `<label class="m" style="display:flex;align-items:center;gap:6px;margin-top:6px"><input type="checkbox" data-contab="${x.id}" ${x.contabilita ? "checked" : ""}> 📒 Vede la contabilità (fatture fornitori e DDT)</label>` : "");
     const sonoIo = x => x.id === u.uid;
     el.innerHTML = L.length ? L.map(x => { const me = x.id === u.uid; return `<div class="u"><div class="row"><b>${esc(x.nome || "—")}</b>${!x.attivo ? `<span class="chip bad" style="margin-left:6px">Da attivare</span>` : ""}<span class="sp"></span>${me ? `<span class="chip pri">Tu</span>` : ""}</div><div class="m">${x.email && x.email.endsWith("@" + DOMINIO_UTENTI) ? "Nome utente: <b>" + esc(showName(x.email)) + "</b>" : esc(x.email)}</div>
       ${me ? "" : `<div class="row wrap" style="gap:8px;margin-top:8px"><select data-ruolo="${x.id}">${(x.ruolo === "nuovo" ? [["nuovo", "— Scegli ruolo —"]] : []).concat(RUOLI).map(([k, l]) => `<option value="${k}" ${x.ruolo === k ? "selected" : ""}>${l}</option>`).join("")}</select>
