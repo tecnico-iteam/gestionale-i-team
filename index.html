@@ -598,7 +598,12 @@ function formIntervento(x = {}, dopo){
   openForm({ title: x.id ? "Modifica appuntamento" : "Nuovo intervento", values: x,
     fields: [
       {k:"clienteId", label:"Cliente", type:"select", search:true, options: v => cliOpts(undefined, v && v.clienteId), req:true, rerender:true, onChange: v => { v.impiantoId = ""; }},
-      {k:"impiantoId", label:"Impianto", type:"select", options: v => impOpts(v.clienteId)},
+      {k:"impiantoId", label:"Impianto", type:"select", rerender:true, options: v => v.clienteId ? [...impOpts(v.clienteId), ["__nuovo", "➕ Aggiungi un impianto nuovo…"]] : [["", "— Scegli prima il cliente —"]]},
+      {k:"impInfo", type:"info", show: v => !!v.clienteId && !S.impianti.some(i => i.clienteId === v.clienteId) && v.impiantoId !== "__nuovo", html: () => "Questo cliente non ha ancora impianti registrati: puoi aggiungerne uno scegliendo <b>➕ Aggiungi un impianto nuovo</b>, oppure lasciare «Nessun impianto specifico»."},
+      {k:"nImpTipo", label:"Tipo di impianto", type:"select", options:TIPI_IMP, def:"Split", half:true, show: v => v.impiantoId === "__nuovo"},
+      {k:"nImpUbic", label:"Ubicazione", ph:"es. Soggiorno, Tetto", half:true, show: v => v.impiantoId === "__nuovo"},
+      {k:"nImpMarca", label:"Marca", ph:"es. General Fujitsu", half:true, show: v => v.impiantoId === "__nuovo"},
+      {k:"nImpModello", label:"Modello", half:true, show: v => v.impiantoId === "__nuovo"},
       {k:"data", label: "Data (inizio)", type:"date", def: today, req:true, half:true, rerender:true, onChange: v => { if (v.cantiere && num(v.durataGg) > 1) v.dataFine = fineDaDurata(v.data, num(v.durataGg), v.giorniLav); }},
       {k:"ora", label:"Ora (inizio)", type:"time", half:true},
       {k:"cantiere", label:"🏗️ Cantiere di più giorni (resta segnato in agenda ogni giorno fino alla fine)", type:"checkbox", onChange: v => { if (v.cantiere) { if (!v.ora) v.ora = "08:00"; if (!v.oraDa) v.oraDa = "08:00"; if (!v.oraFine) v.oraFine = "17:00"; if (!v.giorniLav) v.giorniLav = "5"; } }},
@@ -618,7 +623,11 @@ function formIntervento(x = {}, dopo){
       {k:"stato", label:"Stato", type:"select", options:STATI_INT, def:"Programmato"},
       {k:"promemoria", label:"⚠️ Manda al cliente il promemoria il giorno prima (email e WhatsApp)", type:"checkbox", def:true}
     ],
-    onSave: async v => { if (v.cantiere && !isCant(v)) { toast("Metti la durata o una data di fine dopo la data di inizio"); throw new Error("fine"); }
+    onSave: async v => {
+      if (v.impiantoId === "__nuovo") { // impianto nuovo creato insieme all'appuntamento (gli altri dati si completano dalla scheda impianto)
+        v.impiantoId = await save("impianti", null, {clienteId: v.clienteId, tipo: v.nImpTipo || "Split", ubicazione: (v.nImpUbic || "").trim(), marca: (v.nImpMarca || "").trim(), modello: (v.nImpModello || "").trim()}) || ""; }
+      ["nImpTipo", "nImpUbic", "nImpMarca", "nImpModello", "impInfo"].forEach(k => delete v[k]);
+      if (v.cantiere && !isCant(v)) { toast("Metti la durata o una data di fine dopo la data di inizio"); throw new Error("fine"); }
       if (!v.cantiere) { v.dataFine = ""; v.durataGg = ""; } else v.durataGg = giorniInt(v).length;
       if (!v.tecnico || sameTec(v.tecnico2, v.tecnico)) v.tecnico2 = ""; v.materialiPrevisti = (v.materialiPrevisti || []).filter(m => m.articoloId || (m.descrizione || "").trim()); await save("interventi", x.id, v); if (x.id) closeModal(); if (dopo) await dopo(); toast("Appuntamento salvato"); render(); },
     onDelete: x.id ? async () => { await remove("interventi", x.id); closeModal(); toast("Intervento eliminato"); render(); } : null
