@@ -30,6 +30,11 @@ jobs:
         run: node scripts/password.js
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - name: Trasferimento dal calendario dell'iPhone
+        if: always()
+        run: node scripts/calendari.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
       - name: Promemoria ai clienti (email)
         run: node scripts/promemoria-clienti.js
         env:

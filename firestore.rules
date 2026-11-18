@@ -40,9 +40,12 @@ service cloud.firestore {
     // F-gas: i tecnici registrano l'intervento dal rapportino ma non lo vedono; detrazioni solo ufficio vero
     match /fgasOps/{id} { allow create: if active(); allow read, update, delete: if ufficio(); }
     match /detrazioni/{id} { allow read, write: if ufficio(); }
+    // Trasferimento dal calendario dell'iPhone: solo il titolare
+    match /calendariFeed/{id} { allow read, write: if owner(); }
+    match /eventiCal/{id} { allow read, write: if owner(); }
     // Tutti gli altri dati (clienti, interventi, preventivi, magazzino, listino, dico, …)
     match /{col}/{id} {
-      allow read, write: if active() && !(col in ['utenti', 'config', 'contabilita', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni']);
+      allow read, write: if active() && !(col in ['utenti', 'config', 'contabilita', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'calendariFeed', 'eventiCal']);
     }
   }
 }

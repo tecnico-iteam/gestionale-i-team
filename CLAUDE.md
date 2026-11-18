@@ -58,6 +58,10 @@ in italiano semplice, senza gergo tecnico.
   rapportino con `campiFgasRap`/`salvaFgasRap`, id = id intervento, ma non li legge), Libretti e catasto (`vLibretti`,
   campi impianto `potenzaKw, codiceCatasto, statoCatasto, dataLibretto, ultimoREE, reeAnni, reeInviato`; REE da 12 kW,
   `stampaLibretto()`), Detrazioni (`detrazioni/{id}`, ENEA entro 90 gg da `fineLavori`). Avvisi in `extraOggiUff()`.
+- Trasferimento dal calendario iPhone (solo titolare, `vTrasfCal()` dal Calendario): il titolare incolla il link del
+  "Calendario pubblico" iCloud in `calendariFeed/impostazioni.icloudUrl`; `scripts/calendari.js` (workflow avvisi, ogni 10 min)
+  copia gli appuntamenti futuri in `eventiCal/{id}`; "Trasferisci" apre `formIntervento(x, dopo)` precompilato e segna `convertito`,
+  "Salta" = `nascosto`; "Ho finito" toglie il link e svuota la lista.
 - Grafica: tema "Giovane" (viola #6c4cf1, corallo #ff6b4a, menta) in fondo al <style> di index.html, font Nunito; `.hero` in `vOggi()`.
 - Scheda impianto `detImpianto()` con etichetta QR (link `?imp=ID`, `controllaLinkImpianto()`).
 - Timbratura: `posizione()` salva `interventi.inizioPos` (▶ Inizia) e `rapportino.finePos` (invio), visibili solo all'ufficio.

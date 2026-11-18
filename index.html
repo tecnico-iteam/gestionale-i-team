@@ -271,7 +271,7 @@ const NAV = [
 ];
 
 // ---------- stato ----------
-const S = Object.fromEntries(COLS.map(c => [c, []])); S.contabilita = []; S.fgasOps = []; S.detrazioni = [];
+const S = Object.fromEntries(COLS.map(c => [c, []])); S.contabilita = []; S.fgasOps = []; S.detrazioni = []; S.eventiCal = []; S.calCfg = {};
 const DEFAULT_MANODOPERA = ["Installazione monosplit (fino a 3 m di linee)","Installazione dual split","Installazione trial split","Metro aggiuntivo linee frigorifere","Staffa per unità esterna","Pompa scarico condensa","Canalina (al metro)","Carotaggio muro","Linea elettrica dedicata","Smontaggio e smaltimento vecchio impianto","Dichiarazione di conformità e pratiche F-gas"].map(d => ({descrizione: d, prezzo: 0}));
 let CFG = {postazioni: ["Tommy", "Irene", "Alessandro"], titolare: "Carone Tommaso", respAB: "Carone Tommaso", respCE: "Sasso Francesco", fgas: "FGAS-A18879", cciaa: "Torino", rea: "TO-1331174", alboArt: "", abilitazioni: ["a) elettrici", "b) radiotelevisivi ed elettronici", "c) riscaldamento e climatizzazione", "e) gas"], tecnici: [], lavori: DEFAULT_LAVORI.slice(), scontoAcquisto: 0, scontoCliente: 0, costoOra: 45, costoGiornata: 300, manodopera: DEFAULT_MANODOPERA.map(x => ({...x}))};
 let assetsNS = null;
@@ -364,6 +364,7 @@ async function initDb(){
   const MIE = colsPerMe();
   const timer = setTimeout(() => { if (loaded.size < MIE.length) { ui.stale = true; render(); } }, 10000);
   if (puoContab()) db.collection("contabilita").onSnapshot(snap => { S.contabilita = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
+  if (sonoTitolare()) { db.collection("eventiCal").onSnapshot(snap => { S.eventiCal = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}); db.collection("calendariFeed").doc("impostazioni").onSnapshot(sn => { S.calCfg = sn.exists ? sn.data() : {}; render(); }, () => {}); }
   if (uffVero()) ["fgasOps", "detrazioni"].forEach(c => db.collection(c).onSnapshot(snap => { S[c] = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}));
   MIE.forEach(c => {
     db.collection(c).onSnapshot(snap => {
@@ -590,7 +591,7 @@ function formImpianto(i = {}){
     onDelete: i.id && ui.modo !== "tecnico" ? async () => { await remove("impianti", i.id); closeModal(); toast("Impianto eliminato"); render(); } : null
   });
 }
-function formIntervento(x = {}){
+function formIntervento(x = {}, dopo){
   openForm({ title: x.id ? "Modifica appuntamento" : "Nuovo intervento", values: x,
     fields: [
       {k:"clienteId", label:"Cliente", type:"select", search:true, options: v => cliOpts(undefined, v && v.clienteId), req:true, rerender:true, onChange: v => { v.impiantoId = ""; }},
@@ -616,7 +617,7 @@ function formIntervento(x = {}){
     ],
     onSave: async v => { if (v.cantiere && !isCant(v)) { toast("Metti la durata o una data di fine dopo la data di inizio"); throw new Error("fine"); }
       if (!v.cantiere) { v.dataFine = ""; v.durataGg = ""; } else v.durataGg = giorniInt(v).length;
-      if (!v.tecnico || sameTec(v.tecnico2, v.tecnico)) v.tecnico2 = ""; v.materialiPrevisti = (v.materialiPrevisti || []).filter(m => m.articoloId || (m.descrizione || "").trim()); await save("interventi", x.id, v); if (x.id) closeModal(); toast("Appuntamento salvato"); render(); },
+      if (!v.tecnico || sameTec(v.tecnico2, v.tecnico)) v.tecnico2 = ""; v.materialiPrevisti = (v.materialiPrevisti || []).filter(m => m.articoloId || (m.descrizione || "").trim()); await save("interventi", x.id, v); if (x.id) closeModal(); if (dopo) await dopo(); toast("Appuntamento salvato"); render(); },
     onDelete: x.id ? async () => { await remove("interventi", x.id); closeModal(); toast("Intervento eliminato"); render(); } : null
   });
 }
@@ -1961,6 +1962,7 @@ const TEC_COL = ["#3472c2","#ee2332","#1c8a55","#b26a00","#7b3fb8","#0f8b8d","#c
 const tecColor = n => { if (!n) return "#8a99a6"; const l = tecnici(); const i = l.findIndex(x => sameTec(x, n)); return TEC_COL[(i < 0 ? 0 : i) % TEC_COL.length]; };
 const monStart = d => { const x = new Date(d + "T12:00:00"); const wd = (x.getDay() + 6) % 7; x.setDate(x.getDate() - wd); return iso(x); };
 function vCalendario(fixedTec){
+  if (!fixedTec && ui.calImp && sonoTitolare()) return vTrasfCal();
   const t = today();
   if (!ui.calSel) ui.calSel = t;
   if (!ui.calM) ui.calM = ui.calSel.slice(0, 7);
@@ -1997,7 +1999,8 @@ function vCalendario(fixedTec){
   }
   const selL = byDay[ui.calSel] || [], selM = manDay[ui.calSel] || [];
   const tl = tecnici();
-  return `${fixedTec ? "" : "<h2>Calendario</h2>"}
+  const tcal = !fixedTec && sonoTitolare() ? (S.calCfg && S.calCfg.icloudUrl ? `<div class="card tap" data-tcal="apri" style="background:var(--pri-2)"><b>📱 Trasferimento dal calendario iPhone</b> · ${evCalDaFare().length} appuntament${evCalDaFare().length === 1 ? "o" : "i"} da trasferire</div>` : `<button class="btn sm" data-tcal="apri" style="margin-bottom:10px">📱 Trasferisci i miei appuntamenti dall'iPhone</button>`) : "";
+  return `${fixedTec ? "" : "<h2>Calendario</h2>" + tcal}
   <div class="seg"><button class="${ui.calView === "mese" ? "on" : ""}" data-calv="mese">Mese</button><button class="${ui.calView === "settimana" ? "on" : ""}" data-calv="settimana">Settimana</button></div>
   <div class="calnav"><button class="btn sm" data-calmv="-1">‹</button><b>${esc(head)}</b><button class="btn sm" data-calmv="1">›</button><button class="btn sm" data-calmv="0">Oggi</button></div>
   ${fixedTec ? "" : `<select class="search" data-caltec><option value="">Tutti i tecnici</option><option value="-" ${ui.calTec === "-" ? "selected" : ""}>Da assegnare</option>${tl.map(n => `<option ${sameTec(n, ui.calTec) ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>`}
@@ -3561,6 +3564,66 @@ document.addEventListener("click", async e => {
   if (d.libtutti !== undefined) { ui.libTutti = d.libtutti === "1"; render(); return; }
   if (d.detr === "new") return formDetrazione();
   if (d.detr) { const x = byId("detrazioni", d.detr); if (x) formDetrazione(x); return; }
+});
+
+// ---- trasferimento appuntamenti dal calendario dell'iPhone (solo titolare) ----
+// calendariFeed/impostazioni = {icloudUrl, importato, erroreImport}; eventiCal/{id} li scrive scripts/calendari.js ogni 10 min.
+const evCalDaFare = () => (S.eventiCal || []).filter(e => !e.convertito && !e.nascosto).sort((a, b) => (a.data + (a.ora || "00:00")).localeCompare(b.data + (b.ora || "00:00")));
+const normN = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+function clientePerEvento(e){
+  const t = " " + normN([e.titolo, e.luogo].join(" ")) + " ";
+  let best = null, bs = 0;
+  for (const c of S.clienti) {
+    const p = normN(c.nome).split(" ").filter(w => w.length > 2); if (!p.length) continue;
+    const n = p.filter(w => t.includes(" " + w + " ")).length, sc = n / p.length;
+    if (n && sc > bs && (sc >= .99 || n >= 2)) { best = c; bs = sc; }
+  }
+  return best;
+}
+function vTrasfCal(){
+  const cfg = S.calCfg || {}, l = evCalDaFare(), fatti = (S.eventiCal || []).filter(e => e.convertito).length;
+  const stato = !cfg.icloudUrl ? "" : cfg.erroreImport ? `<div class="banner warn">⚠️ Non riesco a leggere il calendario: ${esc(cfg.erroreImport)}. Controlla di aver attivato «Calendario pubblico» e di aver copiato il link giusto.</div>`
+    : cfg.importato ? `<div class="banner info">✅ Calendario letto il ${esc(new Date(cfg.importato).toLocaleString("it-IT", {day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"}))}. Si aggiorna ogni 10 minuti finché non tocchi «Ho finito».</div>`
+    : `<div class="banner info">⏳ Link salvato. I tuoi appuntamenti arrivano qui entro 10 minuti: riapri questa pagina tra poco.</div>`;
+  return `<button class="btn sm" data-tcal="chiudi">← Calendario</button><h2 style="margin-top:12px">📱 Trasferisci dal calendario dell'iPhone</h2>
+  <p class="m">Porta nel gestionale i tuoi appuntamenti da oggi in avanti. Dopo il trasferimento usi solo il calendario del gestionale.</p>
+  <h3>1 · Copia il link dal tuo iPhone</h3>
+  <div class="card"><ol style="margin:0;padding-left:20px;line-height:1.6"><li>Apri l'app <b>Calendario</b> e tocca <b>Calendari</b> in basso.</li><li>Tocca la <b>ⓘ</b> accanto al calendario del lavoro.</li><li>Attiva <b>Calendario pubblico</b> e tocca <b>Condividi link…</b> → <b>Copia</b>.</li><li>Incolla il link qui sotto e tocca <b>Salva</b>.</li></ol>
+  <div class="row" style="margin-top:10px;gap:6px"><input class="search" style="margin:0;flex:1" data-tcalurl placeholder="webcal://p…-caldav.icloud.com/published/…" value="${esc(cfg.icloudUrl || "")}"><button class="btn pri" data-tcal="salva">Salva</button></div></div>
+  ${stato}
+  ${cfg.icloudUrl ? `<h3>2 · Trasferisci gli appuntamenti (${l.length} da fare${fatti ? ", " + fatti + " fatti" : ""})</h3>
+  <p class="m">Per ognuno tocca <b>Trasferisci</b>: si apre il nuovo intervento già compilato con data, ora e note. Scegli il cliente (se il gestionale lo riconosce è già scelto) e salva. Gli impegni che non servono, come quelli personali, toccali con <b>Salta</b>.</p>
+  ${l.length ? l.map(e => { const c = clientePerEvento(e); return `<div class="card"><div class="row"><span class="t" style="flex:1">${esc(e.titolo)}</span><span class="chip">${esc(fd(e.data))}${e.ora ? " · " + esc(e.ora) : ""}${e.dataFine ? " → " + esc(fd(e.dataFine)) : ""}</span></div>
+    ${e.luogo ? `<div class="m">📍 ${esc(e.luogo)}</div>` : ""}${e.note ? `<div class="m">${esc(e.note.slice(0, 140))}</div>` : ""}<div class="m">${c ? "👤 Cliente riconosciuto: <b>" + esc(c.nome) + "</b>" : "👤 Cliente da scegliere"}</div>
+    <div class="row" style="gap:6px;margin-top:8px"><button class="btn sm pri" data-tcalev="${e.id}">➜ Trasferisci</button><button class="btn sm" data-tcalno="${e.id}">Salta</button></div></div>`; }).join("") : empty(cfg.importato ? "Nessun appuntamento da trasferire 👍" : "In attesa del calendario…")}
+  <h3>3 · Finito?</h3>
+  <div class="card"><p class="m" style="margin-top:0">Quando hai trasferito tutto tocca <b>Ho finito</b>: il gestionale smette di leggere il tuo calendario. Poi sull'iPhone torna nella ⓘ del calendario e spegni <b>Calendario pubblico</b>.</p><button class="btn ok" data-tcal="fine">✓ Ho finito</button></div>` : ""}`;
+}
+document.addEventListener("click", async e => {
+  if (e.target.closest(".ov")) return;
+  const el = e.target.closest("[data-tcal],[data-tcalev],[data-tcalno]"); if (!el || !sonoTitolare()) return; const d = el.dataset;
+  if (d.tcal === "apri") { ui.calImp = true; render(); window.scrollTo(0, 0); return; }
+  if (d.tcal === "chiudi") { ui.calImp = false; render(); window.scrollTo(0, 0); return; }
+  if (d.tcal === "salva") {
+    const u = (document.querySelector("[data-tcalurl]") || {}).value || "", url = u.trim();
+    if (url && !/^(webcal|https):\/\/[^\s]*icloud\.com\//i.test(url)) { toast("Il link deve essere quello di iCloud (inizia con webcal://…icloud.com)", 4000); return; }
+    try { await db.collection("calendariFeed").doc("impostazioni").set({icloudUrl: url, importato: "", erroreImport: ""}); toast(url ? "Link salvato: gli appuntamenti arrivano entro 10 minuti" : "Link tolto", 4000); } catch(err) { writeErr(err); }
+    return;
+  }
+  if (d.tcal === "fine") {
+    if (!(await ask("Hai trasferito tutto? Il gestionale smette di leggere il calendario dell'iPhone e toglie gli appuntamenti non trasferiti da questa lista.", "Ho finito"))) return;
+    try { await db.collection("calendariFeed").doc("impostazioni").set({icloudUrl: "", finito: today()}); for (const x of S.eventiCal || []) await remove("eventiCal", x.id); } catch(err) {}
+    ui.calImp = false; toast("Fatto. Ricordati di spegnere «Calendario pubblico» sull'iPhone", 5000); render(); return;
+  }
+  if (d.tcalno) { await patch("eventiCal", d.tcalno, {nascosto: true}); toast("Saltato"); return; }
+  if (d.tcalev) {
+    const ev = (S.eventiCal || []).find(x => x.id === d.tcalev); if (!ev) return;
+    const c = clientePerEvento(ev), cant = !!(ev.dataFine && ev.dataFine > ev.data);
+    const x = {data: ev.data, ora: ev.ora || (cant ? "08:00" : ""), clienteId: c ? c.id : "", tecnico: mioTecnico() || "", tipo: TIPI_INT.includes("Installazione") && /install/i.test(ev.titolo) ? "Installazione" : TIPI_INT.includes("Riparazione") && /ripar|guast|non funz/i.test(ev.titolo) ? "Riparazione" : "Manutenzione",
+      descrizione: [ev.titolo, ev.luogo && "Luogo: " + ev.luogo, ev.note].filter(Boolean).join("\n"), daCalendarioIphone: true};
+    if (cant) Object.assign(x, {cantiere: true, dataFine: ev.dataFine, oraDa: "08:00", oraFine: "17:00", giorniLav: "7"});
+    formIntervento(x, async () => { try { await patch("eventiCal", ev.id, {convertito: true}); } catch(err){} });
+  }
 });
 
 // ---- pagina Altro ----
