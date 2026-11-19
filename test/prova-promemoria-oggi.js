@@ -4,7 +4,7 @@ const {chromium} = require('playwright');
   const b = await chromium.launch(); const errs = [];
   const p = await (await b.newContext({viewport: {width: 430, height: 900}})).newPage();
   p.on('pageerror', e => errs.push(e.message));
-  await p.route('https://**', r => r.fulfill({body: '', contentType: 'text/javascript'}));
+  await p.route(/^https:\/\//, r => r.fulfill({body: '', contentType: 'text/javascript'}));
   await p.addInitScript({path: 'test/fbmock.js'});
   await p.addInitScript(() => { const d = new Date(); d.setDate(d.getDate() + 1); const dom = d.toISOString().slice(0, 10);
     window.__nextUser = {uid:'u1', email:'carone.t46@gmail.com', emailVerified:true, displayName:'Tommaso Carone'};

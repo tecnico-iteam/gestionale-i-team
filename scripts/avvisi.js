@@ -1,13 +1,13 @@
 // Avvisi degli appuntamenti ai tecnici (notifiche sul telefono).
 // Gira in automatico su GitHub ogni 10 minuti (.github/workflows/avvisi.yml):
 //  - "Nuovo appuntamento" quando a un tecnico viene assegnato (o spostato) un intervento programmato;
-//  - "Tra poco" circa un'ora prima dell'orario dell'appuntamento.
+//  - "Tra poco": entro 2 ore prima dell orario (GitHub fa girare il controllo circa ogni ora).
 // Cosa è già stato avvisato si segna in avvisi/{idIntervento}, così ogni avviso parte una volta sola.
 // La chiave di accesso a Firebase sta nel segreto GitHub FIREBASE_SERVICE_ACCOUNT (mai nel repository).
 "use strict";
 
 const APP_URL = "https://tecnico-iteam.github.io/gestionale-i-team/";
-const PRIMA_MIN = 75; // il promemoria parte quando mancano al massimo 75 minuti
+const PRIMA_MIN = 120; // il promemoria parte quando mancano al massimo 2 ore (GitHub spesso fa girare il controllo solo una volta l'ora)
 const GIORNI = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
 
 function adessoRoma(d = new Date()){
@@ -54,7 +54,7 @@ async function esegui({db, messaging, now = new Date(), log = console.log}){
     if (prima || passato || !tokens[tec]) continue;
     const c = clienti[x.clienteId] || {}, dove = [c.indirizzo, c.citta].filter(Boolean).join(", ");
     const corpo = [quando(x, oggi) + " · " + (c.nome || "Cliente"), [x.tipo, dove].filter(Boolean).join(" · ")].filter(Boolean).join("\n");
-    const titolo = promemoria && !nuovo ? `⏰ Tra ${mancano < 60 ? mancano + " minuti" : "un'ora"}: ${c.nome || "appuntamento"}`
+    const titolo = promemoria && !nuovo ? `⏰ Tra ${mancano < 60 ? mancano + " minuti" : Math.floor(mancano / 60) + (Math.floor(mancano / 60) === 1 ? " ora" : " ore") + (mancano % 60 ? " e " + (mancano % 60) + " min" : "")}: ${c.nome || "appuntamento"}`
       : st.sig && st.tecnico === tec ? "🔄 Appuntamento spostato" : "📅 Nuovo appuntamento";
     for (const token of tokens[tec]) invii.push({token, tec, titolo, corpo, tag: "int-" + x.id});
   }

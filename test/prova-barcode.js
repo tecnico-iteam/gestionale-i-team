@@ -5,7 +5,7 @@ const avvia = async (b, ctxOpts, errs, store) => {
   const ctx = await b.newContext({...ctxOpts, permissions: ['camera']});
   const p = await ctx.newPage();
   p.on('pageerror', e => errs.push(e.message));
-  await p.route('https://**', r => r.fulfill({body: '', contentType: 'text/javascript'}));
+  await p.route(/^https:\/\//, r => r.fulfill({body: '', contentType: 'text/javascript'}));
   await p.addInitScript({path: 'test/fbmock.js'});
   await p.addInitScript(st => { window.__nextUser = {uid:'u1', email:'carone.t46@gmail.com', emailVerified:true, displayName:'Tommaso Carone'}; Object.assign(window.__store, st);
     // lettore simulato: restituisce il codice messo in window.__bc

@@ -58,6 +58,7 @@ header.top .who{font-size:13px;color:var(--mute)}
 .qimg{flex:0 0 auto;width:52px;height:52px;border-radius:10px;border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;background:#fff;text-align:center;font-size:10px;color:var(--mut,#667);line-height:1.2}.qimg img{width:100%;height:100%;object-fit:contain}.qimg.big{width:84px;height:84px}
 .pv-sheet{background:#fff;color:#1f2933;border:1px solid var(--line);border-radius:12px;padding:16px;max-height:62vh;overflow:auto}.pv-head{display:flex;gap:12px;align-items:center;justify-content:space-between;border-bottom:2px solid #3472C2;padding-bottom:10px;font-size:12px;text-align:right}.pv-head img{height:34px}.pv-tit{display:flex;justify-content:space-between;align-items:baseline;margin:12px 0 8px;font-size:17px}.pv-tit span{font-size:13px;color:#667}.pv-cli{background:#f1f5fa;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:14px}.pv-cli small{color:#3472C2;font-weight:700}
 .pv-in{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;margin-bottom:10px;box-sizing:border-box}.pv-rows{border-top:1px solid var(--line);margin:6px 0}.pv-row{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}.pv-mid{flex:1;min-width:0}.pv-mid textarea{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;font-weight:600;resize:vertical}.pv-mid input{padding:5px;border:1px solid var(--line);border-radius:7px}.pv-tot{white-space:nowrap;padding-top:6px}.pv-sum{text-align:right;margin:10px 0 14px;line-height:1.7}.pv-sum .big{font-size:18px}
+.segwrap{flex-wrap:wrap;overflow:visible}.segwrap button{flex:1 1 30%}
 .guida details{border:1px solid var(--line,#dde5ee);border-radius:12px;margin:8px 0;background:#fff}.guida summary{cursor:pointer;padding:12px 14px;font-weight:700;list-style-position:inside}.guida details[open] summary{border-bottom:1px solid var(--line,#dde5ee)}.guida .gbody{padding:4px 14px 10px;line-height:1.5}.guida .gbody p{margin:8px 0}.guida .gbody ul{margin:8px 0;padding-left:20px}
 @media(max-width:430px){.hbtn{padding:7px 6px!important}#hguida{padding:7px 5px!important}}
 .hbtn{background:var(--pri-2);border:0;color:var(--pri);font-weight:600;border-radius:10px;padding:7px 10px;cursor:pointer;font-size:13px}
@@ -319,7 +320,7 @@ const impName = i => i ? [i.tipo, i.marca, i.modello].filter(Boolean).join(" ") 
 const addr = c => c ? [c.indirizzo, c.cap, c.citta].filter(Boolean).join(", ") : "";
 const mapLink = c => addr(c) ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr(c))}" target="_blank" rel="noopener">Apri in Maps</a>` : "";
 const minsBetween = (a, b) => { if (!a || !b) return 0; const [h1,m1] = a.split(":").map(Number), [h2,m2] = b.split(":").map(Number); let d = (h2*60+m2) - (h1*60+m1); if (d < 0) d += 1440; return d; };
-const hm = m => { m = Math.max(0, Math.round(m)); return Math.floor(m/60) + "h " + pad(m%60) + "m"; };
+const hm = m => { m = Math.max(0, Math.round(num(m))) || 0; return Math.floor(m/60) + "h " + pad(m%60) + "m"; };
 const sameTec = (a, b) => (a || "").trim().toLowerCase() === (b || "").trim().toLowerCase();
 // un appuntamento può avere due tecnici: tecnico (principale) e tecnico2 (facoltativo)
 const tecDi = x => [x.tecnico, x.tecnico2].filter((t, i, a) => t && (i === 0 || !sameTec(t, a[0])));
@@ -1946,7 +1947,7 @@ function detPreventivo(p){
     if (a === "show") showProducts((p.righe || []).map(r => ({img: r.img, descrizione: r.descrizione, potenza: r.potenza, prezzo: r.prezzo, qta: r.qta})), "Preventivo n. " + p.numero);
     if (a === "acc") { await patch("preventivi", p.id, {stato: "Accettato"}); closeModal(); toast("Preventivo accettato"); }
     if (a === "ord") { closeModal(); ordiniDaPreventivo(p); }
-    if (a === "fat") formFattura({clienteId: p.clienteId, descrizione: "Rif. preventivo n. " + p.numero + (p.oggetto ? " — " + p.oggetto : ""), imponibile: Math.round(t.imp * 100) / 100, iva: String(p.iva ?? 22)});
+    if (a === "fat") formFattura({clienteId: p.clienteId, preventivoId: p.id, descrizione: "Rif. preventivo n. " + p.numero + (p.oggetto ? " — " + p.oggetto : ""), imponibile: Math.round(t.imp * 100) / 100, iva: String(p.iva ?? 22)});
     if (a === "copy") {
       const txt = aziendaTxt() + `\n\nPREVENTIVO N. ${p.numero} del ${fd(p.data)}\nCliente: ${c?.nome || ""}\n${p.oggetto ? "Oggetto: " + p.oggetto + "\n" : ""}\n` + (p.righe || []).map(r => `- ${r.descrizione}: ${r.qta} x ${eur(r.prezzo)} = ${eur(num(r.qta) * num(r.prezzo))}`).join("\n") + `\n\n${num(p.sconto) ? "Sconto " + p.sconto + "%\n" : ""}Imponibile: ${eur(t.imp)}\nIVA ${p.iva ?? 22}%: ${eur(t.iva)}\nTOTALE: ${eur(t.tot)}\n${p.validita ? "\nValidità: " + p.validita + " giorni" : ""}${p.note ? "\n" + p.note : ""}`;
       try { await navigator.clipboard.writeText(txt); toast("Testo copiato: incollalo in email o WhatsApp"); } catch(err) { toast("Copia non consentita da questo browser"); }
@@ -2897,8 +2898,8 @@ function vTecnico(){
   const mine = S.interventi.filter(x => haTec(x, me) && x.stato !== "Annullato");
   const free = S.interventi.filter(x => !x.tecnico && x.stato === "Programmato" && x.data >= addDays(t, -7)).sort(sortInt);
   const F = {
-    oggi: mine.filter(x => x.data === t || (x.data < t && x.stato !== "Completato")).sort(sortInt),
-    prossimi: mine.filter(x => x.data > t).sort(sortInt),
+    oggi: mine.filter(x => x.data === t || (x.data < t && x.stato !== "Completato") || x.stato === "In corso").sort(sortInt), // un lavoro iniziato resta in "oggi" anche se era per un altro giorno
+    prossimi: mine.filter(x => x.data > t && x.stato !== "In corso").sort(sortInt),
     inviati: mine.filter(x => x.rapportino).sort((a,b) => (b.rapportino.inviatoIl || "").localeCompare(a.rapportino.inviatoIl || "")).slice(0, 30)
   };
   const list = F[ui.tecF] || [];
@@ -2908,7 +2909,7 @@ function vTecnico(){
   };
   return `<h2>Ciao ${esc(me)}</h2>
   ${boxNotifiche()}
-  <div class="seg"><button class="${ui.tecF === "oggi" ? "on" : ""}" data-tecf="oggi">Da fare oggi (${F.oggi.filter(x => x.stato !== "Completato").length})</button><button class="${ui.tecF === "prossimi" ? "on" : ""}" data-tecf="prossimi">Prossimi (${F.prossimi.length})</button><button class="${ui.tecF === "cal" ? "on" : ""}" data-tecf="cal">Calendario</button><button class="${ui.tecF === "cli" ? "on" : ""}" data-tecf="cli">Clienti</button><button class="${ui.tecF === "inviati" ? "on" : ""}" data-tecf="inviati">Inviati</button><button class="${ui.tecF === "furgone" ? "on" : ""}" data-tecf="furgone">🚐 Furgone</button></div>
+  <div class="seg segwrap"><button class="${ui.tecF === "oggi" ? "on" : ""}" data-tecf="oggi">Da fare oggi (${F.oggi.filter(x => x.stato !== "Completato").length})</button><button class="${ui.tecF === "prossimi" ? "on" : ""}" data-tecf="prossimi">Prossimi (${F.prossimi.length})</button><button class="${ui.tecF === "cal" ? "on" : ""}" data-tecf="cal">Calendario</button><button class="${ui.tecF === "cli" ? "on" : ""}" data-tecf="cli">Clienti</button><button class="${ui.tecF === "inviati" ? "on" : ""}" data-tecf="inviati">Inviati</button><button class="${ui.tecF === "furgone" ? "on" : ""}" data-tecf="furgone">🚐 Furgone</button></div>
   ${ui.tecF === "cal" ? vCalendario(me) : ui.tecF === "cli" ? vTecClienti() : ui.tecF === "furgone" ? vTecFurgone() : `
   ${ui.tecF === "prossimi" && list.length ? `<button class="btn" style="width:100%;margin-bottom:10px" data-ics="all">📅 Metti tutti i miei appuntamenti nel calendario del telefono</button>` : ""}
   ${list.length ? (ui.tecF === "prossimi" ? groupByDate(list, {noTec: true, addr: true}) : list.map(x => intCard(x, {noTec: true, addr: true, data: x.data !== t && !isCant(x), giorno: ui.tecF === "oggi" ? t : undefined, actions: ui.tecF === "inviati" ? "" : act(x)})).join("")) : empty(ui.tecF === "oggi" ? "Nessun lavoro assegnato per oggi." : "Niente qui.")}

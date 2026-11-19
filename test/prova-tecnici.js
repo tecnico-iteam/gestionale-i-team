@@ -3,7 +3,7 @@ const {chromium} = require('playwright');
   const b = await chromium.launch(); const errs = [];
   const p = await (await b.newContext({viewport:{width:390,height:844}})).newPage();
   p.on('pageerror', e => errs.push(e.message));
-  await p.route('https://**', r => r.fulfill({body: '', contentType: 'text/javascript'}));
+  await p.route(/^https:\/\//, r => r.fulfill({body: '', contentType: 'text/javascript'}));
   await p.addInitScript({path: 'test/fbmock.js'});
   await p.addInitScript(() => { window.__nextUser = {uid:'u1', email:'carone.t46@gmail.com', emailVerified:true, displayName:'Tommaso Carone'}; });
   await p.route('**/firebase-config.js', r => r.fulfill({body: 'window.FIREBASE_CONFIG={apiKey:"x",projectId:"p"};', contentType:'text/javascript'}));
