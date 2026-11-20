@@ -3484,7 +3484,7 @@ function vContab(){
   const segSez = `<div class="seg" style="margin-bottom:12px">${[["riepilogo", "📊 Analisi"], ["vendite", "🟢 Vendite"], ["acquisti", "🔴 Acquisti"]].map(([k, lb]) => `<button class="${sez === k ? "on" : ""}" data-consez="${k}">${lb}</button>`).join("")}</div>`;
   const pac = sonoTitolare() ? `<button class="btn" data-contab="pacchetto" style="margin-bottom:10px;width:100%">📥 Importa pacchetto preparato da Claude (.json)</button>` : "";
   if (sez === "vendite") return segSez + pac + vContabVendite();
-  if (sez === "riepilogo") return segSez + vContabRiepilogo();
+  if (sez === "riepilogo") return segSez + ((S.fatture || []).length || (S.contabilita || []).length ? "" : pac) + vContabRiepilogo();
   return segSez + pac + vContabAcquisti();
 }
 function vContabVendite(){
