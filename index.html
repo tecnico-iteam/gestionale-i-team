@@ -275,7 +275,7 @@ const NAV = [
 ];
 
 // ---------- stato ----------
-const S = Object.fromEntries(COLS.map(c => [c, []])); S.contabilita = []; S.fgasOps = []; S.detrazioni = []; S.eventiCal = []; S.calCfg = {};
+const S = Object.fromEntries(COLS.map(c => [c, []])); S.contabilita = []; S.fgasOps = []; S.detrazioni = []; S.crediti = []; S.eventiCal = []; S.calCfg = {};
 const DEFAULT_MANODOPERA = ["Installazione monosplit (fino a 3 m di linee)","Installazione dual split","Installazione trial split","Metro aggiuntivo linee frigorifere","Staffa per unità esterna","Pompa scarico condensa","Canalina (al metro)","Carotaggio muro","Linea elettrica dedicata","Smontaggio e smaltimento vecchio impianto","Dichiarazione di conformità e pratiche F-gas"].map(d => ({descrizione: d, prezzo: 0}));
 let CFG = {postazioni: ["Tommy", "Irene", "Alessandro"], titolare: "Carone Tommaso", respAB: "Carone Tommaso", respCE: "Sasso Francesco", fgas: "FGAS-A18879", cciaa: "Torino", rea: "TO-1331174", alboArt: "", abilitazioni: ["a) elettrici", "b) radiotelevisivi ed elettronici", "c) riscaldamento e climatizzazione", "e) gas"], tecnici: [], lavori: DEFAULT_LAVORI.slice(), scontoAcquisto: 0, scontoCliente: 0, costoOra: 45, costoGiornata: 300, manodopera: DEFAULT_MANODOPERA.map(x => ({...x}))};
 let assetsNS = null;
@@ -368,6 +368,7 @@ async function initDb(){
   const MIE = colsPerMe();
   const timer = setTimeout(() => { if (loaded.size < MIE.length) { ui.stale = true; render(); } }, 10000);
   if (puoContab()) db.collection("contabilita").onSnapshot(snap => { S.contabilita = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
+  if (puoContab()) db.collection("crediti").onSnapshot(snap => { S.crediti = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
   if (sonoTitolare()) { db.collection("eventiCal").onSnapshot(snap => { S.eventiCal = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}); db.collection("calendariFeed").doc("impostazioni").onSnapshot(sn => { S.calCfg = sn.exists ? sn.data() : {}; render(); }, () => {}); }
   if (uffVero()) ["fgasOps", "detrazioni"].forEach(c => db.collection(c).onSnapshot(snap => { S[c] = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}));
   MIE.forEach(c => {
@@ -3500,10 +3501,11 @@ const MESI_LUNGHI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno
 function vContab(){
   if (!puoContab()) return empty("La contabilità è visibile solo al titolare e a chi è abilitato.");
   const sez = ui.conSez || "riepilogo";
-  const segSez = `<div class="seg" style="margin-bottom:12px">${[["riepilogo", "📊 Analisi"], ["vendite", "🟢 Vendite"], ["acquisti", "🔴 Acquisti"]].map(([k, lb]) => `<button class="${sez === k ? "on" : ""}" data-consez="${k}">${lb}</button>`).join("")}</div>`;
+  const segSez = `<div class="seg" style="margin-bottom:12px">${[["riepilogo", "📊 Analisi"], ["vendite", "🟢 Vendite"], ["acquisti", "🔴 Acquisti"], ["crediti", "💰 Da incassare"]].map(([k, lb]) => `<button class="${sez === k ? "on" : ""}" data-consez="${k}">${lb}</button>`).join("")}</div>`;
   const vuoto = !(S.fatture || []).length && !(S.contabilita || []).length;
   const pac = sonoTitolare() && vuoto ? `<button class="btn" data-contab="pacchetto" style="margin-bottom:10px;width:100%">📥 Importa pacchetto preparato da Claude (.json)</button>` : "";
   if (sez === "vendite") return segSez + pac + vContabVendite();
+  if (sez === "crediti") return segSez + vContabCrediti();
   if (sez === "riepilogo") return segSez + pac + vContabRiepilogo() + (sonoTitolare() && !vuoto ? `<button class="btn sm" data-contab="pacchetto" style="margin-top:6px">📥 Importa un altro pacchetto</button>` : "");
   return segSez + pac + vContabAcquisti();
 }
@@ -3524,6 +3526,55 @@ function vContabVendite(){
   <input class="search" placeholder="Cerca cliente, numero…" value="${esc(ui.q)}" data-q>
   ${l.length ? perMese(l, f => num(f.imponibile), fatTot, fatCard) : empty("Nessuna fattura in questo periodo.")}`;
 }
+// ---- 💰 Da incassare: crediti aggiunti a mano (crediti/{id}) + fatture non ancora incassate ----
+const credResiduo = c => c.incassato ? 0 : Math.max(0, num(c.importo) - num(c.acconto));
+function formCredito(c = {}){
+  openForm({title: c.id ? "Da incassare" : "Nuova somma da incassare", values: {data: today(), ...c},
+    fields: [
+      {k:"chi", label:"Da chi (cliente o persona)", req:true, list: () => [...new Set([...S.clienti.map(x => x.nome), ...(S.crediti || []).map(x => x.chi)].filter(Boolean))].sort()},
+      {k:"descrizione", label:"Per cosa", ph:"Acconto lavori, prestito, materiale anticipato…"},
+      {k:"importo", label:"Importo €", type:"number", req:true, half:true},
+      {k:"acconto", label:"Già ricevuto €", type:"number", half:true},
+      {k:"data", label:"Data", type:"date", half:true},
+      {k:"scadenza", label:"Da incassare entro", type:"date", half:true},
+      {k:"incassato", label:"Incassato tutto", type:"checkbox", rerender:true},
+      {k:"incassatoIl", label:"Incassato il", type:"date", half:true, show: v => !!v.incassato},
+      {k:"note", label:"Note", type:"textarea"}
+    ],
+    onSave: async v => { v.importo = num(v.importo); v.acconto = num(v.acconto); if (v.incassato && !v.incassatoIl) v.incassatoIl = today(); if (!v.incassato) v.incassatoIl = ""; v.inseritoDa = c.inseritoDa || ui.uff || "Ufficio"; await save("crediti", c.id || null, v); toast("Salvato"); render(); },
+    onDelete: c.id ? async () => { await remove("crediti", c.id); closeModal(); toast("Eliminato"); render(); } : null
+  });
+}
+function vContabCrediti(){
+  const t = today(), q = (ui.q || "").toLowerCase(), F = ui.conCF || "aperti";
+  let man = (S.crediti || []).slice(); if (F === "aperti") man = man.filter(c => !c.incassato); if (F === "incassati") man = man.filter(c => c.incassato);
+  const fat = F === "incassati" ? [] : (S.fatture || []).filter(daIncassare);
+  if (q) man = man.filter(c => [c.chi, c.descrizione, c.note].join(" ").toLowerCase().includes(q));
+  const fatQ = q ? fat.filter(f => [f.numero, cliName(f.clienteId), f.descrizione].join(" ").toLowerCase().includes(q)) : fat;
+  const totMan = (S.crediti || []).filter(c => !c.incassato).reduce((s, c) => s + credResiduo(c), 0), totFat = (S.fatture || []).filter(daIncassare).reduce((s, f) => s + residuo(f), 0);
+  man.sort((a, b) => (a.incassato - b.incassato) || (a.scadenza || a.data || "9").localeCompare(b.scadenza || b.data || "9"));
+  const card = c => { const sc = !c.incassato && c.scadenza && c.scadenza < t, r = credResiduo(c);
+    return `<div class="card tap" data-cred="${c.id}"><div class="row"><span class="t" style="flex:1">${esc(c.chi || "—")}</span><b class="money">${eur(c.incassato ? num(c.importo) : r)}</b></div>
+    <div class="row m" style="gap:6px"><span style="flex:1">${esc(c.descrizione || "")}${c.data ? " · " + esc(fd(c.data)) : ""}${num(c.acconto) && !c.incassato ? " · già ricevuti " + eur(c.acconto) + " su " + eur(c.importo) : ""}</span><span class="chip ${c.incassato ? "ok" : sc ? "bad" : "warn"}">${c.incassato ? "incassato" + (c.incassatoIl ? " il " + fd(c.incassatoIl) : "") : c.scadenza ? (sc ? "scaduto il " : "entro il ") + fd(c.scadenza) : "da incassare"}</span></div>
+    ${c.incassato ? "" : `<div style="margin-top:8px"><button class="btn sm ok" data-credok="${c.id}">✓ Incassato</button></div>`}</div>`; };
+  return `<div class="tiles" style="margin-bottom:10px">
+    <div class="tile" style="background:var(--menta-2,#d6f5e8)"><div class="l" style="color:var(--menta-ink,#0b5a3c)">Totale da incassare</div><div class="n money" style="font-size:22px;color:var(--menta-ink,#0b5a3c)">${eur(totMan + totFat)}</div></div>
+    <div class="tile" style="background:var(--pri-2,#ece7ff)"><div class="l" style="color:#4b2fc9">Aggiunti a mano</div><div class="n money" style="font-size:19px;color:#4b2fc9">${eur(totMan)}</div></div>
+    <div class="tile" style="background:#fff4cc"><div class="l" style="color:#7a5600">Da fatture emesse</div><div class="n money" style="font-size:19px;color:#7a5600">${eur(totFat)}</div></div></div>
+  <button class="btn pri big" data-cred="new" style="margin-bottom:10px">+ Aggiungi somma da incassare</button>
+  <div class="seg">${[["aperti", "Da incassare"], ["incassati", "Incassati"], ["tutti", "Tutti"]].map(([k, lb]) => `<button class="${F === k ? "on" : ""}" data-concf="${k}">${lb}</button>`).join("")}</div>
+  <input class="search" placeholder="Cerca nome, descrizione…" value="${esc(ui.q)}" data-q>
+  <h3>Aggiunti a mano</h3>${man.length ? man.map(card).join("") : empty(F === "incassati" ? "Niente di incassato." : "Nessuna somma aggiunta a mano. Tocca «+ Aggiungi» per segnare un credito che non è una fattura (acconti a voce, prestiti, materiale anticipato…).")}
+  ${fatQ.length ? `<h3>Fatture emesse non ancora incassate</h3>${fatQ.sort((a, b) => (a.scadenza || "").localeCompare(b.scadenza || "")).map(fatCard).join("")}` : ""}`;
+}
+document.addEventListener("click", async e => {
+  if (e.target.closest(".ov")) return;
+  const el = e.target.closest("[data-cred],[data-credok],[data-concf]"); if (!el || !puoContab()) return; const d = el.dataset;
+  if (d.concf) { ui.conCF = d.concf; render(); return; }
+  if (d.credok) { e.stopPropagation(); await patch("crediti", d.credok, {incassato: true, incassatoIl: today()}); toast("Segnato come incassato"); return; }
+  if (d.cred === "new") return formCredito();
+  if (d.cred) { const c = (S.crediti || []).find(x => x.id === d.cred); if (c) formCredito(c); }
+});
 // ---- Analisi costi e ricavi (pagina 📊 della Contabilità): solo dati del gestionale (fatture = vendite, contabilita = acquisti) ----
 const CAT_COSTI = [
   ["Materiali e attrezzature", /erre\.?\s?di|doppler|sacchi|evolution clima|idrocentro|vegliolux|\brav\b|w[uü]e?rth|gerbaudo|copas|brico|zanutta|leroy|centro clima|\bibs\b|omnia frigo|tecnostyle|italia automazioni|blucart|donna|erretigi|el-ga|\bthc\b|ferrament|elma|media ?mark|absolute|cigierre|a2k|luber|comoli|rialto|resincondotte|cavit|gallina|tecnosystemi|ntg|exad/i],
@@ -3554,7 +3605,7 @@ function vContabRiepilogo(){
   const ricNet = ven.reduce((s, f) => s + num(f.imponibile), 0), ricLordo = ven.reduce((s, f) => s + fatTot(f), 0);
   const cosLordo = acq.reduce((s, d) => s + impAcq(d), 0), cosNet = acq.reduce((s, d) => s + netAcq(d), 0);
   const marg = ricNet - cosNet, margP = ricNet ? marg / ricNet : 0;
-  const daInc = (S.fatture || []).filter(daIncassare).reduce((s, f) => s + residuo(f), 0);
+  const daInc = (S.fatture || []).filter(daIncassare).reduce((s, f) => s + residuo(f), 0) + (S.crediti || []).filter(c => !c.incassato).reduce((s, c) => s + credResiduo(c), 0);
   const daPag = (S.contabilita || []).filter(d => d.tipo === "Fattura fornitore" && !d.pagata).reduce((s, d) => s + num(d.importo), 0);
   const mesi = MESI_IT.map((m, i) => { const mm = anno + "-" + String(i + 1).padStart(2, "0"); return [m, ven.filter(f => f.data.startsWith(mm)).reduce((s, f) => s + num(f.imponibile), 0), acq.filter(d => d.data.startsWith(mm)).reduce((s, d) => s + netAcq(d), 0)]; });
   const conDati = mesi.filter(r => r[1] || r[2]), best = conDati.slice().sort((a, b) => b[1] - a[1])[0], neg = conDati.filter(r => r[1] < r[2]);
