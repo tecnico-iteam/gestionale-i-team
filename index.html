@@ -3477,34 +3477,51 @@ function formContab(d = {}){
   });
 }
 // Contabilità divisa: Vendite (fatture emesse, collezione fatture) · Acquisti (fatture fornitori, collezione contabilita) · Riepilogo
-const fatValida = f => !f.stornata; // le stornate si annullano con la nota di credito: non le conto
+const fatValida = f => true; // fattura stornata + nota di credito si annullano a vicenda: nei totali contano entrambe
+const daIncassare = f => !f.pagata && !f.stornata && f.tipo !== "Nota di credito";
+// barra del periodo (anno + mesi) e raggruppamento per mese, usati da Vendite e Acquisti
+function periodoBar(lista){
+  const anni = [...new Set(lista.map(x => (x.data || "").slice(0, 4)).filter(a => a >= "2000" && a <= today().slice(0, 4)))].sort().reverse();
+  const anno = ui.conAnno && (anni.includes(ui.conAnno) || !anni.length) ? ui.conAnno : (anni[0] || today().slice(0, 4)), mese = ui.conMese || "";
+  const chip = (k, lb, on) => `<button class="btn sm ${on ? "pri" : ""}" data-conmese="${k}" style="flex:none">${lb}</button>`;
+  return {anno, mese, html: `${anni.length > 1 ? `<div class="row" style="gap:6px;margin-bottom:6px">${anni.map(a => `<button class="btn sm ${a === anno ? "pri" : ""}" data-conanno="${a}">${a}</button>`).join("")}</div>` : ""}
+    <div class="row" style="gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px">${chip("", "Tutto il " + anno, !mese)}${MESI_IT.map((m, i) => chip(String(i + 1).padStart(2, "0"), m, mese === String(i + 1).padStart(2, "0"))).join("")}</div>`,
+    filtra: x => (x.data || "").startsWith(anno + (mese ? "-" + mese : ""))};
+}
+const totBox = (titolo, senza, con, n, col) => `<div class="card" style="background:${col};border:0"><div class="m" style="margin-bottom:4px">${titolo}</div><div class="row wrap" style="gap:18px;align-items:baseline"><div><div class="m">Senza IVA</div><b class="money" style="font-size:22px">${eur(senza)}</b></div><div><div class="m">Con IVA</div><b class="money" style="font-size:22px">${eur(con)}</b></div><div><div class="m">Documenti</div><b style="font-size:22px">${n}</b></div></div></div>`;
+function perMese(l, senza, con, card){
+  const g = {}; l.forEach(x => { const k = (x.data || "").slice(0, 7) || "senza data"; (g[k] = g[k] || []).push(x); });
+  return Object.keys(g).sort().reverse().map(k => { const r = g[k], nome = /^\d{4}-\d{2}$/.test(k) ? MESI_LUNGHI[+k.slice(5) - 1].replace(/^./, c => c.toUpperCase()) + " " + k.slice(0, 4) : "Senza data";
+    return `<div class="row" style="margin:16px 2px 6px;align-items:baseline;gap:8px"><b style="flex:1;font-size:16px">${nome}</b><span class="m">${eur(r.reduce((s, x) => s + senza(x), 0))} senza IVA · <b>${eur(r.reduce((s, x) => s + con(x), 0))}</b> con IVA</span></div>${r.map(card).join("")}`; }).join("");
+}
 const MESI_IT = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
 const MESI_LUNGHI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
 function vContab(){
   if (!puoContab()) return empty("La contabilità è visibile solo al titolare e a chi è abilitato.");
   const sez = ui.conSez || "riepilogo";
   const segSez = `<div class="seg" style="margin-bottom:12px">${[["riepilogo", "📊 Analisi"], ["vendite", "🟢 Vendite"], ["acquisti", "🔴 Acquisti"]].map(([k, lb]) => `<button class="${sez === k ? "on" : ""}" data-consez="${k}">${lb}</button>`).join("")}</div>`;
-  const pac = sonoTitolare() ? `<button class="btn" data-contab="pacchetto" style="margin-bottom:10px;width:100%">📥 Importa pacchetto preparato da Claude (.json)</button>` : "";
+  const vuoto = !(S.fatture || []).length && !(S.contabilita || []).length;
+  const pac = sonoTitolare() && vuoto ? `<button class="btn" data-contab="pacchetto" style="margin-bottom:10px;width:100%">📥 Importa pacchetto preparato da Claude (.json)</button>` : "";
   if (sez === "vendite") return segSez + pac + vContabVendite();
-  if (sez === "riepilogo") return segSez + ((S.fatture || []).length || (S.contabilita || []).length ? "" : pac) + vContabRiepilogo();
+  if (sez === "riepilogo") return segSez + pac + vContabRiepilogo() + (sonoTitolare() && !vuoto ? `<button class="btn sm" data-contab="pacchetto" style="margin-top:6px">📥 Importa un altro pacchetto</button>` : "");
   return segSez + pac + vContabAcquisti();
 }
 function vContabVendite(){
   const t = today(), q = (ui.q || "").toLowerCase(), F = ui.conVF || "tutte", anno = t.slice(0, 4);
-  const all = (S.fatture || []).filter(fatValida), annoL = all.filter(f => (f.data || "").startsWith(anno));
-  const daInc = all.filter(f => !f.pagata && f.tipo !== "Nota di credito"), scad = daInc.filter(f => f.scadenza && f.scadenza < t);
-  let l = (S.fatture || []).slice();
+  const all = (S.fatture || []).filter(fatValida), P = periodoBar(all);
+  const daInc = all.filter(daIncassare), scad = daInc.filter(f => f.scadenza && f.scadenza < t);
+  let l = (S.fatture || []).filter(P.filtra);
   if (F === "dainc") l = daInc.slice(); if (F === "nc") l = l.filter(f => f.tipo === "Nota di credito" || f.stornata);
   if (q) l = l.filter(f => [f.numero, cliName(f.clienteId), f.descrizione].join(" ").toLowerCase().includes(q));
   l.sort((a, b) => (b.data || "").localeCompare(a.data || "") || (parseInt(b.numero) || 0) - (parseInt(a.numero) || 0));
-  return `<div class="tiles" style="margin-bottom:10px">
-    <div class="tile"><div class="n money" style="font-size:19px">${eur(annoL.reduce((s, f) => s + num(f.imponibile), 0))}</div><div class="l">Vendite ${anno} senza IVA (${annoL.length} documenti)</div></div>
-    <div class="tile"><div class="n money" style="font-size:19px">${eur(annoL.reduce((s, f) => s + fatTot(f), 0))}</div><div class="l">Vendite ${anno} IVA inclusa</div></div>
+  const per = P.mese ? MESI_LUNGHI[+P.mese - 1] + " " + P.anno : "tutto il " + P.anno;
+  return `${P.html}${totBox("🟢 Fatturato di " + per + (q ? " (con la ricerca)" : ""), l.reduce((s, f) => s + num(f.imponibile), 0), l.reduce((s, f) => s + fatTot(f), 0), l.filter(f => f.tipo !== "Nota di credito" && !f.stornata).length, "var(--menta-2,#d6f5e8)")}
+  <div class="tiles" style="margin-bottom:10px">
     <div class="tile" data-convf="dainc"><div class="n money" style="font-size:19px">${eur(daInc.reduce((s, f) => s + fatTot(f), 0))}</div><div class="l">Da incassare (${daInc.length})</div></div>
     <div class="tile" data-convf="dainc"><div class="n" style="color:${scad.length ? "var(--bad)" : "inherit"}">${scad.length}</div><div class="l">Scadute</div></div></div>
   <div class="seg">${[["tutte", "Tutte"], ["dainc", "Da incassare"], ["nc", "Note di credito"]].map(([k, lb]) => `<button class="${F === k ? "on" : ""}" data-convf="${k}">${lb}</button>`).join("")}</div>
   <input class="search" placeholder="Cerca cliente, numero…" value="${esc(ui.q)}" data-q>
-  ${l.length ? l.map(fatCard).join("") : empty("Nessuna fattura emessa. Le crei da Preventivi → Fatture oppure le importi con il pacchetto.")}`;
+  ${l.length ? perMese(l, f => num(f.imponibile), fatTot, fatCard) : empty("Nessuna fattura in questo periodo.")}`;
 }
 // ---- Analisi costi e ricavi (pagina 📊 della Contabilità): solo dati del gestionale (fatture = vendite, contabilita = acquisti) ----
 const CAT_COSTI = [
@@ -3536,15 +3553,15 @@ function vContabRiepilogo(){
   const ricNet = ven.reduce((s, f) => s + num(f.imponibile), 0), ricLordo = ven.reduce((s, f) => s + fatTot(f), 0);
   const cosLordo = acq.reduce((s, d) => s + impAcq(d), 0), cosNet = acq.reduce((s, d) => s + netAcq(d), 0);
   const marg = ricNet - cosNet, margP = ricNet ? marg / ricNet : 0;
-  const daInc = (S.fatture || []).filter(f => fatValida(f) && !f.pagata && f.tipo !== "Nota di credito").reduce((s, f) => s + fatTot(f), 0);
+  const daInc = (S.fatture || []).filter(daIncassare).reduce((s, f) => s + fatTot(f), 0);
   const daPag = (S.contabilita || []).filter(d => d.tipo === "Fattura fornitore" && !d.pagata).reduce((s, d) => s + num(d.importo), 0);
   const mesi = MESI_IT.map((m, i) => { const mm = anno + "-" + String(i + 1).padStart(2, "0"); return [m, ven.filter(f => f.data.startsWith(mm)).reduce((s, f) => s + num(f.imponibile), 0), acq.filter(d => d.data.startsWith(mm)).reduce((s, d) => s + netAcq(d), 0)]; });
   const conDati = mesi.filter(r => r[1] || r[2]), best = conDati.slice().sort((a, b) => b[1] - a[1])[0], neg = conDati.filter(r => r[1] < r[2]);
-  const nFat = ven.filter(f => f.tipo !== "Nota di credito").length, nNc = ven.filter(f => f.tipo === "Nota di credito").length + (S.fatture || []).filter(f => f.stornata && (f.data || "").startsWith(anno)).length;
+  const nFat = ven.filter(f => f.tipo !== "Nota di credito" && !f.stornata).length, nNc = ven.filter(f => f.tipo === "Nota di credito").length + (S.fatture || []).filter(f => f.stornata && (f.data || "").startsWith(anno)).length;
   const grp = (l, key, val) => { const m = {}; l.forEach(x => { const k = key(x); m[k] = (m[k] || 0) + val(x); }); return Object.entries(m).sort((a, b) => b[1] - a[1]); };
   const cli = grp(ven, f => cliName(f.clienteId), f => num(f.imponibile)), forn = grp(acq, d => nomeBase(d.fornitore), netAcq), cat = grp(acq, catCosto, netAcq);
   const top10 = cli.slice(0, 10).reduce((s, x) => s + x[1], 0), top3f = forn.slice(0, 3).reduce((s, x) => s + x[1], 0);
-  const credTop = (S.fatture || []).filter(f => fatValida(f) && !f.pagata && f.tipo !== "Nota di credito").sort((a, b) => fatTot(b) - fatTot(a))[0];
+  const credTop = (S.fatture || []).filter(daIncassare).sort((a, b) => fatTot(b) - fatTot(a))[0];
   const tile = (l, v, sub, col, bg) => `<div class="tile" style="background:${bg}"><div class="l" style="margin-bottom:4px;color:${col || "inherit"}">${l}</div><div class="n money" style="font-size:21px${col ? ";color:" + col : ""}">${v}</div>${sub ? `<div class="m" style="margin-top:2px">${sub}</div>` : ""}</div>`;
   const punti = [
     `Il margine sui fornitori è <b>${eur(marg)}</b> (${Math.round(100 * margP)}% dei ricavi): stipendi, contributi, tasse e spese fisse non sono compresi.`,
@@ -3569,22 +3586,25 @@ function vContabRiepilogo(){
   <div class="card"><b>Dove vanno i soldi</b>${barre(cat, cosNet, "var(--cor,#ff6b4a)")}<p class="m" style="margin:6px 0 0">Il tipo si ricava dal nome del fornitore; puoi cambiarlo aprendo la fattura in 🔴 Acquisti.</p></div>
   <div class="card"><b>Primi 10 clienti</b>${barre(cli.slice(0, 10), ricNet, "var(--menta,#1fae7a)")}</div>
   <div class="card"><b>Primi 10 fornitori</b>${barre(forn.slice(0, 10), cosNet, "var(--pri,#6c4cf1)")}</div>
-  <p class="m">Costi senza IVA: dove la fattura del fornitore ha solo il totale, l'IVA è tolta al 22%. Le fatture stornate non contano; le note di credito sì, in negativo.</p>`;
+  <p class="m">Costi senza IVA: dove la fattura del fornitore ha solo il totale, l'IVA è tolta al 22%. Una fattura stornata e la sua nota di credito si annullano a vicenda.</p>`;
 }
 function vContabAcquisti(){
   const t = today(), q = (ui.q || "").toLowerCase(), F = ui.conF || "tutti";
-  let l = (S.contabilita || []).slice();
+  const P = periodoBar(S.contabilita || []);
+  let l = (S.contabilita || []).filter(P.filtra);
   if (F === "fatture") l = l.filter(d => d.tipo === "Fattura fornitore"); if (F === "ddt") l = l.filter(d => d.tipo === "DDT"); if (F === "dapagare") l = l.filter(d => d.tipo === "Fattura fornitore" && !d.pagata);
   if (q) l = l.filter(d => [d.fornitore, d.numero, d.rif, d.note, d.tipo].join(" ").toLowerCase().includes(q));
   l.sort((a, b) => (b.data || "").localeCompare(a.data || ""));
   const dp = (S.contabilita || []).filter(d => d.tipo === "Fattura fornitore" && !d.pagata), scad = dp.filter(d => d.scadenza && d.scadenza < t);
-  return `<div class="tiles" style="margin-bottom:10px"><div class="tile" data-conf="dapagare"><div class="n money" style="font-size:19px">${eur(dp.reduce((s, d) => s + num(d.importo), 0))}</div><div class="l">Fatture fornitori da pagare (${dp.length})</div></div><div class="tile"><div class="n" style="color:${scad.length ? "var(--bad)" : "inherit"}">${scad.length}</div><div class="l">Scadute</div></div></div>
+  const per = P.mese ? MESI_LUNGHI[+P.mese - 1] + " " + P.anno : "tutto il " + P.anno, lf = l.filter(d => d.tipo !== "DDT");
+  return `${P.html}${totBox("🔴 Acquisti di " + per + (q ? " (con la ricerca)" : ""), lf.reduce((s, d) => s + netAcq(d), 0), lf.reduce((s, d) => s + impAcq(d), 0), lf.length, "var(--cor-2,#ffe3da)")}
+  <div class="tiles" style="margin-bottom:10px"><div class="tile" data-conf="dapagare"><div class="n money" style="font-size:19px">${eur(dp.reduce((s, d) => s + num(d.importo), 0))}</div><div class="l">Fatture fornitori da pagare (${dp.length})</div></div><div class="tile"><div class="n" style="color:${scad.length ? "var(--bad)" : "inherit"}">${scad.length}</div><div class="l">Scadute</div></div></div>
   <button class="btn pri big" data-contab="up" style="margin-bottom:10px">⬆ Carica fatture o DDT (PDF o foto)</button>
   <div class="seg">${[["tutti", "Tutti"], ["fatture", "Fatture"], ["ddt", "DDT"], ["dapagare", "Da pagare"]].map(([k, lb]) => `<button class="${F === k ? "on" : ""}" data-conf="${k}">${lb}</button>`).join("")}</div>
   <input class="search" placeholder="Cerca fornitore, numero, cantiere…" value="${esc(ui.q)}" data-q>
-  ${l.length ? l.map(d => `<div class="card"><div class="row"><span class="t tap" data-contabd="${d.id}" style="flex:1;cursor:pointer">${esc(d.fornitore || "—")} · ${esc(d.tipo)}${d.numero ? " n. " + esc(d.numero) : ""}</span>${d.tipo === "Fattura fornitore" ? `<span class="chip ${d.pagata ? "ok" : d.scadenza && d.scadenza < t ? "bad" : "warn"}">${d.pagata ? "pagata" : d.scadenza ? "scade " + fd(d.scadenza) : "da pagare"}</span>` : ""}</div>
+  ${l.length ? perMese(l, d => d.tipo === "DDT" ? 0 : netAcq(d), d => d.tipo === "DDT" ? 0 : impAcq(d), d => `<div class="card"><div class="row"><span class="t tap" data-contabd="${d.id}" style="flex:1;cursor:pointer">${esc(d.fornitore || "—")} · ${esc(d.tipo)}${d.numero ? " n. " + esc(d.numero) : ""}</span>${d.tipo === "Fattura fornitore" ? `<span class="chip ${d.pagata ? "ok" : d.scadenza && d.scadenza < t ? "bad" : "warn"}">${d.pagata ? "pagata" : d.scadenza ? "scade " + fd(d.scadenza) : "da pagare"}</span>` : ""}</div>
     <div class="m">${esc(fd(d.data))}${num(d.importo) ? " · " + eur(d.importo) : ""}${d.rif ? " · " + esc(d.rif) : ""}${d.caricatoDa ? " · caricato da " + esc(d.caricatoDa) : ""}</div>
-    ${d.file || (d.tipo === "Fattura fornitore" && !d.pagata) ? `<div class="row" style="margin-top:6px;gap:6px">${d.file ? `<a class="btn sm" style="text-decoration:none" href="${esc(d.file.url)}" target="_blank" rel="noopener">📎 Apri ${esc(/pdf/.test(d.file.tipo || "") ? "PDF" : "file")}</a>` : ""}${d.tipo === "Fattura fornitore" && !d.pagata ? `<button class="btn sm" data-contabpag="${d.id}">✓ Pagata</button>` : ""}</div>` : ""}</div>`).join("") : empty("Nessun documento. Carica le fatture dei fornitori e i DDT: li vedete solo tu e chi abiliti.")}`;
+    ${d.file || (d.tipo === "Fattura fornitore" && !d.pagata) ? `<div class="row" style="margin-top:6px;gap:6px">${d.file ? `<a class="btn sm" style="text-decoration:none" href="${esc(d.file.url)}" target="_blank" rel="noopener">📎 Apri ${esc(/pdf/.test(d.file.tipo || "") ? "PDF" : "file")}</a>` : ""}${d.tipo === "Fattura fornitore" && !d.pagata ? `<button class="btn sm" data-contabpag="${d.id}">✓ Pagata</button>` : ""}</div>` : ""}</div>`) : empty("Nessun documento. Carica le fatture dei fornitori e i DDT: li vedete solo tu e chi abiliti.")}`;
 }
 
 // ---- solo ufficio vero (Tommaso e Irene): F-gas completo, libretto e catasto, detrazioni fiscali ----
@@ -3884,7 +3904,7 @@ function extraOggi(){
 // ---- eventi delle nuove pagine ----
 document.addEventListener("click", async e => {
   if (e.target.closest(".ov")) return;
-  const el = e.target.closest("[data-consez],[data-convf],[data-conanno],[data-altro],[data-marm],[data-pagata],[data-sollecitato],[data-ord],[data-ordprev],[data-ordine],[data-furt],[data-furc],[data-contr],[data-contrvis],[data-contrrin],[data-fgascsv],[data-impd],[data-contab],[data-contabd],[data-contabpag],[data-conf],[data-tecfur]");
+  const el = e.target.closest("[data-consez],[data-convf],[data-conanno],[data-conmese],[data-altro],[data-marm],[data-pagata],[data-sollecitato],[data-ord],[data-ordprev],[data-ordine],[data-furt],[data-furc],[data-contr],[data-contrvis],[data-contrrin],[data-fgascsv],[data-impd],[data-contab],[data-contabd],[data-contabpag],[data-conf],[data-tecfur]");
   if (!el) return; const d = el.dataset;
   if (d.altro !== undefined) { ui.altro = d.altro; ui.q = ""; if (ui.tab !== "altro") ui.tab = "altro"; render(); window.scrollTo(0, 0); return; }
   if (d.marm) { const x = new Date(ui.marM + "-15T12:00:00"); x.setMonth(x.getMonth() + +d.marm); ui.marM = iso(x).slice(0, 7); render(); return; }
@@ -3907,7 +3927,8 @@ document.addEventListener("click", async e => {
   if (d.contab === "pacchetto") return importaPacchetto();
   if (d.consez) { ui.conSez = d.consez; ui.q = ""; return render(); }
   if (d.convf) { ui.conVF = d.convf; return render(); }
-  if (d.conanno) { ui.conAnno = d.conanno; return render(); }
+  if (d.conanno) { ui.conAnno = d.conanno; ui.conMese = ""; return render(); }
+  if (d.conmese !== undefined) { ui.conMese = d.conmese; return render(); }
   if (d.contabd) { const x = (S.contabilita || []).find(y => y.id === d.contabd); if (x) formContab(x); return; }
   if (d.contabpag) { await patch("contabilita", d.contabpag, {pagata: true, pagataIl: today()}); toast("Segnata come pagata"); return; }
   if (d.conf) { ui.conF = d.conf; ui.altro = "contab"; render(); return; }

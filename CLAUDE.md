@@ -51,7 +51,7 @@ in italiano semplice, senza gergo tecnico.
   contatti in `CFG.fornitori`, "Ricevuto" carica il magazzino), Furgoni (`magazzino.furgoni = {tecnico: qta}`: il rapportino scarica
   prima dal furgone; il tecnico ha la scheda 🚐 Furgone con i `materialiPrevisti` del prossimo giorno), Contratti (`contratti`),
   Registro F-gas (`fgasMesi`: ≥5 t → 12 mesi, ≥50 → 6, ≥500 → 3, doppio con `rilevatorePerdite`; `ultimoControlloPerdite`
-  si aggiorna dal rapportino), Contabilità divisa in 📊 Analisi (`vContabRiepilogo`: KPI, grafico SVG mensile, tipi di costo `CAT_COSTI`/`catCosto` o `contabilita.categoria`, primi clienti e fornitori), 🟢 Vendite (`fatture`), 🔴 Acquisti (`contabilita`) (`vContab()` → `ui.conSez`; file in Storage `contabilita/`; solo titolare e utenti con
+  si aggiorna dal rapportino), Contabilità divisa in 📊 Analisi (`vContabRiepilogo`: KPI, grafico SVG mensile, tipi di costo `CAT_COSTI`/`catCosto` o `contabilita.categoria`, primi clienti e fornitori), 🟢 Vendite (`fatture`), 🔴 Acquisti (`contabilita`); in Vendite e Acquisti `periodoBar()` (anno + mesi, `ui.conAnno`/`ui.conMese`), `totBox()` con e senza IVA, elenco `perMese()` (`vContab()` → `ui.conSez`; file in Storage `contabilita/`; solo titolare e utenti con
   `utenti.contabilita` = spunta 📒 che vede solo il titolare in 👤 Utenti).
 - Solo ufficio vero (Tommaso e Irene = titolare/admin e ruolo `ufficio`, NON `ufficio_tecnico` né tecnici): `uffVero()`.
   Registro F-gas (`fgasOps/{id}`: interventi sul gas da comunicare alla Banca Dati entro 30 gg; il tecnico li crea dal

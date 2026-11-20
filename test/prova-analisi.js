@@ -21,7 +21,8 @@ let j = 1; for (let m = 1; m <= 11; m++) for (let k = 0; k < 5; k++) { con['a' +
   await p.click('[data-tab="altro"]'); await p.waitForTimeout(300); await p.click('[data-altro="contab"]'); await p.waitForTimeout(500);
   console.log((await p.innerText('#app')).replace(/\s+/g, ' ').slice(0, 1500));
   await p.screenshot({path: '/tmp/analisi.png', fullPage: true});
-  await p.click('[data-consez="acquisti"]'); await p.click('[data-contabd="a1"]'); await p.waitForTimeout(300);
+  for (const sez of ['vendite','acquisti']) { await p.click(`[data-consez="${sez}"]`); await p.waitForTimeout(300); console.log('--', sez, (await p.innerText('#app')).replace(/\s+/g,' ').slice(0, 700)); await p.click('[data-conmese="03"]'); await p.waitForTimeout(300); console.log('-- marzo', (await p.innerText('#app')).replace(/\s+/g,' ').slice(0, 500)); await p.screenshot({path:`/tmp/con-${sez}.png`}); await p.click('[data-conmese=""]'); }
+  await p.click('[data-contabd="a1"]'); await p.waitForTimeout(300);
   console.log('Campo tipo:', await p.isVisible('.ov [data-k="categoria"]'));
   console.log('errors', errs); await b.close(); srv.close();
 })();
