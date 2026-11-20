@@ -3422,6 +3422,38 @@ function caricaContab(){
   };
   inp.click();
 }
+// Pacchetto preparato da Claude: {cli:[], fat:[], contab:[], pdf:{nomeFile: base64}}. Id fissi: rifarlo non crea doppioni.
+// cli con existing=true: aggiunge solo i dati fiscali mancanti al cliente che c'è già.
+function importaPacchetto(){
+  if (!sonoTitolare()) return;
+  const inp = document.createElement("input"); inp.type = "file"; inp.accept = ".json,application/json";
+  inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return;
+    let P; try { P = JSON.parse(await f.text()); } catch(e) { toast("File non valido", 4000); return; }
+    const cli = P.cli || [], fat = P.fat || [], con = P.contab || [], pdf = P.pdf || {};
+    if (!(await ask(`Importo ${cli.length} clienti, ${fat.length} fatture emesse, ${con.length} fatture fornitori e ${Object.keys(pdf).length} PDF?`, "Importa"))) return;
+    let ok = 0, err = 0;
+    const passo = (msg) => toast(msg, 60000);
+    try {
+      for (const [i, c] of cli.entries()) { passo(`Clienti ${i + 1}/${cli.length}…`);
+        const {id, existing, ...dati} = c; const ref = db.collection("clienti").doc(id);
+        try { if (existing) { const cur = byId("clienti", id) || {}; const up = {}; for (const k of ["ragioneSociale", "piva", "cf", "sdi", "indirizzo"]) if (dati[k] && !cur[k]) up[k] = dati[k]; if (Object.keys(up).length) await ref.update({...up, aggiornato: new Date().toISOString()}); }
+          else if (!byId("clienti", id)) await ref.set({...dati, creatoDa: ui.uff || "Tommy", importatoIl: today(), aggiornato: new Date().toISOString()}); ok++; } catch(e) { err++; } }
+      const files = {};
+      if (assetsNS) { const nomi = Object.keys(pdf); for (const [i, n] of nomi.entries()) { passo(`PDF ${i + 1}/${nomi.length}…`);
+        const gia = fat.find(x => x.file_nome === n && (byId("fatture", x.id) || {}).file); if (gia) { files[n] = byId("fatture", gia.id).file; continue; }
+        try { const bin = Uint8Array.from(atob(pdf[n]), ch => ch.charCodeAt(0)); const up = await assetsNS.upload(new Blob([bin], {type: "application/pdf"}), {type: "application/pdf"}); files[n] = {id: up.id, url: up.url, path: up.path || "", nome: n, tipo: "application/pdf"}; } catch(e) { err++; } } }
+      for (const [i, x] of fat.entries()) { passo(`Fatture ${i + 1}/${fat.length}…`);
+        const {id, file_nome, ...dati} = x; const cur = byId("fatture", id); const file = files[file_nome] || (cur && cur.file) || null;
+        try { await save("fatture", id, {...(cur || {}), ...dati, ...(file ? {file} : {})}); ok++; } catch(e) { err++; } }
+      for (const [i, x] of con.entries()) { passo(`Fornitori ${i + 1}/${con.length}…`);
+        const {id, ...dati} = x; const cur = byId("contabilita", id);
+        try { await save("contabilita", id, {...(cur || {}), ...dati, il: (cur && cur.il) || new Date().toISOString()}); ok++; } catch(e) { err++; } }
+    } finally { clearToasts(); }
+    toast(err ? `Importazione finita: ${ok} salvati, ${err} non riusciti (riprova: i doppioni non si creano)` : `Importazione finita: ${ok} salvati`, 6000); render();
+  };
+  inp.click();
+}
 function formContab(d = {}){
   openForm({ title: d.id ? d.tipo + (d.numero ? " n. " + d.numero : "") : "Nuovo documento contabile", values: {data: today(), pagata: false, ...d},
     intro: d.file ? `<div class="info" style="margin-bottom:10px">📎 <a href="${esc(d.file.url)}" target="_blank" rel="noopener">${esc(d.file.nome || "documento")}</a>${(d.altri || []).length ? ` + altri ${d.altri.length} file (li salvo come documenti separati con gli stessi dati)` : ""}</div>` : "",
@@ -3451,6 +3483,7 @@ function vContab(){
   const dp = (S.contabilita || []).filter(d => d.tipo === "Fattura fornitore" && !d.pagata), scad = dp.filter(d => d.scadenza && d.scadenza < t);
   return `<div class="tiles" style="margin-bottom:10px"><div class="tile" data-conf="dapagare"><div class="n money" style="font-size:19px">${eur(dp.reduce((s, d) => s + num(d.importo), 0))}</div><div class="l">Fatture fornitori da pagare (${dp.length})</div></div><div class="tile"><div class="n" style="color:${scad.length ? "var(--bad)" : "inherit"}">${scad.length}</div><div class="l">Scadute</div></div></div>
   <button class="btn pri big" data-contab="up" style="margin-bottom:10px">⬆ Carica fatture o DDT (PDF o foto)</button>
+  ${sonoTitolare() ? `<button class="btn" data-contab="pacchetto" style="margin-bottom:10px;width:100%">📥 Importa pacchetto preparato da Claude (.json)</button>` : ""}
   <div class="seg">${[["tutti", "Tutti"], ["fatture", "Fatture"], ["ddt", "DDT"], ["dapagare", "Da pagare"]].map(([k, lb]) => `<button class="${F === k ? "on" : ""}" data-conf="${k}">${lb}</button>`).join("")}</div>
   <input class="search" placeholder="Cerca fornitore, numero, cantiere…" value="${esc(ui.q)}" data-q>
   ${l.length ? l.map(d => `<div class="card"><div class="row"><span class="t tap" data-contabd="${d.id}" style="flex:1;cursor:pointer">${esc(d.fornitore || "—")} · ${esc(d.tipo)}${d.numero ? " n. " + esc(d.numero) : ""}</span>${d.tipo === "Fattura fornitore" ? `<span class="chip ${d.pagata ? "ok" : d.scadenza && d.scadenza < t ? "bad" : "warn"}">${d.pagata ? "pagata" : d.scadenza ? "scade " + fd(d.scadenza) : "da pagare"}</span>` : ""}</div>
@@ -3775,6 +3808,7 @@ document.addEventListener("click", async e => {
   if (d.fgascsv) { const l = S.impianti.filter(i => fgasMesi(i) > 0); await saveCsv("Registro F-gas iTeam.csv", ["Cliente", "Indirizzo", "Impianto", "Matricola", "Gas", "Carica kg", "t CO2 eq", "Frequenza mesi", "Ultimo controllo", "Prossimo controllo"], l.map(i => { const c = byId("clienti", i.clienteId); return [c?.nome || "", addr(c), impName(i), i.matricola || "", i.gas || "", i.caricaKg || "", tco2(i).toFixed(2), fgasMesi(i), i.ultimoControlloPerdite || "", fgasProssimo(i)]; })); return; }
   if (d.impd) return detImpianto(byId("impianti", d.impd));
   if (d.contab === "up") return caricaContab();
+  if (d.contab === "pacchetto") return importaPacchetto();
   if (d.contabd) { const x = (S.contabilita || []).find(y => y.id === d.contabd); if (x) formContab(x); return; }
   if (d.contabpag) { await patch("contabilita", d.contabpag, {pagata: true, pagataIl: today()}); toast("Segnata come pagata"); return; }
   if (d.conf) { ui.conF = d.conf; ui.altro = "contab"; render(); return; }
