@@ -3426,9 +3426,10 @@ function caricaContab(){
 // cli con existing=true: aggiunge solo i dati fiscali mancanti al cliente che c'è già.
 function importaPacchetto(){
   if (!sonoTitolare()) return;
-  const inp = document.createElement("input"); inp.type = "file"; inp.accept = ".json,application/json";
-  inp.onchange = async () => {
-    const f = inp.files[0]; if (!f) return;
+  const inp = document.createElement("input"); inp.type = "file"; inp.accept = ".json,application/json"; inp.style.display = "none"; document.body.appendChild(inp);
+  let fatto = false;
+  const via = async () => {
+    if (fatto) return; const f = inp.files[0]; if (!f) return; fatto = true; inp.remove(); toast("Leggo il file…", 4000);
     let P; try { P = JSON.parse(await f.text()); } catch(e) { toast("File non valido", 4000); return; }
     const cli = P.cli || [], fat = P.fat || [], con = P.contab || [], pdf = P.pdf || {};
     if (!(await ask(`Importo ${cli.length} clienti, ${fat.length} fatture emesse, ${con.length} fatture fornitori e ${Object.keys(pdf).length} PDF?`, "Importa"))) return;
@@ -3453,6 +3454,7 @@ function importaPacchetto(){
     } finally { clearToasts(); }
     toast(err ? `Importazione finita: ${ok} salvati, ${err} non riusciti (riprova: i doppioni non si creano)` : `Importazione finita: ${ok} salvati`, 6000); render();
   };
+  inp.addEventListener("change", via); inp.addEventListener("input", via);
   inp.click();
 }
 function formContab(d = {}){
