@@ -3473,8 +3473,55 @@ function formContab(d = {}){
     onDelete: d.id ? async () => { await remove("contabilita", d.id); try { if (d.file && d.file.id) await assetsNS?.delete(d.file.id, "contabilita"); } catch(e){} closeModal(); render(); } : null
   });
 }
+// Contabilità divisa: Vendite (fatture emesse, collezione fatture) · Acquisti (fatture fornitori, collezione contabilita) · Riepilogo
+const fatValida = f => !f.stornata; // le stornate si annullano con la nota di credito: non le conto
+const MESI_IT = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
 function vContab(){
   if (!puoContab()) return empty("La contabilità è visibile solo al titolare e a chi è abilitato.");
+  const sez = ui.conSez || "vendite";
+  const segSez = `<div class="seg" style="margin-bottom:12px">${[["vendite", "🟢 Vendite"], ["acquisti", "🔴 Acquisti"], ["riepilogo", "📊 Riepilogo"]].map(([k, lb]) => `<button class="${sez === k ? "on" : ""}" data-consez="${k}">${lb}</button>`).join("")}</div>`;
+  const pac = sonoTitolare() ? `<button class="btn" data-contab="pacchetto" style="margin-bottom:10px;width:100%">📥 Importa pacchetto preparato da Claude (.json)</button>` : "";
+  if (sez === "vendite") return segSez + pac + vContabVendite();
+  if (sez === "riepilogo") return segSez + vContabRiepilogo();
+  return segSez + pac + vContabAcquisti();
+}
+function vContabVendite(){
+  const t = today(), q = (ui.q || "").toLowerCase(), F = ui.conVF || "tutte", anno = t.slice(0, 4);
+  const all = (S.fatture || []).filter(fatValida), annoL = all.filter(f => (f.data || "").startsWith(anno));
+  const daInc = all.filter(f => !f.pagata && f.tipo !== "Nota di credito"), scad = daInc.filter(f => f.scadenza && f.scadenza < t);
+  let l = (S.fatture || []).slice();
+  if (F === "dainc") l = daInc.slice(); if (F === "nc") l = l.filter(f => f.tipo === "Nota di credito" || f.stornata);
+  if (q) l = l.filter(f => [f.numero, cliName(f.clienteId), f.descrizione].join(" ").toLowerCase().includes(q));
+  l.sort((a, b) => (b.data || "").localeCompare(a.data || "") || (parseInt(b.numero) || 0) - (parseInt(a.numero) || 0));
+  return `<div class="tiles" style="margin-bottom:10px">
+    <div class="tile"><div class="n money" style="font-size:19px">${eur(annoL.reduce((s, f) => s + num(f.imponibile), 0))}</div><div class="l">Vendite ${anno} senza IVA (${annoL.length} documenti)</div></div>
+    <div class="tile"><div class="n money" style="font-size:19px">${eur(annoL.reduce((s, f) => s + fatTot(f), 0))}</div><div class="l">Vendite ${anno} IVA inclusa</div></div>
+    <div class="tile" data-convf="dainc"><div class="n money" style="font-size:19px">${eur(daInc.reduce((s, f) => s + fatTot(f), 0))}</div><div class="l">Da incassare (${daInc.length})</div></div>
+    <div class="tile" data-convf="dainc"><div class="n" style="color:${scad.length ? "var(--bad)" : "inherit"}">${scad.length}</div><div class="l">Scadute</div></div></div>
+  <div class="seg">${[["tutte", "Tutte"], ["dainc", "Da incassare"], ["nc", "Note di credito"]].map(([k, lb]) => `<button class="${F === k ? "on" : ""}" data-convf="${k}">${lb}</button>`).join("")}</div>
+  <input class="search" placeholder="Cerca cliente, numero…" value="${esc(ui.q)}" data-q>
+  ${l.length ? l.map(fatCard).join("") : empty("Nessuna fattura emessa. Le crei da Preventivi → Fatture oppure le importi con il pacchetto.")}`;
+}
+function vContabRiepilogo(){
+  const anno = ui.conAnno || today().slice(0, 4);
+  const ven = (S.fatture || []).filter(f => fatValida(f) && (f.data || "").startsWith(anno));
+  const acq = (S.contabilita || []).filter(d => d.tipo !== "DDT" && (d.data || "").startsWith(anno)).map(d => ({...d, imp: (d.tipo === "Nota di credito" ? -1 : 1) * Math.abs(num(d.importo))}));
+  const anni = [...new Set([...(S.fatture || []), ...(S.contabilita || [])].map(x => (x.data || "").slice(0, 4)).filter(Boolean))].sort().reverse();
+  const righe = MESI_IT.map((m, i) => { const mm = anno + "-" + String(i + 1).padStart(2, "0");
+    const v = ven.filter(f => f.data.startsWith(mm)).reduce((s, f) => s + fatTot(f), 0), a = acq.filter(d => d.data.startsWith(mm)).reduce((s, d) => s + d.imp, 0); return [m, v, a]; }).filter(r => r[1] || r[2]);
+  const tv = righe.reduce((s, r) => s + r[1], 0), ta = righe.reduce((s, r) => s + r[2], 0);
+  const daInc = (S.fatture || []).filter(f => fatValida(f) && !f.pagata && f.tipo !== "Nota di credito").reduce((s, f) => s + fatTot(f), 0);
+  const daPag = (S.contabilita || []).filter(d => d.tipo === "Fattura fornitore" && !d.pagata).reduce((s, d) => s + num(d.importo), 0);
+  const col = n => n >= 0 ? "var(--ok)" : "var(--bad)";
+  return `${anni.length > 1 ? `<div class="seg" style="margin-bottom:10px">${anni.map(a => `<button class="${a === anno ? "on" : ""}" data-conanno="${a}">${a}</button>`).join("")}</div>` : ""}
+  <div class="tiles" style="margin-bottom:10px"><div class="tile"><div class="n money" style="font-size:19px">${eur(tv)}</div><div class="l">🟢 Vendite ${anno}</div></div><div class="tile"><div class="n money" style="font-size:19px">${eur(ta)}</div><div class="l">🔴 Acquisti ${anno}</div></div>
+  <div class="tile"><div class="n money" style="font-size:19px;color:${col(tv - ta)}">${eur(tv - ta)}</div><div class="l">Differenza</div></div><div class="tile"><div class="n money" style="font-size:19px">${eur(daInc - daPag)}</div><div class="l">Da incassare ${eur(daInc)} − da pagare ${eur(daPag)}</div></div></div>
+  <p class="m">Importi IVA inclusa, perché le fatture dei fornitori sono registrate con il totale. Le fatture stornate non sono contate; le note di credito sì, in negativo.</p>
+  ${righe.length ? `<div class="card" style="padding:0;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:14px"><tr style="background:var(--pri-2)"><th style="text-align:left;padding:8px">Mese</th><th style="text-align:right;padding:8px">Vendite</th><th style="text-align:right;padding:8px">Acquisti</th><th style="text-align:right;padding:8px">Differenza</th></tr>
+  ${righe.map(([m, v, a]) => `<tr style="border-top:1px solid var(--line)"><td style="padding:8px">${m}</td><td style="text-align:right;padding:8px">${eur(v)}</td><td style="text-align:right;padding:8px">${eur(a)}</td><td style="text-align:right;padding:8px;color:${col(v - a)};font-weight:700">${eur(v - a)}</td></tr>`).join("")}
+  <tr style="border-top:2px solid var(--line);font-weight:800"><td style="padding:8px">Totale</td><td style="text-align:right;padding:8px">${eur(tv)}</td><td style="text-align:right;padding:8px">${eur(ta)}</td><td style="text-align:right;padding:8px;color:${col(tv - ta)}">${eur(tv - ta)}</td></tr></table></div>` : empty("Nessun movimento per il " + anno + ".")}`;
+}
+function vContabAcquisti(){
   const t = today(), q = (ui.q || "").toLowerCase(), F = ui.conF || "tutti";
   let l = (S.contabilita || []).slice();
   if (F === "fatture") l = l.filter(d => d.tipo === "Fattura fornitore"); if (F === "ddt") l = l.filter(d => d.tipo === "DDT"); if (F === "dapagare") l = l.filter(d => d.tipo === "Fattura fornitore" && !d.pagata);
@@ -3483,7 +3530,6 @@ function vContab(){
   const dp = (S.contabilita || []).filter(d => d.tipo === "Fattura fornitore" && !d.pagata), scad = dp.filter(d => d.scadenza && d.scadenza < t);
   return `<div class="tiles" style="margin-bottom:10px"><div class="tile" data-conf="dapagare"><div class="n money" style="font-size:19px">${eur(dp.reduce((s, d) => s + num(d.importo), 0))}</div><div class="l">Fatture fornitori da pagare (${dp.length})</div></div><div class="tile"><div class="n" style="color:${scad.length ? "var(--bad)" : "inherit"}">${scad.length}</div><div class="l">Scadute</div></div></div>
   <button class="btn pri big" data-contab="up" style="margin-bottom:10px">⬆ Carica fatture o DDT (PDF o foto)</button>
-  ${sonoTitolare() ? `<button class="btn" data-contab="pacchetto" style="margin-bottom:10px;width:100%">📥 Importa pacchetto preparato da Claude (.json)</button>` : ""}
   <div class="seg">${[["tutti", "Tutti"], ["fatture", "Fatture"], ["ddt", "DDT"], ["dapagare", "Da pagare"]].map(([k, lb]) => `<button class="${F === k ? "on" : ""}" data-conf="${k}">${lb}</button>`).join("")}</div>
   <input class="search" placeholder="Cerca fornitore, numero, cantiere…" value="${esc(ui.q)}" data-q>
   ${l.length ? l.map(d => `<div class="card"><div class="row"><span class="t tap" data-contabd="${d.id}" style="flex:1;cursor:pointer">${esc(d.fornitore || "—")} · ${esc(d.tipo)}${d.numero ? " n. " + esc(d.numero) : ""}</span>${d.tipo === "Fattura fornitore" ? `<span class="chip ${d.pagata ? "ok" : d.scadenza && d.scadenza < t ? "bad" : "warn"}">${d.pagata ? "pagata" : d.scadenza ? "scade " + fd(d.scadenza) : "da pagare"}</span>` : ""}</div>
@@ -3788,7 +3834,7 @@ function extraOggi(){
 // ---- eventi delle nuove pagine ----
 document.addEventListener("click", async e => {
   if (e.target.closest(".ov")) return;
-  const el = e.target.closest("[data-altro],[data-marm],[data-pagata],[data-sollecitato],[data-ord],[data-ordprev],[data-ordine],[data-furt],[data-furc],[data-contr],[data-contrvis],[data-contrrin],[data-fgascsv],[data-impd],[data-contab],[data-contabd],[data-contabpag],[data-conf],[data-tecfur]");
+  const el = e.target.closest("[data-consez],[data-convf],[data-conanno],[data-altro],[data-marm],[data-pagata],[data-sollecitato],[data-ord],[data-ordprev],[data-ordine],[data-furt],[data-furc],[data-contr],[data-contrvis],[data-contrrin],[data-fgascsv],[data-impd],[data-contab],[data-contabd],[data-contabpag],[data-conf],[data-tecfur]");
   if (!el) return; const d = el.dataset;
   if (d.altro !== undefined) { ui.altro = d.altro; ui.q = ""; if (ui.tab !== "altro") ui.tab = "altro"; render(); window.scrollTo(0, 0); return; }
   if (d.marm) { const x = new Date(ui.marM + "-15T12:00:00"); x.setMonth(x.getMonth() + +d.marm); ui.marM = iso(x).slice(0, 7); render(); return; }
@@ -3809,6 +3855,9 @@ document.addEventListener("click", async e => {
   if (d.impd) return detImpianto(byId("impianti", d.impd));
   if (d.contab === "up") return caricaContab();
   if (d.contab === "pacchetto") return importaPacchetto();
+  if (d.consez) { ui.conSez = d.consez; ui.q = ""; return render(); }
+  if (d.convf) { ui.conVF = d.convf; return render(); }
+  if (d.conanno) { ui.conAnno = d.conanno; return render(); }
   if (d.contabd) { const x = (S.contabilita || []).find(y => y.id === d.contabd); if (x) formContab(x); return; }
   if (d.contabpag) { await patch("contabilita", d.contabpag, {pagata: true, pagataIl: today()}); toast("Segnata come pagata"); return; }
   if (d.conf) { ui.conF = d.conf; ui.altro = "contab"; render(); return; }

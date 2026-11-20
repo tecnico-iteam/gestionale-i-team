@@ -51,7 +51,7 @@ in italiano semplice, senza gergo tecnico.
   contatti in `CFG.fornitori`, "Ricevuto" carica il magazzino), Furgoni (`magazzino.furgoni = {tecnico: qta}`: il rapportino scarica
   prima dal furgone; il tecnico ha la scheda 🚐 Furgone con i `materialiPrevisti` del prossimo giorno), Contratti (`contratti`),
   Registro F-gas (`fgasMesi`: ≥5 t → 12 mesi, ≥50 → 6, ≥500 → 3, doppio con `rilevatorePerdite`; `ultimoControlloPerdite`
-  si aggiorna dal rapportino), Contabilità (`contabilita`, file in Storage `contabilita/`; solo titolare e utenti con
+  si aggiorna dal rapportino), Contabilità divisa in 🟢 Vendite (`fatture`), 🔴 Acquisti (`contabilita`) e 📊 Riepilogo mensile (`vContab()` → `ui.conSez`; file in Storage `contabilita/`; solo titolare e utenti con
   `utenti.contabilita` = spunta 📒 che vede solo il titolare in 👤 Utenti).
 - Solo ufficio vero (Tommaso e Irene = titolare/admin e ruolo `ufficio`, NON `ufficio_tecnico` né tecnici): `uffVero()`.
   Registro F-gas (`fgasOps/{id}`: interventi sul gas da comunicare alla Banca Dati entro 30 gg; il tecnico li crea dal
