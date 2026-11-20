@@ -3501,11 +3501,12 @@ const MESI_LUNGHI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno
 function vContab(){
   if (!puoContab()) return empty("La contabilità è visibile solo al titolare e a chi è abilitato.");
   const sez = ui.conSez || "riepilogo";
-  const segSez = `<div class="seg" style="margin-bottom:12px">${[["riepilogo", "📊 Analisi"], ["vendite", "🟢 Vendite"], ["acquisti", "🔴 Acquisti"], ["crediti", "💰 Da incassare"]].map(([k, lb]) => `<button class="${sez === k ? "on" : ""}" data-consez="${k}">${lb}</button>`).join("")}</div>`;
+  const segSez = `<div class="seg" style="margin-bottom:12px;flex-wrap:wrap;gap:4px">${[["riepilogo", "📊 Analisi"], ["vendite", "🟢 Vendite"], ["acquisti", "🔴 Acquisti"], ["crediti", "💰 Da incassare"], ["prev", "📝 Preventivi"]].map(([k, lb]) => `<button class="${sez === k ? "on" : ""}" data-consez="${k}" style="flex:1 1 30%;white-space:nowrap;padding-left:8px;padding-right:8px">${lb}</button>`).join("")}</div>`;
   const vuoto = !(S.fatture || []).length && !(S.contabilita || []).length;
   const pac = sonoTitolare() && vuoto ? `<button class="btn" data-contab="pacchetto" style="margin-bottom:10px;width:100%">📥 Importa pacchetto preparato da Claude (.json)</button>` : "";
   if (sez === "vendite") return segSez + pac + vContabVendite();
   if (sez === "crediti") return segSez + vContabCrediti();
+  if (sez === "prev") return segSez + vContabPrev();
   if (sez === "riepilogo") return segSez + pac + vContabRiepilogo() + (sonoTitolare() && !vuoto ? `<button class="btn sm" data-contab="pacchetto" style="margin-top:6px">📥 Importa un altro pacchetto</button>` : "");
   return segSez + pac + vContabAcquisti();
 }
@@ -3526,6 +3527,62 @@ function vContabVendite(){
   <input class="search" placeholder="Cerca cliente, numero…" value="${esc(ui.q)}" data-q>
   ${l.length ? perMese(l, f => num(f.imponibile), fatTot, fatCard) : empty("Nessuna fattura in questo periodo.")}`;
 }
+// ---- 📝 Preventivi in contabilità: fatti e accettati, con le fatture di acconto e saldo collegate (fatture.preventivoId) ----
+const fatDiPrev = p => (S.fatture || []).filter(f => f.preventivoId === p.id);
+function statoPrevFat(p){
+  const t = prevTot(p), l = fatDiPrev(p), fatt = l.reduce((s, f) => s + num(f.imponibile), 0), fattTot = l.reduce((s, f) => s + fatTot(f), 0);
+  // incassato riportato senza IVA, come il resto della scheda
+  const inc = l.filter(f => f.tipo !== "Nota di credito" && !f.stornata).reduce((s, f) => s + (f.pagata ? num(f.imponibile) : fatTot(f) ? num(f.incassato) * num(f.imponibile) / fatTot(f) : 0), 0);
+  const fattValido = l.filter(f => f.tipo !== "Nota di credito" && !f.stornata).reduce((s, f) => s + num(f.imponibile), 0);
+  return {t, l, fatt, fattTot, inc, daFatt: Math.max(0, t.imp - fatt), daInc: Math.max(0, fattValido - inc), perc: t.imp ? Math.min(1, fatt / t.imp) : 0};
+}
+const tipoFat = f => f.tipo === "Nota di credito" ? "Nota di credito" : /saldo/i.test(f.descrizione || "") ? "Saldo" : /acconto|anticipo|avanzamento|sal\b/i.test(f.descrizione || "") ? "Acconto" : "Fattura";
+function collegaFattura(p){
+  const lib = (S.fatture || []).filter(f => !f.preventivoId && f.clienteId === p.clienteId).sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+  const altre = (S.fatture || []).filter(f => !f.preventivoId && f.clienteId !== p.clienteId).sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+  const opt = f => [f.id, `N. ${f.numero} · ${fd(f.data)} · ${eur(fatTot(f))} · ${tipoFat(f)}${f.clienteId !== p.clienteId ? " · " + cliName(f.clienteId) : ""}`];
+  openForm({title: "Collega una fattura al preventivo n. " + (p.numero || ""), values: {},
+    intro: `<p class="m" style="margin-top:-4px">Scegli la fattura di acconto o di saldo emessa per questo lavoro. Prima ci sono quelle dello stesso cliente.</p>`,
+    fields: [{k:"fid", label:"Fattura", type:"select", search:true, req:true, options: () => [["", "— Scegli —"], ...lib.map(opt), ...altre.map(opt)]}],
+    onSave: async v => { await patch("fatture", v.fid, {preventivoId: p.id}); toast("Fattura collegata"); render(); }});
+}
+function vContabPrev(){
+  const q = (ui.q || "").toLowerCase(), F = ui.conPF || "accettati";
+  const P = periodoBar(S.preventivi || []);
+  let l = (S.preventivi || []).filter(P.filtra);
+  if (F === "accettati") l = l.filter(p => p.stato === "Accettato"); if (F === "attesa") l = l.filter(p => p.stato === "Inviato" || p.stato === "Bozza");
+  if (F === "dafatt") l = l.filter(p => p.stato === "Accettato" && statoPrevFat(p).daFatt > 0.5);
+  if (q) l = l.filter(p => [p.numero, cliName(p.clienteId), p.oggetto].join(" ").toLowerCase().includes(q));
+  l.sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+  const acc = (S.preventivi || []).filter(P.filtra).filter(p => p.stato === "Accettato").map(statoPrevFat);
+  const tot = k => acc.reduce((s, x) => s + x[k], 0), totImp = acc.reduce((s, x) => s + x.t.imp, 0);
+  const sug = p => (S.fatture || []).filter(f => !f.preventivoId && f.clienteId === p.clienteId && (f.data || "") >= (p.data || "")).length;
+  const card = p => { const x = statoPrevFat(p), s = p.stato || "Bozza", n = sug(p);
+    return `<div class="card"><div class="row"><span class="t tap" data-prev="${p.id}" style="flex:1;cursor:pointer">N. ${esc(p.numero)} · ${esc(cliName(p.clienteId))}</span><span class="chip ${s === "Accettato" ? "ok" : s === "Rifiutato" ? "bad" : ""}">${esc(s)}</span></div>
+    <div class="m">${esc(fd(p.data))}${p.oggetto ? " · " + esc(p.oggetto) : ""}</div>
+    <div class="row wrap" style="gap:14px;margin:8px 0 4px"><div><div class="m">Preventivo</div><b class="money">${eur(x.t.imp)}</b></div><div><div class="m">Fatturato</div><b class="money">${eur(x.fatt)}</b></div><div><div class="m">Da fatturare</div><b class="money" style="color:${x.daFatt > 0.5 ? "var(--warn)" : "var(--ok)"}">${eur(x.daFatt)}</b></div><div><div class="m">Incassato</div><b class="money" style="color:var(--ok)">${eur(x.inc)}</b></div></div>
+    <div style="height:8px;border-radius:6px;background:var(--line)"><div style="height:8px;border-radius:6px;width:${Math.round(100 * x.perc)}%;background:var(--menta,#1fae7a)"></div></div>
+    ${x.l.length ? `<div style="margin-top:8px">${x.l.sort((a, b) => (a.data || "").localeCompare(b.data || "")).map(f => `<div class="row" style="gap:6px;padding:5px 0;border-top:1px solid var(--line)"><span class="chip">${tipoFat(f)}</span><span class="tap" data-fat="${f.id}" style="flex:1;cursor:pointer;min-width:0;font-size:14px">N. ${esc(f.numero)}<br><span class="m">${esc(fd(f.data))}</span></span><b class="money">${eur(num(f.imponibile))}</b><span class="chip ${f.tipo === "Nota di credito" || f.stornata ? "" : f.pagata ? "ok" : "warn"}">${f.tipo === "Nota di credito" ? "—" : f.stornata ? "stornata" : f.pagata ? "incassata" : num(f.incassato) ? "in parte" : "da incassare"}</span>${f.file && f.file.url ? `<a class="btn sm" style="text-decoration:none" href="${esc(f.file.url)}" target="_blank" rel="noopener">📎</a>` : ""}<button class="btn sm" data-prevscol="${f.id}" title="Scollega">✕</button></div>`).join("")}</div>` : `<p class="m" style="margin:8px 0 0">Nessuna fattura collegata.</p>`}
+    <div class="row wrap" style="gap:6px;margin-top:8px">${s === "Accettato" && x.daFatt > 0.5 ? `<button class="btn sm pri" data-prevfat="${p.id}">+ Fattura ${x.l.length ? "di saldo" : "di acconto"}</button>` : ""}<button class="btn sm" data-prevcol="${p.id}">🔗 Collega fattura${n ? ` (${n} possibil${n === 1 ? "e" : "i"})` : ""}</button></div></div>`; };
+  return `${P.html}<div class="tiles" style="margin-bottom:10px">
+    <div class="tile" style="background:var(--pri-2,#ece7ff)"><div class="l" style="color:#4b2fc9">Preventivi accettati (${acc.length})</div><div class="n money" style="font-size:19px;color:#4b2fc9">${eur(totImp)}</div><div class="m">senza IVA</div></div>
+    <div class="tile" style="background:var(--menta-2,#d6f5e8)"><div class="l" style="color:var(--menta-ink,#0b5a3c)">Già fatturato</div><div class="n money" style="font-size:19px;color:var(--menta-ink,#0b5a3c)">${eur(tot("fatt"))}</div><div class="m">di cui incassato ${eur(tot("inc"))}</div></div>
+    <div class="tile" style="background:#fff4cc"><div class="l" style="color:#7a5600">Ancora da fatturare</div><div class="n money" style="font-size:19px;color:#7a5600">${eur(tot("daFatt"))}</div></div>
+    <div class="tile" style="background:var(--cor-2,#ffe3da)"><div class="l" style="color:var(--cor-ink,#a8361a)">Fatturato non incassato</div><div class="n money" style="font-size:19px;color:var(--cor-ink,#a8361a)">${eur(tot("daInc"))}</div></div></div>
+  <div class="seg">${[["accettati", "Accettati"], ["dafatt", "Da fatturare"], ["attesa", "In attesa"], ["tutti", "Tutti"]].map(([k, lb]) => `<button class="${F === k ? "on" : ""}" data-conpf="${k}">${lb}</button>`).join("")}</div>
+  <input class="search" placeholder="Cerca cliente, numero, oggetto…" value="${esc(ui.q)}" data-q>
+  ${l.length ? l.map(card).join("") : empty("Nessun preventivo in questo periodo.")}
+  <p class="m">Tutti gli importi sono senza IVA. Le fatture di acconto e saldo si collegano al preventivo: quelle create dal preventivo lo sono già, le altre si collegano con 🔗.</p>`;
+}
+document.addEventListener("click", async e => {
+  if (e.target.closest(".ov")) return;
+  const el = e.target.closest("[data-conpf],[data-prevfat],[data-prevcol],[data-prevscol]"); if (!el || !puoContab()) return; const d = el.dataset;
+  if (d.conpf) { ui.conPF = d.conpf; render(); return; }
+  if (d.prevcol) { const p = byId("preventivi", d.prevcol); if (p) collegaFattura(p); return; }
+  if (d.prevscol) { if (!(await ask("Scollego questa fattura dal preventivo? La fattura resta, cambia solo il collegamento.", "Scollega"))) return; await patch("fatture", d.prevscol, {preventivoId: ""}); toast("Scollegata"); return; }
+  if (d.prevfat) { const p = byId("preventivi", d.prevfat); if (!p) return; const x = statoPrevFat(p);
+    formFattura({clienteId: p.clienteId, preventivoId: p.id, descrizione: (x.l.length ? "SALDO" : "ACCONTO") + " rif. preventivo n. " + p.numero + (p.oggetto ? " — " + p.oggetto : ""), imponibile: Math.round((x.l.length ? x.daFatt : x.daFatt / 2) * 100) / 100, iva: String(p.iva ?? 22)}); }
+});
 // ---- 💰 Da incassare: crediti aggiunti a mano (crediti/{id}) + fatture non ancora incassate ----
 const credResiduo = c => c.incassato ? 0 : Math.max(0, num(c.importo) - num(c.acconto));
 function formCredito(c = {}){
