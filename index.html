@@ -3463,7 +3463,7 @@ function formContab(d = {}){
       {k:"numero", label:"Numero", half:true}, {k:"data", label:"Data", type:"date", half:true},
       {k:"importo", label:"Totale € (IVA inclusa)", type:"number", half:true, show: v => v.tipo !== "DDT"}, {k:"scadenza", label:"Scadenza pagamento", type:"date", half:true, show: v => v.tipo === "Fattura fornitore"},
       {k:"pagata", label:"Pagata", type:"checkbox", show: v => v.tipo === "Fattura fornitore", rerender:true},
-      {k:"rif", label:"Cantiere / riferimento"}, {k:"note", label:"Note", type:"textarea"}
+      {k:"categoria", label:"Tipo di costo (per l'analisi)", type:"select", options: () => [["", "Automatico dal fornitore"], ...CAT_COSTI.map(c => c[0]), "Altro"], show: v => v.tipo !== "DDT"}, {k:"rif", label:"Cantiere / riferimento"}, {k:"note", label:"Note", type:"textarea"}
     ],
     onSave: async v => {
       const {altri, ...doc} = v; doc.caricatoDa = doc.caricatoDa || ui.uff || "Ufficio"; doc.il = doc.il || new Date().toISOString(); if (doc.pagata && !doc.pagataIl) doc.pagataIl = today();
@@ -3477,10 +3477,11 @@ function formContab(d = {}){
 // Contabilità divisa: Vendite (fatture emesse, collezione fatture) · Acquisti (fatture fornitori, collezione contabilita) · Riepilogo
 const fatValida = f => !f.stornata; // le stornate si annullano con la nota di credito: non le conto
 const MESI_IT = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
+const MESI_LUNGHI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
 function vContab(){
   if (!puoContab()) return empty("La contabilità è visibile solo al titolare e a chi è abilitato.");
-  const sez = ui.conSez || "vendite";
-  const segSez = `<div class="seg" style="margin-bottom:12px">${[["vendite", "🟢 Vendite"], ["acquisti", "🔴 Acquisti"], ["riepilogo", "📊 Riepilogo"]].map(([k, lb]) => `<button class="${sez === k ? "on" : ""}" data-consez="${k}">${lb}</button>`).join("")}</div>`;
+  const sez = ui.conSez || "riepilogo";
+  const segSez = `<div class="seg" style="margin-bottom:12px">${[["riepilogo", "📊 Analisi"], ["vendite", "🟢 Vendite"], ["acquisti", "🔴 Acquisti"]].map(([k, lb]) => `<button class="${sez === k ? "on" : ""}" data-consez="${k}">${lb}</button>`).join("")}</div>`;
   const pac = sonoTitolare() ? `<button class="btn" data-contab="pacchetto" style="margin-bottom:10px;width:100%">📥 Importa pacchetto preparato da Claude (.json)</button>` : "";
   if (sez === "vendite") return segSez + pac + vContabVendite();
   if (sez === "riepilogo") return segSez + vContabRiepilogo();
@@ -3503,24 +3504,70 @@ function vContabVendite(){
   <input class="search" placeholder="Cerca cliente, numero…" value="${esc(ui.q)}" data-q>
   ${l.length ? l.map(fatCard).join("") : empty("Nessuna fattura emessa. Le crei da Preventivi → Fatture oppure le importi con il pacchetto.")}`;
 }
+// ---- Analisi costi e ricavi (pagina 📊 della Contabilità): solo dati del gestionale (fatture = vendite, contabilita = acquisti) ----
+const CAT_COSTI = [
+  ["Materiali e attrezzature", /erre\.?\s?di|doppler|sacchi|evolution clima|idrocentro|vegliolux|\brav\b|w[uü]e?rth|gerbaudo|copas|brico|zanutta|leroy|centro clima|\bibs\b|omnia frigo|tecnostyle|italia automazioni|blucart|donna|erretigi|el-ga|\bthc\b|ferrament|elma|media ?mark|absolute|cigierre|a2k|luber|comoli|rialto|resincondotte|cavit|gallina|tecnosystemi|ntg|exad/i],
+  ["Subappalti e collaboratori", /negro|restagno|cogest|tf solution|magno|stillavato|t\.c\.u|ediltransport|lasi|santese|edilpregio|gugino|tartaglia|perdomi|nobile|sciascia|d\.l\. impianti|spurgo|degani|chirico|pisaturo|capece|albertin|mantella|nord impianti/i],
+  ["Furgoni e mezzi", /carrozzeria|unipol|unpol|pneu|eni ?moov|dekra|q8|tamoil|esso|autostrad|telepass|gomm/i],
+  ["Utenze, consulenze e corsi", /wind|enel|fastweb|aruba|intesa|tinexta|studio|consulting|seromed|xenex|apave|\bidg\b|proced|tim\b|vodafone|iliad|banca|fatturazione/i],
+  ["Trasferte (vitto e alloggio)", /albergo|hotel|b&b|bar\b|ristorante|trattoria|pizzeria|sushi|caffetteria|griglia|osteria|piola|bahia|medialuna|bivio/i]
+];
+const catCosto = d => d.categoria || (CAT_COSTI.find(([, re]) => re.test(d.fornitore || "")) || ["Altro"])[0];
+const nomeBase = n => String(n || "—").toUpperCase().replace(/[.,]/g, " ").replace(/\b(S\s?R\s?L\s?S?|S\s?P\s?A|S\s?A\s?S|S\s?N\s?C|SOCIETA'?\s?BENEFIT)$/g, "").replace(/\b(S\s?R\s?L\s?S?|S\s?P\s?A|S\s?A\s?S|S\s?N\s?C)\b/g, "").replace(/\s+/g, " ").trim() || String(n || "—");
+const impAcq = d => (d.tipo === "Nota di credito" ? -1 : 1) * Math.abs(num(d.importo)); // IVA inclusa
+const netAcq = d => num(d.imponibile) ? (d.tipo === "Nota di credito" ? -1 : 1) * Math.abs(num(d.imponibile)) : impAcq(d) / 1.22;
+function graficoMesi(righe){
+  const W = 680, H = 230, pl = 52, pb = 26, pt = 10, max = Math.max(1, ...righe.flatMap(r => [r[1], r[2]])), bw = (W - pl - 10) / 12;
+  const y = v => pt + (H - pt - pb) * (1 - Math.max(0, v) / max), step = Math.pow(10, Math.floor(Math.log10(max))) * (max / Math.pow(10, Math.floor(Math.log10(max))) > 5 ? 2 : 1);
+  let g = ""; for (let v = 0; v <= max; v += step) g += `<line x1="${pl}" x2="${W - 6}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${pl - 6}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--mute)">${v >= 1000 ? Math.round(v / 1000) + "k" : v}</text>`;
+  righe.forEach(([m, v, a], i) => { const x = pl + i * bw + 4, w = (bw - 10) / 2;
+    g += `<rect x="${x}" y="${y(v)}" width="${w}" height="${H - pb - y(v)}" rx="3" fill="var(--menta, #1fae7a)"><title>${m}: vendite ${eur(v)}</title></rect><rect x="${x + w + 2}" y="${y(a)}" width="${w}" height="${H - pb - y(a)}" rx="3" fill="var(--cor, #ff6b4a)"><title>${m}: acquisti ${eur(a)}</title></rect><text x="${x + w}" y="${H - 8}" text-anchor="middle" font-size="11" fill="var(--mute)">${m}</text>`; });
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="Vendite e acquisti per mese">${g}</svg>`;
+}
+const barre = (l, tot, col) => l.map(([n, v]) => `<div style="margin:7px 0"><div class="row" style="font-size:14px"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n)}</span><b class="money" style="margin-left:8px">${eur(v)}</b><span class="m" style="width:46px;text-align:right">${tot ? Math.round(100 * v / tot) : 0}%</span></div><div style="height:8px;border-radius:6px;background:var(--line);margin-top:3px"><div style="height:8px;border-radius:6px;width:${tot ? Math.max(1, 100 * v / Math.max(...l.map(x => x[1]))) : 0}%;background:${col}"></div></div></div>`).join("");
 function vContabRiepilogo(){
-  const anno = ui.conAnno || today().slice(0, 4);
+  const anni = [...new Set([...(S.fatture || []), ...(S.contabilita || [])].map(x => (x.data || "").slice(0, 4)).filter(a => a >= "2000" && a <= today().slice(0, 4)))].sort().reverse();
+  const anno = ui.conAnno && anni.includes(ui.conAnno) ? ui.conAnno : (anni[0] || today().slice(0, 4));
   const ven = (S.fatture || []).filter(f => fatValida(f) && (f.data || "").startsWith(anno));
-  const acq = (S.contabilita || []).filter(d => d.tipo !== "DDT" && (d.data || "").startsWith(anno)).map(d => ({...d, imp: (d.tipo === "Nota di credito" ? -1 : 1) * Math.abs(num(d.importo))}));
-  const anni = [...new Set([...(S.fatture || []), ...(S.contabilita || [])].map(x => (x.data || "").slice(0, 4)).filter(Boolean))].sort().reverse();
-  const righe = MESI_IT.map((m, i) => { const mm = anno + "-" + String(i + 1).padStart(2, "0");
-    const v = ven.filter(f => f.data.startsWith(mm)).reduce((s, f) => s + fatTot(f), 0), a = acq.filter(d => d.data.startsWith(mm)).reduce((s, d) => s + d.imp, 0); return [m, v, a]; }).filter(r => r[1] || r[2]);
-  const tv = righe.reduce((s, r) => s + r[1], 0), ta = righe.reduce((s, r) => s + r[2], 0);
+  const acq = (S.contabilita || []).filter(d => d.tipo !== "DDT" && (d.data || "").startsWith(anno));
+  if (!ven.length && !acq.length) return `${anni.length > 1 ? "" : ""}${empty("Ancora nessuna fattura per il " + anno + ". Importa il pacchetto o registra le fatture: qui comparirà l'analisi di costi e ricavi.")}`;
+  const ricNet = ven.reduce((s, f) => s + num(f.imponibile), 0), ricLordo = ven.reduce((s, f) => s + fatTot(f), 0);
+  const cosLordo = acq.reduce((s, d) => s + impAcq(d), 0), cosNet = acq.reduce((s, d) => s + netAcq(d), 0);
+  const marg = ricNet - cosNet, margP = ricNet ? marg / ricNet : 0;
   const daInc = (S.fatture || []).filter(f => fatValida(f) && !f.pagata && f.tipo !== "Nota di credito").reduce((s, f) => s + fatTot(f), 0);
   const daPag = (S.contabilita || []).filter(d => d.tipo === "Fattura fornitore" && !d.pagata).reduce((s, d) => s + num(d.importo), 0);
-  const col = n => n >= 0 ? "var(--ok)" : "var(--bad)";
+  const mesi = MESI_IT.map((m, i) => { const mm = anno + "-" + String(i + 1).padStart(2, "0"); return [m, ven.filter(f => f.data.startsWith(mm)).reduce((s, f) => s + num(f.imponibile), 0), acq.filter(d => d.data.startsWith(mm)).reduce((s, d) => s + netAcq(d), 0)]; });
+  const conDati = mesi.filter(r => r[1] || r[2]), best = conDati.slice().sort((a, b) => b[1] - a[1])[0], neg = conDati.filter(r => r[1] < r[2]);
+  const nFat = ven.filter(f => f.tipo !== "Nota di credito").length, nNc = ven.filter(f => f.tipo === "Nota di credito").length + (S.fatture || []).filter(f => f.stornata && (f.data || "").startsWith(anno)).length;
+  const grp = (l, key, val) => { const m = {}; l.forEach(x => { const k = key(x); m[k] = (m[k] || 0) + val(x); }); return Object.entries(m).sort((a, b) => b[1] - a[1]); };
+  const cli = grp(ven, f => cliName(f.clienteId), f => num(f.imponibile)), forn = grp(acq, d => nomeBase(d.fornitore), netAcq), cat = grp(acq, catCosto, netAcq);
+  const top10 = cli.slice(0, 10).reduce((s, x) => s + x[1], 0), top3f = forn.slice(0, 3).reduce((s, x) => s + x[1], 0);
+  const credTop = (S.fatture || []).filter(f => fatValida(f) && !f.pagata && f.tipo !== "Nota di credito").sort((a, b) => fatTot(b) - fatTot(a))[0];
+  const tile = (l, v, sub, col, bg) => `<div class="tile" style="background:${bg}"><div class="l" style="margin-bottom:4px;color:${col || "inherit"}">${l}</div><div class="n money" style="font-size:21px${col ? ";color:" + col : ""}">${v}</div>${sub ? `<div class="m" style="margin-top:2px">${sub}</div>` : ""}</div>`;
+  const punti = [
+    `Il margine sui fornitori è <b>${eur(marg)}</b> (${Math.round(100 * margP)}% dei ricavi): stipendi, contributi, tasse e spese fisse non sono compresi.`,
+    cat[0] ? `<b>${esc(cat[0][0])}</b> pesa per il ${Math.round(100 * cat[0][1] / cosNet)}% dei costi.` : "",
+    forn.length >= 3 ? `I primi 3 fornitori (${forn.slice(0, 3).map(x => esc(x[0])).join(", ")}) fanno il ${Math.round(100 * top3f / cosNet)}% degli acquisti: conviene trattare uno sconto annuo.` : "",
+    cli.length >= 10 ? `I primi 10 clienti portano il ${Math.round(100 * top10 / ricNet)}% dei ricavi.` : "",
+    best ? `Il mese migliore è <b>${MESI_LUNGHI[MESI_IT.indexOf(best[0])]}</b> (${eur(best[1])} di vendite).` : "",
+    neg.length ? `Mesi in cui gli acquisti hanno superato le vendite: <b>${neg.map(r => MESI_LUNGHI[MESI_IT.indexOf(r[0])]).join(", ")}</b>.` : "",
+    daPag > daInc ? `Da pagare ai fornitori (${eur(daPag)}) più di quanto resta da incassare (${eur(daInc)}): occhio alla cassa.` : "",
+    credTop ? `Il credito più grosso: <b>${esc(cliName(credTop.clienteId))}</b>, ${eur(fatTot(credTop))} (fattura n. ${esc(credTop.numero)}).` : "",
+    nNc >= 3 ? `${nNc} fatture corrette con nota di credito quest'anno: conviene ricontrollarle prima di inviarle.` : ""
+  ].filter(Boolean);
   return `${anni.length > 1 ? `<div class="seg" style="margin-bottom:10px">${anni.map(a => `<button class="${a === anno ? "on" : ""}" data-conanno="${a}">${a}</button>`).join("")}</div>` : ""}
-  <div class="tiles" style="margin-bottom:10px"><div class="tile"><div class="n money" style="font-size:19px">${eur(tv)}</div><div class="l">🟢 Vendite ${anno}</div></div><div class="tile"><div class="n money" style="font-size:19px">${eur(ta)}</div><div class="l">🔴 Acquisti ${anno}</div></div>
-  <div class="tile"><div class="n money" style="font-size:19px;color:${col(tv - ta)}">${eur(tv - ta)}</div><div class="l">Differenza</div></div><div class="tile"><div class="n money" style="font-size:19px">${eur(daInc - daPag)}</div><div class="l">Da incassare ${eur(daInc)} − da pagare ${eur(daPag)}</div></div></div>
-  <p class="m">Importi IVA inclusa, perché le fatture dei fornitori sono registrate con il totale. Le fatture stornate non sono contate; le note di credito sì, in negativo.</p>
-  ${righe.length ? `<div class="card" style="padding:0;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:14px"><tr style="background:var(--pri-2)"><th style="text-align:left;padding:8px">Mese</th><th style="text-align:right;padding:8px">Vendite</th><th style="text-align:right;padding:8px">Acquisti</th><th style="text-align:right;padding:8px">Differenza</th></tr>
-  ${righe.map(([m, v, a]) => `<tr style="border-top:1px solid var(--line)"><td style="padding:8px">${m}</td><td style="text-align:right;padding:8px">${eur(v)}</td><td style="text-align:right;padding:8px">${eur(a)}</td><td style="text-align:right;padding:8px;color:${col(v - a)};font-weight:700">${eur(v - a)}</td></tr>`).join("")}
-  <tr style="border-top:2px solid var(--line);font-weight:800"><td style="padding:8px">Totale</td><td style="text-align:right;padding:8px">${eur(tv)}</td><td style="text-align:right;padding:8px">${eur(ta)}</td><td style="text-align:right;padding:8px;color:${col(tv - ta)}">${eur(tv - ta)}</td></tr></table></div>` : empty("Nessun movimento per il " + anno + ".")}`;
+  <div class="tiles" style="margin-bottom:12px">
+    ${tile("🟢 Ricavi senza IVA", eur(ricNet), `${nFat} fatture · media ${eur(nFat ? ricNet / nFat : 0)}`, "var(--menta-ink,#0b5a3c)", "var(--menta-2,#d6f5e8)")}
+    ${tile("🔴 Costi fornitori senza IVA", eur(cosNet), `${eur(cosLordo)} IVA inclusa`, "var(--cor-ink,#a8361a)", "var(--cor-2,#ffe3da)")}
+    ${tile("Margine sui fornitori", eur(marg), Math.round(100 * margP) + "% dei ricavi", marg >= 0 ? "#4b2fc9" : "var(--bad)", "var(--pri-2,#ece7ff)")}
+    ${tile("Cassa: incassare − pagare", eur(daInc - daPag), `da incassare ${eur(daInc)} · da pagare ${eur(daPag)}`, daInc - daPag >= 0 ? "var(--ok)" : "var(--bad)", "#fff4cc")}
+  </div>
+  <div class="card"><div class="row" style="margin-bottom:6px"><b style="flex:1">Vendite e acquisti mese per mese</b><span class="m"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--menta,#1fae7a)"></span> vendite &nbsp;<span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--cor,#ff6b4a)"></span> acquisti</span></div>${graficoMesi(mesi)}<p class="m" style="margin:6px 0 0">Importi senza IVA. Tocca una colonna per vedere la cifra.</p></div>
+  <div class="card"><b>Cosa dicono i numeri</b><ul style="margin:8px 0 0;padding-left:20px;line-height:1.6">${punti.map(p => `<li>${p}</li>`).join("")}</ul></div>
+  <div class="card"><b>Dove vanno i soldi</b>${barre(cat, cosNet, "var(--cor,#ff6b4a)")}<p class="m" style="margin:6px 0 0">Il tipo si ricava dal nome del fornitore; puoi cambiarlo aprendo la fattura in 🔴 Acquisti.</p></div>
+  <div class="card"><b>Primi 10 clienti</b>${barre(cli.slice(0, 10), ricNet, "var(--menta,#1fae7a)")}</div>
+  <div class="card"><b>Primi 10 fornitori</b>${barre(forn.slice(0, 10), cosNet, "var(--pri,#6c4cf1)")}</div>
+  <p class="m">Costi senza IVA: dove la fattura del fornitore ha solo il totale, l'IVA è tolta al 22%. Le fatture stornate non contano; le note di credito sì, in negativo.</p>`;
 }
 function vContabAcquisti(){
   const t = today(), q = (ui.q || "").toLowerCase(), F = ui.conF || "tutti";
