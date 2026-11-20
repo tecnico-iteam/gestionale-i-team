@@ -1840,7 +1840,7 @@ function vCliente(c){
 }
 
 const prevCard = p => { const t = prevTot(p); const s = p.stato || "Bozza"; return `<div class="card tap" data-prev="${p.id}"><div class="row"><span class="t">N. ${esc(p.numero)} · ${esc(cliName(p.clienteId))}</span><span class="sp"></span><span class="chip ${s === "Accettato" ? "ok" : s === "Rifiutato" ? "bad" : s === "Inviato" ? "pri" : ""}">${esc(s)}</span></div><div class="row m"><span>${esc(fd(p.data))}${p.creatoDa ? " · " + esc(p.creatoDa) : ""}${p.oggetto ? " · " + esc(p.oggetto) : ""}</span><span class="sp"></span><b class="money" style="color:var(--ink)">${eur(t.tot)}</b></div></div>`; };
-const fatCard = f => { const sc = !f.pagata && f.scadenza && f.scadenza < today(); return `<div class="card tap" data-fat="${f.id}"><div class="row"><span class="t">N. ${esc(f.numero)} · ${esc(cliName(f.clienteId))}</span><span class="sp"></span><span class="chip ${f.tipo === "Nota di credito" || f.stornata ? "" : f.pagata ? "ok" : sc ? "bad" : "warn"}">${f.tipo === "Nota di credito" ? "Nota di credito" : f.stornata ? "Stornata" : f.pagata ? "Pagata" : sc ? "Scaduta" : "Da incassare"}</span></div><div class="row m"><span>${f.file ? "📎 " : ""}${esc(fd(f.data))}${f.scadenza && !f.pagata ? " · scade " + esc(fd(f.scadenza)) : ""}</span><span class="sp"></span><b class="money" style="color:var(--ink)">${eur(fatTot(f))}</b></div>${!f.pagata ? `<div style="margin-top:8px"><button class="btn sm" data-paga="${f.id}">Segna pagata</button></div>` : ""}</div>`; };
+const fatCard = f => { const sc = !f.pagata && f.scadenza && f.scadenza < today(); return `<div class="card tap" data-fat="${f.id}"><div class="row"><span class="t">N. ${esc(f.numero)} · ${esc(cliName(f.clienteId))}</span><span class="sp"></span><span class="chip ${f.tipo === "Nota di credito" || f.stornata ? "" : f.pagata ? "ok" : sc ? "bad" : "warn"}">${f.tipo === "Nota di credito" ? "Nota di credito" : f.stornata ? "Stornata" : f.pagata ? "Pagata" : sc ? "Scaduta" : "Da incassare"}</span></div><div class="row m"><span>${f.file ? "📎 " : ""}${esc(fd(f.data))}${f.scadenza && !f.pagata ? " · scade " + esc(fd(f.scadenza)) : ""}</span><span class="sp"></span><b class="money" style="color:var(--ink)">${eur(fatTot(f))}</b></div>${f.file && f.file.url || !f.pagata ? `<div class="row" style="margin-top:8px;gap:6px">${f.file && f.file.url ? `<a class="btn sm" style="text-decoration:none" href="${esc(f.file.url)}" target="_blank" rel="noopener">📎 Apri PDF</a>` : ""}${!f.pagata ? `<button class="btn sm" data-paga="${f.id}">Segna pagata</button>` : ""}</div>` : ""}</div>`; };
 
 function vDocumenti(){
   const q = ui.q.toLowerCase(), t = today();
@@ -3442,13 +3442,14 @@ function importaPacchetto(){
       const files = {};
       if (assetsNS) { const nomi = Object.keys(pdf); for (const [i, n] of nomi.entries()) { passo(`PDF ${i + 1}/${nomi.length}…`);
         const gia = fat.find(x => x.file_nome === n && (byId("fatture", x.id) || {}).file); if (gia) { files[n] = byId("fatture", gia.id).file; continue; }
+        const giaC = con.find(x => x.file_nome === n && (byId("contabilita", x.id) || {}).file); if (giaC) { files[n] = byId("contabilita", giaC.id).file; continue; }
         try { const bin = Uint8Array.from(atob(pdf[n]), ch => ch.charCodeAt(0)); const up = await assetsNS.upload(new Blob([bin], {type: "application/pdf"}), {type: "application/pdf"}); files[n] = {id: up.id, url: up.url, path: up.path || "", nome: n, tipo: "application/pdf"}; } catch(e) { err++; } } }
       for (const [i, x] of fat.entries()) { passo(`Fatture ${i + 1}/${fat.length}…`);
         const {id, file_nome, ...dati} = x; const cur = byId("fatture", id); const file = files[file_nome] || (cur && cur.file) || null;
         try { await save("fatture", id, {...(cur || {}), ...dati, ...(file ? {file} : {})}); ok++; } catch(e) { err++; } }
       for (const [i, x] of con.entries()) { passo(`Fornitori ${i + 1}/${con.length}…`);
-        const {id, ...dati} = x; const cur = byId("contabilita", id);
-        try { await save("contabilita", id, {...(cur || {}), ...dati, il: (cur && cur.il) || new Date().toISOString()}); ok++; } catch(e) { err++; } }
+        const {id, file_nome, ...dati} = x; const cur = byId("contabilita", id); const file = files[file_nome] || (cur && cur.file) || null;
+        try { await save("contabilita", id, {...(cur || {}), ...dati, ...(file ? {file} : {}), il: (cur && cur.il) || new Date().toISOString()}); ok++; } catch(e) { err++; } }
     } finally { clearToasts(); }
     toast(err ? `Importazione finita: ${ok} salvati, ${err} non riusciti (riprova: i doppioni non si creano)` : `Importazione finita: ${ok} salvati`, 6000); render();
   };
@@ -3533,8 +3534,8 @@ function vContabAcquisti(){
   <div class="seg">${[["tutti", "Tutti"], ["fatture", "Fatture"], ["ddt", "DDT"], ["dapagare", "Da pagare"]].map(([k, lb]) => `<button class="${F === k ? "on" : ""}" data-conf="${k}">${lb}</button>`).join("")}</div>
   <input class="search" placeholder="Cerca fornitore, numero, cantiere…" value="${esc(ui.q)}" data-q>
   ${l.length ? l.map(d => `<div class="card"><div class="row"><span class="t tap" data-contabd="${d.id}" style="flex:1;cursor:pointer">${esc(d.fornitore || "—")} · ${esc(d.tipo)}${d.numero ? " n. " + esc(d.numero) : ""}</span>${d.tipo === "Fattura fornitore" ? `<span class="chip ${d.pagata ? "ok" : d.scadenza && d.scadenza < t ? "bad" : "warn"}">${d.pagata ? "pagata" : d.scadenza ? "scade " + fd(d.scadenza) : "da pagare"}</span>` : ""}</div>
-    <div class="m">${esc(fd(d.data))}${num(d.importo) ? " · " + eur(d.importo) : ""}${d.rif ? " · " + esc(d.rif) : ""} · caricato da ${esc(d.caricatoDa || "")}</div>
-    ${d.file ? `<div style="margin-top:6px"><a class="btn sm" style="text-decoration:none" href="${esc(d.file.url)}" target="_blank" rel="noopener">📎 Apri ${esc(/pdf/.test(d.file.tipo || "") ? "PDF" : "file")}</a>${d.tipo === "Fattura fornitore" && !d.pagata ? ` <button class="btn sm" data-contabpag="${d.id}">✓ Pagata</button>` : ""}</div>` : ""}</div>`).join("") : empty("Nessun documento. Carica le fatture dei fornitori e i DDT: li vedete solo tu e chi abiliti.")}`;
+    <div class="m">${esc(fd(d.data))}${num(d.importo) ? " · " + eur(d.importo) : ""}${d.rif ? " · " + esc(d.rif) : ""}${d.caricatoDa ? " · caricato da " + esc(d.caricatoDa) : ""}</div>
+    ${d.file || (d.tipo === "Fattura fornitore" && !d.pagata) ? `<div class="row" style="margin-top:6px;gap:6px">${d.file ? `<a class="btn sm" style="text-decoration:none" href="${esc(d.file.url)}" target="_blank" rel="noopener">📎 Apri ${esc(/pdf/.test(d.file.tipo || "") ? "PDF" : "file")}</a>` : ""}${d.tipo === "Fattura fornitore" && !d.pagata ? `<button class="btn sm" data-contabpag="${d.id}">✓ Pagata</button>` : ""}</div>` : ""}</div>`).join("") : empty("Nessun documento. Carica le fatture dei fornitori e i DDT: li vedete solo tu e chi abiliti.")}`;
 }
 
 // ---- solo ufficio vero (Tommaso e Irene): F-gas completo, libretto e catasto, detrazioni fiscali ----

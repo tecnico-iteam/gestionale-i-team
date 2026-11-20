@@ -4,8 +4,8 @@ const srv = http.createServer((q, r) => { const f = path.join(process.cwd(), dec
 const pac = {cli: [{id: 'c1', existing: true, ragioneSociale: 'ROSSI SRL', piva: 'IT123', sdi: 'ABC1234'}, {id: 'fpr-cli-it999', existing: false, nome: 'Nuova Srl', ragioneSociale: 'NUOVA SRL', piva: 'IT999', tipo: 'Azienda'}],
   fat: [{id: 'fpr-2026-1', clienteId: 'c1', numero: '1/2026', data: '2026-01-07', imponibile: 350, iva: '22', pagata: true, dataPagamento: '2026-01-07', tipo: 'Fattura', file_nome: 'a.pdf'},
         {id: 'fpr-2026-2', clienteId: 'fpr-cli-it999', numero: '2/2026', data: '2026-01-08', imponibile: -100, iva: '22', pagata: true, tipo: 'Nota di credito', file_nome: 'b.pdf'}],
-  contab: [{id: 'imp26-4', tipo: 'Fattura fornitore', fornitore: 'WURTH', numero: '45', data: '2026-01-02', importo: 120, pagata: false, scadenza: '2026-12-31'}],
-  pdf: {'a.pdf': Buffer.from('%PDF-1.4 a').toString('base64'), 'b.pdf': Buffer.from('%PDF-1.4 b').toString('base64')}};
+  contab: [{id: 'imp26-4', tipo: 'Fattura fornitore', fornitore: 'WURTH', numero: '45', data: '2026-01-02', importo: 120, pagata: false, scadenza: '2026-12-31', file_nome: 'c.pdf'}],
+  pdf: {'a.pdf': Buffer.from('%PDF-1.4 a').toString('base64'), 'b.pdf': Buffer.from('%PDF-1.4 b').toString('base64'), 'c.pdf': Buffer.from('%PDF-1.4 c').toString('base64')}};
 fs.writeFileSync('/tmp/pacchetto.json', JSON.stringify(pac));
 (async () => {
   const b = await chromium.launch(); const errs = [];
