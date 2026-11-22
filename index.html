@@ -340,20 +340,34 @@ function toast(msg, ms = 2600){
 }
 
 // ---------- database ----------
+// Registro delle modifiche (registro/{id}, solo aggiunte) e cestino (cestino/{id}: copia di ciò che si elimina, l'ufficio la ripristina)
+const NO_REGISTRO = ["listino", "promemoriaClienti", "scansioni", "eventiCal", "registro", "cestino"];
+const chiRegistro = () => (mioAccount() || {}).nome || (ui.modo === "ufficio" ? (ui.uff || "Ufficio") : ui.modo === "comm" ? ui.comm : ui.tecnico) || "";
+const titoloDoc = (col, d) => { d = d || {}; const c = d.clienteId ? cliName(d.clienteId) : ""; return String(d.numero ? "N. " + d.numero + (c ? " · " + c : "") : d.nome || d.fornitore || d.chi || d.descrizione || d.codice || d.titolo || d.oggetto || (c ? c + (d.data ? " · " + fd(d.data) : "") : "") || "").slice(0, 120); };
+const normCampo = v => v === undefined || v === null || v === "" || v === false || (Array.isArray(v) && !v.length) ? "" : JSON.stringify(v);
+function registra(col, id, azione, dati, campi){
+  if (!db || NO_REGISTRO.includes(col)) return;
+  try { db.collection("registro").add(JSON.parse(JSON.stringify({col, docId: id || "", azione, titolo: titoloDoc(col, dati), campi: (campi || []).filter(k => !["aggiornato", "modificatoDa"].includes(k)).slice(0, 25), chi: chiRegistro(), uid: (mioAccount() || {}).id || "", il: new Date().toISOString()}))).catch(() => {}); } catch(e) {}
+}
 async function save(col, id, data){
   if (!db) { toast("Dati non raggiungibili: impossibile salvare"); throw new Error("no db"); }
   const ref = id ? db.collection(col).doc(id) : db.collection(col).doc();
+  const prima = id && S[col] ? byId(col, id) : null;
   const body = JSON.parse(JSON.stringify({...data, aggiornato: new Date().toISOString(), modificatoDa: ui.modo === "ufficio" ? (ui.uff || "Ufficio") : ui.modo === "comm" ? ui.comm : ui.tecnico || ""}));
   delete body.id;
-  try { await ref.set(body); return ref.id; }
+  try { await ref.set(body); registra(col, ref.id, prima ? "modifica" : "crea", body, prima ? Object.keys(body).filter(k => normCampo(body[k]) !== normCampo(prima[k])) : []); return ref.id; }
   catch(e){ writeErr(e); throw e; }
 }
 async function patch(col, id, data){
-  try { await db.collection(col).doc(id).update(JSON.parse(JSON.stringify({...data, aggiornato: new Date().toISOString()}))); }
+  try { await db.collection(col).doc(id).update(JSON.parse(JSON.stringify({...data, aggiornato: new Date().toISOString()}))); registra(col, id, "modifica", {...(S[col] ? byId(col, id) || {} : {}), ...data}, Object.keys(data)); }
   catch(e){ writeErr(e); throw e; }
 }
 async function remove(col, id){
-  try { await db.collection(col).doc(id).delete(); } catch(e){ writeErr(e); throw e; }
+  try {
+    const ref = db.collection(col).doc(id);
+    if (!NO_REGISTRO.includes(col)) { const sn = await ref.get(); if (sn.exists) await db.collection("cestino").add(JSON.parse(JSON.stringify({col, docId: id, dati: sn.data(), titolo: titoloDoc(col, sn.data()), chi: chiRegistro(), il: new Date().toISOString()}))); }
+    await ref.delete(); registra(col, id, "elimina", S[col] ? byId(col, id) : {}, []);
+  } catch(e){ writeErr(e); throw e; }
 }
 function writeErr(e){
   if (e && (e.code === "invalid_argument" || e.code === "permission-denied")) { canWrite = false; toast("Non hai i permessi per modificare i dati. Chiedi al titolare di controllare il tuo account (👤 → Utenti).", 4500); }
@@ -569,7 +583,7 @@ function formCliente(c = {}){
       {k:"noPromemoria", label:"Non mandare a questo cliente i promemoria del giorno prima (email e WhatsApp)", type:"checkbox"}
     ],
     onSave: async v => { if (!c.id) v.creatoDa = ui.modo === "comm" ? ui.comm : ui.modo === "tecnico" ? ui.tecnico : (ui.uff || "Ufficio"); const id = await save("clienti", c.id, v); if (!c.id && ui.modo !== "ufficio") { toast("Cliente creato"); setTimeout(() => detTecCliente(id), 300); return; } if (!c.id) { ui.cliente = id; ui.tab = "clienti"; location.hash = "clienti"; } toast("Cliente salvato"); render(); },
-    onDelete: c.id && ui.modo !== "tecnico" ? async () => { await remove("clienti", c.id); ui.cliente = null; closeModal(); toast("Cliente eliminato"); render(); } : null
+    onDelete: c.id && puoEliminare() ? async () => { await remove("clienti", c.id); ui.cliente = null; closeModal(); toast("Cliente eliminato"); render(); } : null
   });
 }
 function formImpianto(i = {}){
@@ -593,7 +607,7 @@ function formImpianto(i = {}){
       {k:"note", label:"Note", type:"textarea"}
     ],
     onSave: async v => { await save("impianti", i.id, v); toast("Impianto salvato"); render(); },
-    onDelete: i.id && ui.modo !== "tecnico" ? async () => { await remove("impianti", i.id); closeModal(); toast("Impianto eliminato"); render(); } : null
+    onDelete: i.id && puoEliminare() ? async () => { await remove("impianti", i.id); closeModal(); toast("Impianto eliminato"); render(); } : null
   });
 }
 function formIntervento(x = {}, dopo){
@@ -632,7 +646,7 @@ function formIntervento(x = {}, dopo){
       if (v.cantiere && !isCant(v)) { toast("Metti la durata o una data di fine dopo la data di inizio"); throw new Error("fine"); }
       if (!v.cantiere) { v.dataFine = ""; v.durataGg = ""; } else v.durataGg = giorniInt(v).length;
       if (!v.tecnico || sameTec(v.tecnico2, v.tecnico)) v.tecnico2 = ""; v.materialiPrevisti = (v.materialiPrevisti || []).filter(m => m.articoloId || (m.descrizione || "").trim()); await save("interventi", x.id, v); if (x.id) closeModal(); if (dopo) await dopo(); toast("Appuntamento salvato"); render(); },
-    onDelete: x.id ? async () => { await remove("interventi", x.id); closeModal(); toast("Intervento eliminato"); render(); } : null
+    onDelete: x.id && puoEliminare() ? async () => { await remove("interventi", x.id); closeModal(); toast("Intervento eliminato"); render(); } : null
   });
 }
 // rapportino del tecnico
@@ -709,7 +723,7 @@ function formPreventivo(p = {}){
       {k:"note", label:"Condizioni / note", type:"textarea", ph:"Tempi, pagamento, detrazioni fiscali, esclusioni…"}
     ],
     onSave: async v => { const im = {}; (p.righe || []).forEach(r => { if (r.img) im[r.descrizione] = {img: r.img, potenza: r.potenza || ""}; }); v.righe = (v.righe || []).filter(r => (r.descrizione || "").trim() || num(r.prezzo)).map(r => im[r.descrizione] ? {...r, ...im[r.descrizione]} : r); await save("preventivi", p.id, v); toast("Preventivo salvato"); render(); },
-    onDelete: p.id && ui.modo === "ufficio" ? async () => { await remove("preventivi", p.id); closeModal(); render(); } : null
+    onDelete: p.id && puoEliminare() ? async () => { await remove("preventivi", p.id); closeModal(); render(); } : null
   });
 }
 function formFattura(f = {}){
@@ -749,7 +763,7 @@ function formArticolo(a = {}){
       {k:"serie", label:"Serie / gruppo"}
     ],
     onSave: async v => { await save("magazzino", a.id, v); toast("Articolo salvato"); render(); },
-    onDelete: a.id ? async () => { await remove("magazzino", a.id); closeModal(); render(); } : null
+    onDelete: a.id && puoEliminare() ? async () => { await remove("magazzino", a.id); closeModal(); render(); } : null
   });
 }
 function formImpostazioni(){
@@ -824,8 +838,7 @@ function formCommessa(c = {}){
       const id = await save("commesse", c.id || null, {...c, ...v, documenti: c.documenti || []});
       toast("Commessa salvata"); setTimeout(() => viewComm(id), 400);
     },
-    onDelete: c.id ? async () => {
-      for (const d of (c.documenti || [])) { try { await assetsNS?.delete(d.id); } catch(e){} }
+    onDelete: c.id && puoEliminare() ? async () => {
       await remove("commesse", c.id); toast("Commessa eliminata"); setTimeout(refreshComm, 300);
     } : null
   });
@@ -1467,7 +1480,7 @@ function formDico(d = {}){
       {k:"firmaResp", label:"Firma del responsabile tecnico (facoltativa: puoi firmare anche a mano sul PDF stampato)", type:"sign"}
     ],
     onSave: async v => { if (!d.id) v.creatoDa = ui.uff || "Ufficio"; const id = await save("dico", d.id, v); toast("DiCo salvata"); render(); setTimeout(() => { const x = byId("dico", id); if (x) detDico(x); }, 400); },
-    onDelete: d.id ? async () => { await remove("dico", d.id); closeModal(); render(); } : null
+    onDelete: d.id && puoEliminare() ? async () => { await remove("dico", d.id); closeModal(); render(); } : null
   });
 }
 function detDico(d){
@@ -3024,10 +3037,12 @@ function vChoose(){
 // Pagina "Altro" dell'ufficio. Dati: ordini/{id}, contratti/{id}, contabilita/{id} (solo titolare e chi ha utenti.contabilita),
 // magazzino.furgoni = {nomeTecnico: quantità}, impianti.ultimoControlloPerdite, interventi.inizioPos / rapportino.finePos.
 const ruolo = () => (mioAccount() || {}).ruolo || "";
+// solo ufficio e amministratore eliminano (lo impongono anche le regole del database); senza account (prove) sì
+const puoEliminare = () => !mioAccount() || sonoTitolare() || ["admin", "ufficio", "ufficio_tecnico"].includes(ruolo());
 const sonoTitolare = () => !!(window.ITEAM && window.ITEAM.isOwner && window.ITEAM.isOwner());
 const puoContab = () => sonoTitolare() || !!(mioAccount() || {}).contabilita;
 const COLS_SOLO_UFFICIO = ["fatture", "ordini", "contratti"];
-const colsPerMe = () => { const r = ruolo(); return COLS.filter(c => !(["tecnico", "preventivatore", "tecnico_preventivatore"].includes(r) && COLS_SOLO_UFFICIO.includes(c))); };
+const colsPerMe = () => { const r = ruolo(); return COLS.filter(c => !(["tecnico", "preventivatore", "tecnico_preventivatore"].includes(r) && COLS_SOLO_UFFICIO.includes(c)) && !(r === "tecnico" && ["preventivi", "listino"].includes(c))); };
 const fornitoriNoti = () => [...new Set([...(CFG.fornitori || []).map(f => f.nome), ...S.magazzino.map(m => m.fornitore), ...BUNDLES.filter(b => b.costo).map(b => b.marca), ...(S.contabilita || []).map(d => d.fornitore)].filter(Boolean))].sort((a, b) => a.localeCompare(b));
 const fornitoreInfo = n => (CFG.fornitori || []).find(f => sameTec(f.nome, n)) || {nome: n};
 const mailLink = (to, subj, body) => `mailto:${encodeURIComponent(to || "")}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
@@ -3474,7 +3489,7 @@ function formContab(d = {}){
       for (const f of (altri || [])) await save("contabilita", null, {...doc, file: f, note: (doc.note ? doc.note + " · " : "") + "pagina aggiuntiva"});
       toast("Documento salvato"); render();
     },
-    onDelete: d.id ? async () => { await remove("contabilita", d.id); try { if (d.file && d.file.id) await assetsNS?.delete(d.file.id, "contabilita"); } catch(e){} closeModal(); render(); } : null
+    onDelete: d.id ? async () => { await remove("contabilita", d.id); closeModal(); render(); } : null
   });
 }
 // Contabilità divisa: Vendite (fatture emesse, collezione fatture) · Acquisti (fatture fornitori, collezione contabilita) · Riepilogo
@@ -3987,10 +4002,55 @@ const ALTRO = () => [
   ...(uffVero() ? [["fgas", "🧊", "Registro F-gas", "Interventi da comunicare e controlli perdite"],
     ["libretti", "📘", "Libretti e catasto", "Catasto CIT e rapporti di efficienza"],
     ["detr", "🧾", "Detrazioni fiscali", "Documenti e comunicazione ENEA"]] : []),
-  ...(puoContab() ? [["contab", "📒", "Contabilità", "Fatture fornitori e DDT (riservato)"]] : [])
+  ...(puoContab() ? [["contab", "📒", "Contabilità", "Fatture fornitori e DDT (riservato)"]] : []),
+  ...(puoEliminare() ? [["cestino", "🗑️", "Cestino e registro", "Ripristina ciò che è stato eliminato, chi ha cambiato cosa"]] : [])
 ];
+// ---- 🗑️ Cestino e registro delle modifiche (solo ufficio e amministratore) ----
+const NOMI_COL = {clienti: "Cliente", impianti: "Impianto", interventi: "Intervento", preventivi: "Preventivo", fatture: "Fattura", magazzino: "Articolo", dico: "DiCo", commesse: "Commessa", contratti: "Contratto", ordini: "Ordine", contabilita: "Fattura fornitore", crediti: "Da incassare", fgasOps: "Intervento F-gas", detrazioni: "Pratica detrazione", impostazioni: "Impostazioni", config: "Impostazioni"};
+const AZ = {crea: ["➕", "ha creato", "ok"], modifica: ["✏️", "ha modificato", ""], elimina: ["🗑️", "ha eliminato", "bad"], ripristina: ["♻️", "ha ripristinato", "ok"]};
+let CEST = {cestino: null, registro: null, carica: false};
+async function caricaCestino(){
+  if (CEST.carica || !db) return; CEST.carica = true;
+  try { const [c, r] = await Promise.all([db.collection("cestino").orderBy("il", "desc").limit(300).get(), db.collection("registro").orderBy("il", "desc").limit(400).get()]);
+    CEST.cestino = c.docs.map(d => ({id: d.id, ...d.data()})); CEST.registro = r.docs.map(d => ({id: d.id, ...d.data()})); }
+  catch(e) { CEST.cestino = CEST.cestino || []; CEST.registro = CEST.registro || []; toast("Non riesco a leggere il cestino: le regole nuove potrebbero non essere ancora attive.", 4500); }
+  CEST.carica = false; render();
+}
+function vCestino(){
+  if (!CEST.cestino) { caricaCestino(); return `<p class="m">Carico…</p>`; }
+  const T = ui.cestT || "cestino", q = (ui.q || "").toLowerCase();
+  const seg = `<div class="seg">${[["cestino", "🗑️ Cestino (" + CEST.cestino.length + ")"], ["registro", "📜 Registro modifiche"]].map(([k, lb]) => `<button class="${T === k ? "on" : ""}" data-cestt="${k}">${lb}</button>`).join("")}</div>
+  <div class="row" style="gap:6px;margin:8px 0"><input class="search" style="margin:0;flex:1" placeholder="Cerca nome, persona…" value="${esc(ui.q)}" data-q><button class="btn sm" data-cestagg="1">↻ Aggiorna</button></div>`;
+  const quando = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString("it-IT", {day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"}); };
+  if (T === "cestino") {
+    const l = CEST.cestino.filter(c => !q || [c.titolo, c.chi, NOMI_COL[c.col]].join(" ").toLowerCase().includes(q));
+    return seg + `<p class="m">Qui finisce tutto quello che viene eliminato. Tocca <b>♻️ Ripristina</b> per rimetterlo com'era (foto e documenti compresi).</p>
+    ${l.length ? l.map(c => `<div class="card"><div class="row"><span class="t" style="flex:1">${esc(c.titolo || "(senza nome)")}</span><span class="chip">${esc(NOMI_COL[c.col] || c.col)}</span></div>
+      <div class="m">Eliminato da <b>${esc(c.chi || "?")}</b> il ${esc(quando(c.il))}</div>
+      <div class="row" style="gap:6px;margin-top:8px"><button class="btn sm ok" data-cestrip="${c.id}">♻️ Ripristina</button>${sonoTitolare() || ruolo() === "admin" ? `<button class="btn sm bad" data-cestdel="${c.id}">Elimina per sempre</button>` : ""}</div></div>`).join("") : empty("Il cestino è vuoto 👍")}`;
+  }
+  const l = CEST.registro.filter(r => !q || [r.titolo, r.chi, NOMI_COL[r.col], r.azione].join(" ").toLowerCase().includes(q));
+  let ultimoGiorno = "";
+  return seg + `<p class="m">Le ultime 400 modifiche: chi ha creato, cambiato o eliminato cosa, e quando.</p>
+  ${l.length ? l.map(r => { const a = AZ[r.azione] || ["•", r.azione, ""], g = (r.il || "").slice(0, 10), h = g !== ultimoGiorno ? `<h3>${esc(fdl(g) || g)}</h3>` : ""; ultimoGiorno = g;
+    return `${h}<div class="card" style="padding:10px 12px"><div class="row" style="gap:8px"><span style="font-size:18px">${a[0]}</span><span style="flex:1"><b>${esc(r.chi || "?")}</b> ${a[1]} ${esc((NOMI_COL[r.col] || r.col || "").toLowerCase())} <b>${esc(r.titolo || "")}</b></span><span class="m">${esc(new Date(r.il).toLocaleTimeString("it-IT", {hour: "2-digit", minute: "2-digit"}))}</span></div>${r.campi && r.campi.length && r.azione === "modifica" ? `<div class="m" style="margin-top:3px">Campi: ${esc(r.campi.join(", "))}</div>` : ""}</div>`; }).join("") : empty("Ancora nessuna modifica registrata.")}`;
+}
+document.addEventListener("click", async e => {
+  if (e.target.closest(".ov")) return;
+  const el = e.target.closest("[data-cestt],[data-cestagg],[data-cestrip],[data-cestdel]"); if (!el || !puoEliminare()) return; const d = el.dataset;
+  if (d.cestt) { ui.cestT = d.cestt; ui.q = ""; render(); return; }
+  if (d.cestagg) { CEST.cestino = null; render(); return; }
+  if (d.cestrip) { const c = CEST.cestino.find(x => x.id === d.cestrip); if (!c) return;
+    try { const ref = db.collection(c.col).doc(c.docId), ex = await ref.get();
+      if (ex.exists && !(await ask("Esiste già un elemento con lo stesso codice: lo sovrascrivo con quello del cestino?", "Sovrascrivi"))) return;
+      await ref.set(c.dati); await db.collection("cestino").doc(c.id).delete(); registra(c.col, c.docId, "ripristina", c.dati, []);
+      CEST.cestino = CEST.cestino.filter(x => x.id !== c.id); toast("Ripristinato"); render(); } catch(err) { writeErr(err); }
+    return; }
+  if (d.cestdel) { if (!(await ask("Eliminare per sempre? Non si potrà più ripristinare.", "Elimina"))) return;
+    try { await db.collection("cestino").doc(d.cestdel).delete(); CEST.cestino = CEST.cestino.filter(x => x.id !== d.cestdel); toast("Eliminato per sempre"); render(); } catch(err) { writeErr(err); } }
+});
 function vAltro(){
-  const V = {margini: vMargini, prezzi: vPrezzi, incassi: vIncassi, ordini: vOrdini, furgoni: vFurgoni, contratti: vContratti, fgas: () => vFgasOps() + vFgas(), libretti: vLibretti, detr: vDetrazioni, contab: vContab};
+  const V = {margini: vMargini, prezzi: vPrezzi, incassi: vIncassi, ordini: vOrdini, furgoni: vFurgoni, contratti: vContratti, fgas: () => vFgasOps() + vFgas(), libretti: vLibretti, detr: vDetrazioni, contab: vContab, cestino: vCestino};
   const cur = ALTRO().find(a => a[0] === ui.altro);
   if (cur && V[cur[0]]) return `<button class="btn sm" data-altro="">← Gestione</button><h2 style="margin-top:12px">${cur[1]} ${esc(cur[2])}</h2>${V[cur[0]]()}`;
   return `<h2>Gestione</h2><div class="tiles">${ALTRO().map(([k, ic, t, d]) => `<div class="tile" data-altro="${k}"><div style="font-size:24px">${ic}</div><div class="t" style="margin-top:4px">${esc(t)}</div><div class="l">${esc(d)}</div></div>`).join("")}</div>`;

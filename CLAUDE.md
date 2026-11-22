@@ -67,6 +67,11 @@ in italiano semplice, senza gergo tecnico.
 - Scheda impianto `detImpianto()` con etichetta QR (link `?imp=ID`, `controllaLinkImpianto()`).
 - Timbratura: `posizione()` salva `interventi.inizioPos` (▶ Inizia) e `rapportino.finePos` (invio), visibili solo all'ufficio.
 - Ruoli: tecnico e preventivatore non caricano fatture, ordini, contratti (`colsPerMe()`), e le regole lo impediscono.
+- Sicurezza: elimina solo ufficio/admin (`puoEliminare()` + regole). `remove()` copia il documento in `cestino/{id}` = {col, docId, dati, titolo, chi, il}
+  prima di cancellarlo; `save`/`patch`/`remove` aggiungono `registro/{id}` = {col, docId, azione, titolo, campi, chi, il} (no listino e code di servizio).
+  Pagina Gestione → 🗑️ Cestino e registro (`vCestino`, ripristina = set del documento + cancella dal cestino; "per sempre" solo admin).
+  Regole: preventivi solo ufficio e preventivatori; listino legge ufficio+preventivatori, scrive ufficio; registro solo aggiunte.
+  I file di commesse e contabilità non si cancellano più con il documento (servono al ripristino).
 - Backup notturno: `.github/workflows/backup.yml` → `scripts/backup.js` salva `backups/backup-AAAA-MM-GG.json` in Storage (30 giorni).
 - Regole: `.github/workflows/regole.yml` → `scripts/regole.js` le pubblica da solo quando cambiano (se fallisce, vanno incollate a mano).
 

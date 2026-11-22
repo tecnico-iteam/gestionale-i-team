@@ -12,7 +12,11 @@
     onSnapshot(fn){ const f = () => fn(docSnap(col, id)); subs.push(f); setTimeout(f); return () => {}; } });
   const fs = {
     enablePersistence: async () => {},
-    collection(col){ return { doc(id){ return mkDoc(col, id || ("id" + (++n))); },
+    collection(col){ const q = (ord, lim) => ({ orderBy(f, dir){ return q([f, dir], lim); }, limit(k){ return q(ord, k); },
+        async get(){ const o = store[col] || {}; let ks = Object.keys(o); if (ord) ks.sort((a, b) => String(o[a][ord[0]] || "").localeCompare(String(o[b][ord[0]] || "")) * (ord[1] === "desc" ? -1 : 1)); if (lim) ks = ks.slice(0, lim); return {docs: ks.map(k => docSnap(col, k))}; } });
+      return { doc(id){ return mkDoc(col, id || ("id" + (++n))); },
+      async add(b){ const id = "id" + (++n); await mkDoc(col, id).set(b); return {id}; },
+      orderBy(f, dir){ return q([f, dir]); }, limit(k){ return q(null, k); },
       async get(){ const o = store[col] || {}; return {docs: Object.keys(o).map(k => docSnap(col, k))}; },
       onSnapshot(fn){ const f = () => { const o = store[col] || {}; fn({metadata: {fromCache: false}, docs: Object.keys(o).map(k => docSnap(col, k)), docChanges: () => []}); }; subs.push(f); setTimeout(f); return () => {}; } }; },
     doc(p){ const [c, i] = p.split("/"); return mkDoc(c, i); },

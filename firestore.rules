@@ -44,9 +44,40 @@ service cloud.firestore {
     // Trasferimento dal calendario dell'iPhone: solo il titolare
     match /calendariFeed/{id} { allow read, write: if owner(); }
     match /eventiCal/{id} { allow read, write: if owner(); }
-    // Tutti gli altri dati (clienti, interventi, preventivi, magazzino, listino, dico, …)
+    // Ruoli
+    function ruolo() { return owner() ? 'admin' : prof().ruolo; }
+    function preventivatore() { return active() && ruolo() in ['preventivatore', 'tecnico_preventivatore']; }
+    // Registro delle modifiche: ognuno aggiunge, nessuno cambia o cancella; lo legge l'ufficio
+    match /registro/{id} {
+      allow create: if active() && request.resource.data.chi is string;
+      allow read: if office();
+      allow update, delete: if false;
+    }
+    // Cestino: copia di ciò che viene eliminato (elimina solo l'ufficio); ripristina l'ufficio, svuota l'amministratore
+    match /cestino/{id} {
+      allow create: if office() || contab();
+      allow read, delete: if office();
+      allow update: if false;
+    }
+    // Preventivi: li fanno ufficio e preventivatori; i tecnici non li vedono
+    match /preventivi/{id} {
+      allow read, create, update: if office() || preventivatore();
+      allow delete: if office();
+    }
+    // Listino con prezzi d'acquisto e ricarichi: lo cambia solo l'ufficio, lo leggono ufficio e preventivatori
+    match /listino/{id} {
+      allow read: if office() || preventivatore();
+      allow write: if office();
+    }
+    // Code di servizio (telefono→PC, notifiche, promemoria): chi le usa può anche toglierle
+    match /scansioni/{id} { allow read, write: if active(); }
+    match /dispositivi/{id} { allow read, write: if active(); }
+    match /promemoriaClienti/{id} { allow read, write: if active(); }
+    // Tutti gli altri dati (clienti, impianti, interventi, magazzino, dico, commesse, …):
+    // gli attivi leggono, creano e modificano; ELIMINA solo l'ufficio (va nel cestino)
     match /{col}/{id} {
-      allow read, write: if active() && !(col in ['utenti', 'config', 'contabilita', 'crediti', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'calendariFeed', 'eventiCal']);
+      allow read, create, update: if active() && !(col in ['utenti', 'config', 'contabilita', 'crediti', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'calendariFeed', 'eventiCal', 'registro', 'cestino', 'preventivi', 'listino']);
+      allow delete: if office() && !(col in ['utenti', 'config', 'contabilita', 'crediti', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'calendariFeed', 'eventiCal', 'registro', 'cestino', 'preventivi', 'listino']);
     }
   }
 }
