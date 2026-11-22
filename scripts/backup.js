@@ -54,7 +54,7 @@ async function copiaPerEmail({out, docs}){
   const giorno = oggi.toISOString().slice(0, 10), gz = zlib.gzipSync(JSON.stringify(out));
   const user = process.env.SMTP_USER || "ufficio@iteamservice.it";
   const tr = nodemailer.createTransport({host: process.env.SMTP_HOST || "smtp.hostinger.com", port: 465, secure: true, auth: {user, pass}});
-  await tr.sendMail({from: `"Gestionale iTeam" <${user}>`, to: process.env.BACKUP_EMAIL || "carone.t46@gmail.com",
+  await tr.sendMail({from: `"Gestionale iTeam" <${user}>`, to: process.env.BACKUP_EMAIL || "carone.t46@gmail.com, carone.t@me.com",
     subject: `Copia di sicurezza gestionale – ${giorno}`,
     text: `Ciao Tommaso,\n\nin allegato la copia di sicurezza settimanale del gestionale (${docs} schede: clienti, interventi, fatture, magazzino…).\n\n` +
       `Non serve fare niente: tienila nella posta. Se un giorno servisse ripristinare i dati, si apre il gestionale → 👤 → Backup → Importa e si sceglie questo file.\n` +
