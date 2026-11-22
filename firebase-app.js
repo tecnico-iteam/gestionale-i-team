@@ -361,11 +361,13 @@ function importa(){
     // foto incluse nel file (dal vecchio gestionale): caricale e aggiorna i collegamenti
     const media = data.media || {}, nuovi = {};
     for (const [oldId, dataUrl] of Object.entries(media)) {
-      try { toastMsg("Carico le foto…"); const blob = await (await fetch(dataUrl)).blob(); const up = await assets.upload(blob, {type: blob.type || "image/jpeg"}); nuovi[oldId] = up; } catch(e) {}
+      try { toastMsg("Carico foto e documenti…"); const blob = await (await fetch(dataUrl)).blob(); const up = await assets.upload(blob, {type: blob.type || "image/jpeg"}); nuovi[oldId] = up; } catch(e) {}
     }
     if (Object.keys(nuovi).length) for (const list of Object.values(cols)) if (Array.isArray(list)) list.forEach(it => {
       if (Array.isArray(it.media)) it.media = it.media.map(m => nuovi[m.id] ? {...m, id: nuovi[m.id].id, url: nuovi[m.id].url} : m);
       if (it.foto && nuovi[it.foto]) { it.fotoUrl = nuovi[it.foto].url; it.foto = nuovi[it.foto].id; }
+      // documenti allegati (per esempio libretti e fatture dei furgoni)
+      if (Array.isArray(it.documenti)) it.documenti = it.documenti.map(d => nuovi[d.id] ? {...d, id: nuovi[d.id].id, url: nuovi[d.id].url} : d);
     });
     let done = 0, batch = db.batch(), inBatch = 0;
     for (const [c, list] of Object.entries(cols)) {
