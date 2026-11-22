@@ -275,7 +275,7 @@ const NAV = [
 ];
 
 // ---------- stato ----------
-const S = Object.fromEntries(COLS.map(c => [c, []])); S.contabilita = []; S.fgasOps = []; S.detrazioni = []; S.crediti = []; S.eventiCal = []; S.calCfg = {};
+const S = Object.fromEntries(COLS.map(c => [c, []])); S.contabilita = []; S.fgasOps = []; S.detrazioni = []; S.mezzi = []; S.attrezzature = []; S.crediti = []; S.eventiCal = []; S.calCfg = {};
 if (window.__store) window.__S = S;   // solo nei test (finto database)
 const DEFAULT_MANODOPERA = ["Installazione monosplit (fino a 3 m di linee)","Installazione dual split","Installazione trial split","Metro aggiuntivo linee frigorifere","Staffa per unità esterna","Pompa scarico condensa","Canalina (al metro)","Carotaggio muro","Linea elettrica dedicata","Smontaggio e smaltimento vecchio impianto","Dichiarazione di conformità e pratiche F-gas"].map(d => ({descrizione: d, prezzo: 0}));
 let CFG = {postazioni: ["Tommy", "Irene", "Alessandro"], titolare: "Carone Tommaso", respAB: "Carone Tommaso", respCE: "Sasso Francesco", fgas: "FGAS-A18879", cciaa: "Torino", rea: "TO-1331174", alboArt: "", abilitazioni: ["a) elettrici", "b) radiotelevisivi ed elettronici", "c) riscaldamento e climatizzazione", "e) gas"], tecnici: [], lavori: DEFAULT_LAVORI.slice(), scontoAcquisto: 0, scontoCliente: 0, costoOra: 45, costoGiornata: 300, manodopera: DEFAULT_MANODOPERA.map(x => ({...x}))};
@@ -448,7 +448,7 @@ async function initDb(){
   if (puoContab()) db.collection("contabilita").onSnapshot(snap => { S.contabilita = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
   if (puoContab()) db.collection("crediti").onSnapshot(snap => { S.crediti = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
   if (sonoTitolare()) { db.collection("eventiCal").onSnapshot(snap => { S.eventiCal = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}); db.collection("calendariFeed").doc("impostazioni").onSnapshot(sn => { S.calCfg = sn.exists ? sn.data() : {}; render(); }, () => {}); }
-  if (uffVero()) ["fgasOps", "detrazioni"].forEach(c => db.collection(c).onSnapshot(snap => { S[c] = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}));
+  if (uffVero()) ["fgasOps", "detrazioni", "mezzi", "attrezzature"].forEach(c => db.collection(c).onSnapshot(snap => { S[c] = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}));
   Object.keys(RISERVATI).filter(c => MIE.includes(c) && vedeRis(c)).forEach(c => db.collection(RISERVATI[c].col).onSnapshot(snap => { RIS[c] = Object.fromEntries(snap.docs.map(d => [d.id, d.data()])); unisci(c); render(); }, () => {}));
   MIE.forEach(c => {
     (c === "clienti" && !vedeTuttiClienti() ? db.collection(c).where("recente", "==", true) : db.collection(c)).onSnapshot(snap => {
@@ -1746,7 +1746,7 @@ const GUIDA = [
   {per: "up", t: "📋 Preventivi e preventivatore", h: `<p>Con il <b>Preventivatore</b> cerchi gli articoli nei listini caricati (General, Erredi, Sacchi, Tecnosystemi e gli altri), aggiungi la manodopera <b>a ore o a giornate</b>, imposti lo sconto e salvi il preventivo per il cliente.</p><p>Per ogni articolo il gestionale ti segnala anche se un altro fornitore te lo vende a meno.</p><p>La <b>ricerca</b> cerca in tutti i listini e anche negli <b>articoli di magazzino</b> (📦). Con ✏️ modifichi l&#39;articolo a catalogo. Nelle voci puoi correggere la <b>descrizione</b> e toccare la <b>foto</b> per cambiarla.</p><p>Con <b>👁 Anteprima</b> vedi il preventivo come lo riceverà il cliente, con foto e descrizioni, e puoi ancora modificarlo prima di crearlo. Con <b>📄 Vedi il PDF</b> vedi il file vero.</p>`},
   {per: "u", t: "🧾 Fatture e DiCo", h: `<p>Nella pagina <b>Preventivi</b> trovi anche le schede <b>Fatture</b> (da incassare, scadute, pagate) e <b>DiCo</b> (dichiarazioni di conformità). Una fattura si crea a mano oppure, in un tocco, da un intervento verificato.</p>`},
   {per: "u", t: "📦 Magazzino", h: `<p>Elenco degli articoli con quantità, prezzi e <b>scorta minima</b>: quando un articolo scende sotto la scorta lo vedi nella pagina Oggi. Per trovare un articolo puoi leggere il <b>codice a barre</b> con la fotocamera.</p><p>Il materiale usato nei rapportini si scarica da solo, prima dal furgone del tecnico. Per caricare un listino del fornitore scegli il <b>ricarico</b> da applicare.</p><p>Con <b>📷 Fotografa articolo</b> e <b>📷 Fotografa documento</b> scatti la foto con il telefono e te la ritrovi in automatico sul computer dell'ufficio.</p>`},
-  {per: "u", t: "📊 Gestione", h: `<ul><li><b>Margini</b>: quanto guadagni su interventi e preventivi.</li><li><b>Confronto prezzi</b> tra fornitori.</li><li><b>Incassi e solleciti</b> delle fatture.</li><li><b>Ordini ai fornitori</b>: quando tocchi "Ricevuto", carica da solo il magazzino.</li><li><b>Furgoni</b>: materiale caricato su ogni furgone.</li><li><b>Contratti di manutenzione</b>, con rinnovo e visite.</li><li><b>Registro F-gas</b>: interventi sul gas da comunicare alla Banca Dati entro 30 giorni (i tecnici li segnano dal rapportino) e scadenze dei controlli perdite.</li><li><b>Libretti e catasto</b>: catasto CIT, libretto da stampare e rapporti di efficienza (da 12 kW).</li><li><b>Detrazioni fiscali</b>: documenti da raccogliere e comunicazione ENEA entro 90 giorni.</li><li>F-gas, libretti e detrazioni li vedono solo Tommaso e Irene.</li><li><b>Contabilità</b>: la vedono solo il titolare e chi ha la spunta 📒.</li></ul><p>Nella <b>scheda di ogni impianto</b> l'ufficio trova anche catasto, libretto (📘 Stampa libretto), rapporto di efficienza e interventi sul gas (🧊 Intervento F-gas).</p>`},
+  {per: "u", t: "📊 Gestione", h: `<ul><li><b>Margini</b>: quanto guadagni su interventi e preventivi.</li><li><b>Confronto prezzi</b> tra fornitori.</li><li><b>Incassi e solleciti</b> delle fatture.</li><li><b>Ordini ai fornitori</b>: quando tocchi "Ricevuto", carica da solo il magazzino.</li><li><b>Furgoni</b>: materiale caricato su ogni furgone.</li><li><b>Contratti di manutenzione</b>, con rinnovo e visite.</li><li><b>Registro F-gas</b>: interventi sul gas da comunicare alla Banca Dati entro 30 giorni (i tecnici li segnano dal rapportino) e scadenze dei controlli perdite.</li><li><b>Libretti e catasto</b>: catasto CIT, libretto da stampare e rapporti di efficienza (da 12 kW).</li><li><b>Detrazioni fiscali</b>: documenti da raccogliere e comunicazione ENEA entro 90 giorni.</li><li><b>Mezzi e scadenze</b>: per ogni furgone revisione, assicurazione, bollo, tagliando e documenti (libretto, polizze); in più attrezzature da tarare e patentini F-gas. Un mese prima la scadenza compare nella pagina Oggi.</li><li>F-gas, libretti, detrazioni e mezzi li vedono solo Tommaso e Irene.</li><li><b>Contabilità</b>: la vedono solo il titolare e chi ha la spunta 📒.</li></ul><p>Nella <b>scheda di ogni impianto</b> l'ufficio trova anche catasto, libretto (📘 Stampa libretto), rapporto di efficienza e interventi sul gas (🧊 Intervento F-gas).</p>`},
   {per: "u", t: "✉️ Promemoria ai clienti", h: `<p>Il giorno prima dell'appuntamento, dalle 17, il cliente riceve <b>in automatico un'email</b> da ufficio@iteamservice.it. Il <b>WhatsApp</b> lo mandi tu con un tocco dalla pagina Oggi.</p><p>Il promemoria si toglie per un singolo appuntamento (spunta ⚠️) oppure per sempre nella scheda del cliente.</p>`},
   {per: "u", t: "👷 Tecnici e ⚙︎ Impostazioni", h: `<p>Con il pulsante <b>👷</b> aggiungi e modifichi i tecnici (codice, telefono, patentino F-gas con scadenza). Con <b>⚙︎</b> cambi i dati dell'azienda, i costi e le altre impostazioni del gestionale.</p>`},
   {per: "u", t: "💾 Sicurezza dei dati", h: `<p>Ogni notte il gestionale fa da solo una <b>copia di sicurezza</b> di tutti i dati e la conserva per 30 giorni. Ogni ruolo vede solo le sue parti: i tecnici, per esempio, non vedono fatture, ordini e contabilità.</p>`},
@@ -3953,6 +3953,231 @@ function vDetrazioni(){
     <div class="m">${esc(d.bonus || "")}${num(d.importo) ? " · " + eur(d.importo) : ""}${d.fineLavori ? " · fine lavori " + esc(fd(d.fineLavori)) : " · <b>fine lavori da inserire</b>"}</div>
     <div class="m">Documenti ${docs}/${DOC_DETR.length}${docs < DOC_DETR.length ? " · mancano: " + esc(DOC_DETR.filter(x => !(d.docs || []).includes(x)).join(", ")) : " ✓"}${d.eneaInviata ? " · ENEA inviata" + (d.eneaData ? " il " + esc(fd(d.eneaData)) : "") : ""}</div></div>`; }).join("") : empty("Nessuna pratica di detrazione.")}`;
 }
+// ---- 🚚 Mezzi e scadenze: furgoni, attrezzature, patentini (solo ufficio vero: Tommaso e Irene) ----
+// mezzi/{id} = {nome, targa, modello, telaio, tecnico, immatricolazione, oltre35, ultimaRevisione, compagnia, polizza, assicScad,
+//   bolloScad, kmAttuali, kmIl, ultimoTagliando, ultimoTagliandoKm, tagliandoOgniKm, tagliandoOgniMesi, possesso, societa, rata,
+//   contrattoScad, kmCompresi, assistenzaTel, officina, note, documenti: [{id, url, nome, ext, tipo, categoria, da, il}]}
+// attrezzature/{id} = {nome, matricola, assegnata, ultimaVerifica, ogniMesi, note, documenti: [...]}
+const CAT_DOC_MEZZO = ["Libretto", "Assicurazione", "Revisione", "Bollo", "Tagliando", "Contratto", "Multa", "Altro"];
+const fineMese = s => { const d = new Date(s + "T12:00:00"); d.setMonth(d.getMonth() + 1, 0); return iso(d); };
+// revisione: la prima dopo 4 anni dall'immatricolazione, poi ogni 2 anni (ogni anno sopra le 3,5 t), entro la fine del mese
+const revisioneScad = m => m.ultimaRevisione ? fineMese(addMonths(m.ultimaRevisione, m.oltre35 ? 12 : 24)) : m.immatricolazione ? fineMese(addMonths(m.immatricolazione, m.oltre35 ? 12 : 48)) : "";
+const tagliandoKm = m => num(m.ultimoTagliandoKm) && num(m.tagliandoOgniKm) ? num(m.ultimoTagliandoKm) + num(m.tagliandoOgniKm) : 0;
+const tagliandoData = m => m.ultimoTagliando && num(m.tagliandoOgniMesi) ? addMonths(m.ultimoTagliando, num(m.tagliandoOgniMesi)) : "";
+const kmFmt = n => Math.round(num(n)).toLocaleString("it-IT") + " km";
+const prossimaVerifica = a => a.ultimaVerifica && num(a.ogniMesi) ? addMonths(a.ultimaVerifica, num(a.ogniMesi)) : (a.prossima || "");
+// elenco delle scadenze di un mezzo: {k, cosa, data, km, liv}
+function scadenzeMezzo(m){
+  const t = today(), in30 = addDays(t, 30), l = [];
+  const liv = d => !d ? "" : d < t ? "bad" : d <= in30 ? "warn" : "ok";
+  const add = (k, cosa, data) => { if (data) l.push({k, cosa, data, liv: liv(data)}); };
+  add("rev", "Revisione", revisioneScad(m));
+  add("ass", "Assicurazione", m.assicScad);
+  add("bol", "Bollo", m.bolloScad);
+  add("tag", "Tagliando", tagliandoData(m));
+  const tk = tagliandoKm(m);
+  if (tk) { const manca = tk - num(m.kmAttuali); l.push({k: "tag", cosa: "Tagliando a " + kmFmt(tk), km: manca, liv: num(m.kmAttuali) ? (manca <= 0 ? "bad" : manca <= 2000 ? "warn" : "ok") : ""}); }
+  if (m.possesso && m.possesso !== "Di proprietà") add("con", "Fine " + m.possesso.toLowerCase(), m.contrattoScad);
+  if (num(m.kmCompresi) && num(m.kmAttuali) && m.possesso && m.possesso !== "Di proprietà") { const r = num(m.kmCompresi) - num(m.kmAttuali); if (r <= 5000) l.push({k: "con", cosa: "Km compresi nel contratto", km: r, liv: r <= 0 ? "bad" : "warn"}); }
+  return l.sort((a, b) => ({bad: 0, warn: 1, ok: 2, "": 3}[a.liv] - {bad: 0, warn: 1, ok: 2, "": 3}[b.liv]) || (a.data || "9").localeCompare(b.data || "9"));
+}
+const chipScad = s => `<span class="chip ${s.liv}">${esc(s.cosa)} ${s.data ? (s.liv === "bad" ? (/^(Bollo|Tagliando|Patentino)/.test(s.cosa) ? "scaduto il " : "scaduta il ") : "") + esc(fd(s.data)) : ""}${s.km != null ? (s.km <= 0 ? " · superati di " + kmFmt(-s.km) : " · mancano " + kmFmt(s.km)) : ""}</span>`;
+const nomeMezzo = m => [m.nome || m.modello || "Mezzo", m.targa].filter(Boolean).join(" · ");
+const scadAttr = a => { const p = prossimaVerifica(a), t = today(); return p ? {cosa: "Verifica/taratura", data: p, liv: p < t ? "bad" : p <= addDays(t, 30) ? "warn" : "ok"} : null; };
+const scadPatentino = tc => { if (!tc.patScad) return null; const t = today(); return {cosa: "Patentino F-gas", data: tc.patScad, liv: tc.patScad < t ? "bad" : tc.patScad <= addDays(t, 60) ? "warn" : "ok"}; };
+// quante scadenze sono vicine (per la pagina Oggi)
+function scadenzeVicine(){
+  let n = 0;
+  (S.mezzi || []).forEach(m => n += scadenzeMezzo(m).filter(s => s.liv === "bad" || s.liv === "warn").length);
+  (S.attrezzature || []).forEach(a => { const s = scadAttr(a); if (s && s.liv !== "ok") n++; });
+  TEC().forEach(tc => { const s = scadPatentino(tc); if (s && s.liv !== "ok") n++; });
+  return n;
+}
+function formMezzo(m = {}){
+  openForm({title: m.id ? "Modifica mezzo" : "Nuovo mezzo", values: {tagliandoOgniKm: 30000, tagliandoOgniMesi: 12, possesso: "Di proprietà", documenti: [], ...m},
+    intro: `<p class="m">Copia i dati dal libretto e dalle polizze. Le scadenze compaiono da sole nella pagina Oggi un mese prima.</p>`,
+    fields: [
+      {k:"nome", label:"Nome (come lo chiamate)", half:true, ph:"es. Furgone bianco, Ducato di Andrea", req:true},
+      {k:"targa", label:"Targa", half:true, ph:"es. GH123AB"},
+      {k:"modello", label:"Marca e modello", half:true, ph:"es. Fiat Ducato 2.3"},
+      {k:"tecnico", label:"Lo usa", type:"select", half:true, options: () => [["", "— Nessuno in particolare —"], ...tecnici()]},
+      {k:"telaio", label:"Numero di telaio", half:true},
+      {k:"immatricolazione", label:"Data di prima immatricolazione", type:"date", half:true, rerender:true},
+      {k:"oltre35", label:"Pesa più di 3,5 tonnellate (revisione ogni anno)", type:"checkbox", rerender:true},
+      {k:"ultimaRevisione", label:"Data dell'ultima revisione (lasciala vuota se non l'ha mai fatta)", type:"date", rerender:true},
+      {k:"revInfo", type:"info", show: v => !!revisioneScad(v), html: v => `Prossima revisione entro il <b>${esc(fd(revisioneScad(v)))}</b>`},
+      {k:"compagnia", label:"Assicurazione: compagnia", half:true},
+      {k:"polizza", label:"Numero di polizza", half:true},
+      {k:"assicScad", label:"Scadenza assicurazione", type:"date", half:true},
+      {k:"bolloScad", label:"Scadenza bollo", type:"date", half:true},
+      {k:"kmAttuali", label:"Km attuali", type:"number", half:true},
+      {k:"ultimoTagliando", label:"Data ultimo tagliando", type:"date", half:true},
+      {k:"ultimoTagliandoKm", label:"Km all'ultimo tagliando", type:"number", half:true},
+      {k:"tagliandoOgniKm", label:"Tagliando ogni (km)", type:"number", half:true},
+      {k:"tagliandoOgniMesi", label:"Tagliando ogni (mesi)", type:"number", half:true},
+      {k:"possesso", label:"Il mezzo è", type:"select", half:true, rerender:true, options:["Di proprietà", "Noleggio a lungo termine", "Leasing"]},
+      {k:"societa", label:"Società di noleggio / leasing", half:true, show: v => v.possesso !== "Di proprietà"},
+      {k:"rata", label:"Rata mensile € (+ IVA)", type:"number", half:true, show: v => v.possesso !== "Di proprietà"},
+      {k:"contrattoScad", label:"Fine del contratto", type:"date", half:true, show: v => v.possesso !== "Di proprietà"},
+      {k:"kmCompresi", label:"Km compresi nel contratto (totali)", type:"number", half:true, show: v => v.possesso !== "Di proprietà"},
+      {k:"assistenzaTel", label:"Numero assistenza stradale", type:"tel", half:true},
+      {k:"officina", label:"Officina / carrozzeria di fiducia", half:true},
+      {k:"note", label:"Note (gomme, chiavi di scorta, ecc.)", type:"textarea"}
+    ],
+    onSave: async v => {
+      delete v.revInfo; v.targa = String(v.targa || "").toUpperCase().replace(/\s+/g, "");
+      if (num(v.kmAttuali) !== num(m.kmAttuali)) v.kmIl = today();
+      await save("mezzi", m.id || null, v); toast("Mezzo salvato"); render();
+    },
+    onDelete: m.id ? async () => { await remove("mezzi", m.id); closeModal(); document.querySelectorAll(".ov").forEach(o => o.remove()); toast("Mezzo eliminato"); render(); } : null
+  });
+}
+function formAttrezzo(a = {}){
+  openForm({title: a.id ? "Modifica attrezzatura" : "Nuova attrezzatura", values: {ogniMesi: 12, documenti: [], ...a},
+    intro: `<p class="m">Strumenti che vanno verificati o tarati: cercafughe, bilancia per il gas, manometri digitali, gruppo di recupero, scale, estintore del furgone…</p>`,
+    fields: [
+      {k:"nome", label:"Attrezzatura", req:true, ph:"es. Cercafughe elettronico"},
+      {k:"matricola", label:"Matricola", half:true},
+      {k:"assegnata", label:"Ce l'ha", type:"select", half:true, options: () => [["", "In sede"], ...tecnici()]},
+      {k:"ultimaVerifica", label:"Ultima verifica / taratura", type:"date", half:true},
+      {k:"ogniMesi", label:"Da rifare ogni (mesi)", type:"number", half:true},
+      {k:"note", label:"Note", type:"textarea"}
+    ],
+    onSave: async v => { await save("attrezzature", a.id || null, v); toast("Attrezzatura salvata"); render(); },
+    onDelete: a.id ? async () => { await remove("attrezzature", a.id); closeModal(); document.querySelectorAll(".ov").forEach(o => o.remove()); toast("Attrezzatura eliminata"); render(); } : null
+  });
+}
+// carica documenti (PDF o foto) nella scheda di un mezzo o di un'attrezzatura
+function caricaDocMezzo(col, id, dopo){
+  if (!assetsNS) { toast("Il caricamento dei file non è attivo per il tuo account. Controlla la connessione.", 4500); return; }
+  docIn.value = "";
+  docIn.onchange = async () => {
+    const files = [...docIn.files]; if (!files.length) return;
+    const added = []; let i = 0;
+    for (const f of files) {
+      i++; toast(`Caricamento ${i} di ${files.length}…`, 120000);
+      const ext = ((f.name || "").match(/\.([a-z0-9]+)$/i) || [, ""])[1].toLowerCase();
+      const isPdf = f.type === "application/pdf" || ext === "pdf", isImg = !isPdf && (f.type || "").startsWith("image/");
+      let blob = f, type = isPdf ? "application/pdf" : (f.type || "application/octet-stream");
+      if (isImg) { const r = await shrinkImage(f, 2600); if (!r) { clearToasts(); toast(`Formato non supportato: ${f.name}`, 4500); continue; } blob = r.blob; type = r.type; }
+      if (blob.size > 45 * 1048576) { clearToasts(); toast(`File troppo grande: ${f.name} (massimo 45 MB)`, 4500); continue; }
+      try {
+        const up = await assetsNS.upload(blob, {type});
+        const nome = String(f.name || "Documento").replace(/\.[a-z0-9]+$/i, "");
+        added.push({id: up.id, url: up.url, nome, ext, tipo: isPdf ? "pdf" : isImg ? "foto" : "file", categoria: catDocDaNome(nome), da: chiSono(), il: new Date().toISOString()});
+      } catch(e) { clearToasts(); toast(`Non riesco a caricare "${f.name}".` + errDet(e), 6000); }
+    }
+    clearToasts();
+    if (!added.length) return;
+    const x = byId(col, id);
+    try { await patch(col, id, {documenti: [...((x && x.documenti) || []), ...added]}); toast(`📎 ${added.length} document${added.length === 1 ? "o salvato" : "i salvati"}`); } catch(e){}
+    if (dopo) setTimeout(dopo, 400);
+  };
+  docIn.click();
+}
+const catDocDaNome = n => { const s = String(n || "").toLowerCase(); return /librett|carta di circ/.test(s) ? "Libretto" : /assicur|polizz|rca/.test(s) ? "Assicurazione" : /revision/.test(s) ? "Revisione" : /bollo/.test(s) ? "Bollo" : /tagliand|officin/.test(s) ? "Tagliando" : /contratt|noleggi|leasing/.test(s) ? "Contratto" : /multa|verbale/.test(s) ? "Multa" : "Altro"; };
+async function fotoDocMezzo(col, id, dopo){
+  const x = byId(col, id), etich = col === "mezzi" ? "Documento del mezzo " + nomeMezzo(x || {}) : "Documento di " + ((x && x.nome) || "attrezzatura");
+  const salva = async up => { const y = byId(col, id), n = ((y && y.documenti) || []).length + 1; await patch(col, id, {documenti: [...((y && y.documenti) || []), {id: up.id, url: up.url, nome: `Foto documento ${n} (${new Date().toLocaleDateString("it-IT")})`, ext: "jpg", tipo: "foto", categoria: "Altro", da: chiSono(), il: new Date().toISOString()}]}); toast("📄 Documento salvato", 3000); if (dopo) setTimeout(dopo, 400); };
+  if (isDesktop()) { const up = await chiediFotoTelefono(etich); if (up) { try { await salva(up); } catch(e){} } return; }
+  camIn.value = "";
+  camIn.onchange = async () => { const f = camIn.files[0]; if (!f) return; toast("Salvo la foto…", 60000);
+    try { const r = await shrinkImage(f, 2600); if (!r) throw {code: "unsupported_type"}; const up = await assetsNS.upload(r.blob, {type: r.type}); clearToasts(); await salva(up); } catch(e) { clearToasts(); toast("Non sono riuscito a salvare la foto, riprova." + errDet(e), 6000); } };
+  camIn.click();
+}
+const docsHtml = (l = []) => l.length ? l.map((d, i) => `<div class="card row" style="gap:8px;padding:8px 10px"><span style="font-size:20px">${d.tipo === "pdf" ? "📄" : d.tipo === "foto" ? "🖼️" : "📎"}</span><a href="${esc(d.url)}" target="_blank" rel="noopener" class="sp" style="min-width:0;overflow-wrap:anywhere"><b>${esc(d.nome || "Documento")}</b><br><span class="m">${esc(fd((d.il || "").slice(0, 10)))}${d.da ? " · " + esc(d.da) : ""}</span></a><select data-dcat="${i}" style="width:auto">${CAT_DOC_MEZZO.map(c => `<option ${c === (d.categoria || "Altro") ? "selected" : ""}>${c}</option>`).join("")}</select><button class="x" data-ddel="${i}" title="Togli">✕</button></div>`).join("") : `<div class="m">Nessun documento. Carica libretto, polizza, revisione e bollo: li ritrovi qui quando servono.</div>`;
+// gestione dei documenti dentro una scheda (categoria e rimozione)
+function eventiDocs(ov, col, id, riapri){
+  ov.addEventListener("change", async e => { const s = e.target.closest("[data-dcat]"); if (!s) return; const x = byId(col, id); const l = ((x && x.documenti) || []).slice(); if (!l[+s.dataset.dcat]) return; l[+s.dataset.dcat] = {...l[+s.dataset.dcat], categoria: s.value}; await patch(col, id, {documenti: l}); toast("Categoria salvata"); });
+  ov.addEventListener("click", async e => { const b = e.target.closest("[data-ddel]"); if (!b) return; const x = byId(col, id); const l = ((x && x.documenti) || []).slice(); const d = l[+b.dataset.ddel]; if (!d || !confirm(`Togliere "${d.nome}" dalla scheda?`)) return; l.splice(+b.dataset.ddel, 1); await patch(col, id, {documenti: l}); toast("Documento tolto"); ov.remove(); riapri(); });
+}
+function detMezzo(id){
+  const m = byId("mezzi", id); if (!m) return;
+  const sc = scadenzeMezzo(m), docs = (m.documenti || []).slice().sort((a, b) => CAT_DOC_MEZZO.indexOf(a.categoria || "Altro") - CAT_DOC_MEZZO.indexOf(b.categoria || "Altro"));
+  const riga = (k, v) => v ? `<span class="k">${k}</span><span>${v}</span>` : "";
+  const fatto = {rev: "✓ Revisione fatta", ass: "✓ Assicurazione rinnovata", bol: "✓ Bollo pagato", tag: "✓ Tagliando fatto", con: ""};
+  const ov = modal(`<h2>🚐 ${esc(nomeMezzo(m))}</h2>
+    <div class="kv">${riga("Modello", esc(m.modello || ""))}${riga("Lo usa", esc(m.tecnico || ""))}${riga("Telaio", esc(m.telaio || ""))}${riga("Immatricolato", esc(fd(m.immatricolazione)))}
+    ${riga("Km", num(m.kmAttuali) ? esc(kmFmt(m.kmAttuali)) + (m.kmIl ? ` <span class="m">al ${esc(fd(m.kmIl))}</span>` : "") : "")}
+    ${riga("Assicurazione", esc([m.compagnia, m.polizza && "polizza " + m.polizza].filter(Boolean).join(" · ")))}
+    ${m.possesso && m.possesso !== "Di proprietà" ? riga(esc(m.possesso), esc([m.societa, num(m.rata) && eur(m.rata) + "/mese + IVA", num(m.kmCompresi) && kmFmt(m.kmCompresi) + " compresi"].filter(Boolean).join(" · "))) : ""}
+    ${riga("Assistenza", m.assistenzaTel ? `<a href="tel:${esc(String(m.assistenzaTel).replace(/\s+/g, ""))}">📞 ${esc(m.assistenzaTel)}</a>` : "")}${riga("Officina", esc(m.officina || ""))}</div>
+    <h3>Scadenze</h3>
+    ${sc.length ? sc.map(s => `<div class="row" style="gap:8px;margin:4px 0">${chipScad(s)}<span class="sp"></span>${fatto[s.k] && !s.cosa.startsWith("Tagliando a") ? `<button class="btn sm" data-mf="${s.k}">${fatto[s.k]}</button>` : ""}</div>`).join("") : `<div class="m">Nessuna scadenza inserita: tocca Modifica e copia le date dai documenti.</div>`}
+    ${m.note ? `<div class="info" style="margin-top:8px">${esc(m.note)}</div>` : ""}
+    <h3>Documenti (${docs.length})</h3>${docsHtml(m.documenti || [])}
+    <div class="acts"><button class="btn" data-a="edit">Modifica</button><button class="btn" data-a="km">🔢 Aggiorna km</button><button class="btn" data-a="doc">📎 Carica documenti</button><button class="btn" data-a="foto">📷 ${isDesktop() ? "Foto dal telefono" : "Fotografa documento"}</button><span class="sp"></span><button class="btn pri" data-a="x">Chiudi</button></div>`);
+  const riapri = () => { ov.remove(); detMezzo(id); };
+  eventiDocs(ov, "mezzi", id, () => detMezzo(id));
+  ov.addEventListener("click", async e => {
+    const mf = e.target.closest("[data-mf]")?.dataset.mf;
+    if (mf) return segnaFattoMezzo(m, mf, riapri);
+    const a = e.target.closest("[data-a]")?.dataset.a; if (!a) return;
+    if (a === "x") ov.remove();
+    if (a === "edit") { ov.remove(); formMezzo(m); }
+    if (a === "doc") caricaDocMezzo("mezzi", id, riapri);
+    if (a === "foto") fotoDocMezzo("mezzi", id, riapri);
+    if (a === "km") openForm({title: "Km di " + nomeMezzo(m), values: {km: m.kmAttuali || ""}, fields: [{k:"km", label:"Km che segna adesso il contachilometri", type:"number", req:true}],
+      onSave: async v => { if (num(v.km) < num(m.kmAttuali) && !confirm("Sono meno dei km salvati prima. Salvo lo stesso?")) throw new Error("x"); await patch("mezzi", id, {kmAttuali: num(v.km), kmIl: today()}); closeModal(); toast("Km aggiornati"); riapri(); }});
+  });
+}
+function segnaFattoMezzo(m, k, dopo){
+  const t = today();
+  if (k === "rev") return openForm({title: "Revisione fatta", values: {d: t}, fields: [{k:"d", label:"Data della revisione", type:"date", req:true}], onSave: async v => { await patch("mezzi", m.id, {ultimaRevisione: v.d}); closeModal(); toast("Revisione registrata: prossima entro il " + fd(revisioneScad({...m, ultimaRevisione: v.d}))); dopo(); }});
+  if (k === "ass") return openForm({title: "Assicurazione rinnovata", values: {d: m.assicScad && m.assicScad >= addDays(t, -60) ? addMonths(m.assicScad, 12) : addMonths(t, 12), compagnia: m.compagnia || "", polizza: m.polizza || ""}, fields: [{k:"d", label:"Nuova scadenza", type:"date", req:true}, {k:"compagnia", label:"Compagnia", half:true}, {k:"polizza", label:"Numero di polizza", half:true}], onSave: async v => { await patch("mezzi", m.id, {assicScad: v.d, compagnia: v.compagnia, polizza: v.polizza}); closeModal(); toast("Assicurazione aggiornata"); dopo(); }});
+  if (k === "bol") return openForm({title: "Bollo pagato", values: {d: m.bolloScad ? addMonths(m.bolloScad, 12) : addMonths(t, 12)}, fields: [{k:"d", label:"Prossima scadenza del bollo", type:"date", req:true}], onSave: async v => { await patch("mezzi", m.id, {bolloScad: v.d}); closeModal(); toast("Bollo aggiornato"); dopo(); }});
+  if (k === "tag") return openForm({title: "Tagliando fatto", values: {d: t, km: m.kmAttuali || ""}, fields: [{k:"d", label:"Data del tagliando", type:"date", req:true, half:true}, {k:"km", label:"Km al tagliando", type:"number", half:true}], onSave: async v => { const p = {ultimoTagliando: v.d}; if (num(v.km)) { p.ultimoTagliandoKm = num(v.km); if (num(v.km) >= num(m.kmAttuali)) { p.kmAttuali = num(v.km); p.kmIl = v.d; } } await patch("mezzi", m.id, p); closeModal(); toast("Tagliando registrato"); dopo(); }});
+}
+function detAttrezzo(id){
+  const a = byId("attrezzature", id); if (!a) return; const s = scadAttr(a);
+  const ov = modal(`<h2>🧰 ${esc(a.nome || "Attrezzatura")}</h2>
+    <div class="kv">${a.matricola ? `<span class="k">Matricola</span><span>${esc(a.matricola)}</span>` : ""}<span class="k">Ce l'ha</span><span>${esc(a.assegnata || "In sede")}</span>${a.ultimaVerifica ? `<span class="k">Ultima verifica</span><span>${esc(fd(a.ultimaVerifica))}</span>` : ""}</div>
+    ${s ? `<div style="margin:8px 0">${chipScad(s)}</div>` : ""}${a.note ? `<div class="info">${esc(a.note)}</div>` : ""}
+    <h3>Certificati e documenti (${(a.documenti || []).length})</h3>${docsHtml(a.documenti || [])}
+    <div class="acts"><button class="btn" data-a="edit">Modifica</button><button class="btn" data-a="ok">✓ Verifica fatta</button><button class="btn" data-a="doc">📎 Carica certificato</button><button class="btn" data-a="foto">📷 ${isDesktop() ? "Foto dal telefono" : "Fotografa"}</button><span class="sp"></span><button class="btn pri" data-a="x">Chiudi</button></div>`);
+  const riapri = () => { ov.remove(); detAttrezzo(id); };
+  eventiDocs(ov, "attrezzature", id, () => detAttrezzo(id));
+  ov.addEventListener("click", e => {
+    const k = e.target.closest("[data-a]")?.dataset.a; if (!k) return;
+    if (k === "x") ov.remove();
+    if (k === "edit") { ov.remove(); formAttrezzo(a); }
+    if (k === "doc") caricaDocMezzo("attrezzature", id, riapri);
+    if (k === "foto") fotoDocMezzo("attrezzature", id, riapri);
+    if (k === "ok") openForm({title: "Verifica fatta", values: {d: today()}, fields: [{k:"d", label:"Data della verifica o taratura", type:"date", req:true}], onSave: async v => { await patch("attrezzature", id, {ultimaVerifica: v.d}); closeModal(); toast("Verifica registrata"); riapri(); }});
+  });
+}
+function vMezzi(){
+  const tab = ui.mzTab || "mezzi";
+  const seg = `<div class="seg">${[["mezzi", "🚐 Furgoni"], ["attr", "🧰 Attrezzature"], ["pat", "👷 Patentini"]].map(([k, t]) => `<button class="${tab === k ? "on" : ""}" data-mztab="${k}">${t}</button>`).join("")}</div>`;
+  if (tab === "attr") {
+    const l = (S.attrezzature || []).slice().sort((a, b) => (prossimaVerifica(a) || "9").localeCompare(prossimaVerifica(b) || "9"));
+    return seg + `<p class="m">Strumenti da verificare o tarare (cercafughe, bilancia del gas, manometri…). Per l'F-gas conviene avere sempre i certificati a portata di mano.</p>
+    <button class="btn pri" data-mz="newattr" style="margin-bottom:10px">+ Nuova attrezzatura</button>
+    ${l.length ? l.map(a => { const s = scadAttr(a); return `<div class="card tap" data-mzattr="${a.id}"><div class="row"><span class="t">${esc(a.nome || "Attrezzatura")}</span><span class="sp"></span>${s ? chipScad(s) : `<span class="chip">data da inserire</span>`}</div><div class="m">${esc([a.matricola && "matr. " + a.matricola, a.assegnata || "in sede", (a.documenti || []).length && (a.documenti.length + " document" + (a.documenti.length === 1 ? "o" : "i"))].filter(Boolean).join(" · "))}</div></div>`; }).join("") : empty("Nessuna attrezzatura inserita.")}`;
+  }
+  if (tab === "pat") {
+    const l = TEC().slice().sort((a, b) => (a.patScad || "9").localeCompare(b.patScad || "9"));
+    return seg + `<p class="m">Scadenze del patentino F-gas di ogni tecnico. Avviso nella pagina Oggi 2 mesi prima. Numero e scadenza si cambiano dal pulsante 👷 in alto.</p>
+    ${l.length ? l.map(tc => { const s = scadPatentino(tc); return `<div class="card row"><span class="sp"><b>${esc(tc.nome)}</b><br><span class="m">${esc(tc.patentino || "numero non inserito")}</span></span>${s ? chipScad(s) : `<span class="chip warn">scadenza da inserire</span>`}</div>`; }).join("") : empty("Nessun tecnico inserito.")}`;
+  }
+  const l = (S.mezzi || []).slice().sort((a, b) => (a.nome || "").localeCompare(b.nome || ""));
+  const urg = l.reduce((n, m) => n + scadenzeMezzo(m).filter(s => s.liv === "bad" || s.liv === "warn").length, 0);
+  const rate = l.filter(m => m.possesso && m.possesso !== "Di proprietà").reduce((s, m) => s + num(m.rata), 0);
+  return seg + `<div class="tiles" style="margin-bottom:10px"><div class="tile"><div class="n">${l.length}</div><div class="l">Mezzi</div></div><div class="tile"><div class="n" style="color:${urg ? "var(--warn)" : "inherit"}">${urg}</div><div class="l">Scadenze entro 30 giorni</div></div>${rate ? `<div class="tile"><div class="n money" style="font-size:19px">${eur(rate)}</div><div class="l">Rate al mese (+ IVA)</div></div>` : ""}</div>
+  <button class="btn pri" data-mz="new" style="margin-bottom:10px">+ Nuovo mezzo</button>
+  ${l.length ? l.map(m => { const sc = scadenzeMezzo(m), vic = sc.filter(s => s.liv !== "ok"); return `<div class="card tap" data-mzd="${m.id}"><div class="row"><span class="t">🚐 ${esc(nomeMezzo(m))}</span><span class="sp"></span>${num(m.kmAttuali) ? `<span class="m">${esc(kmFmt(m.kmAttuali))}</span>` : ""}</div>
+    <div class="m">${esc([m.modello, m.tecnico && "lo usa " + m.tecnico, m.possesso !== "Di proprietà" && m.possesso, (m.documenti || []).length + " document" + ((m.documenti || []).length === 1 ? "o" : "i")].filter(Boolean).join(" · "))}</div>
+    <div class="row wrap" style="gap:6px;margin-top:6px">${(vic.length ? vic : sc.slice(0, 2)).map(chipScad).join("") || `<span class="chip warn">scadenze da inserire</span>`}</div></div>`; }).join("") : empty("Nessun mezzo. Aggiungi i furgoni con i dati del libretto, dell'assicurazione e del bollo.")}`;
+}
+document.addEventListener("click", e => {
+  if (e.target.closest(".ov")) return;
+  const el = e.target.closest("[data-mz],[data-mzd],[data-mzattr],[data-mztab]"); if (!el || !uffVero()) return; const d = el.dataset;
+  if (d.mztab) { ui.mzTab = d.mztab; render(); return; }
+  if (d.mz === "new") return formMezzo();
+  if (d.mz === "newattr") return formAttrezzo();
+  if (d.mzd) return detMezzo(d.mzd);
+  if (d.mzattr) return detAttrezzo(d.mzattr);
+});
 // avvisi per la pagina Oggi (solo ufficio vero)
 function extraOggiUff(){
   if (!uffVero()) return "";
@@ -3960,9 +4185,11 @@ function extraOggiUff(){
   const bdf = (S.fgasOps || []).filter(o => !o.comunicato && bdfScad(o) <= in7).length;
   const en = (S.detrazioni || []).filter(d => statoDetr(d) !== "Chiusa" && detrServeEnea(d) && !d.eneaInviata && d.fineLavori && eneaScad(d) <= in15).length;
   const ree = impUff().filter(i => serveREE(i) && (reeProssimo(i) <= in60 || (i.ultimoREE && !i.reeInviato))).length;
+  const mz = scadenzeVicine();
   return `${bdf ? `<div class="card tap" data-altro="fgas"><b>🧊 ${bdf} intervent${bdf === 1 ? "o" : "i"} F-gas</b> da comunicare alla Banca Dati entro 7 giorni</div>` : ""}
   ${en ? `<div class="card tap" data-altro="detr"><b>🧾 ${en} comunicazion${en === 1 ? "e" : "i"} ENEA</b> da fare entro 15 giorni</div>` : ""}
-  ${ree ? `<div class="card tap" data-altro="libretti"><b>📘 ${ree} rapport${ree === 1 ? "o" : "i"} di efficienza</b> da fare o da inviare al catasto</div>` : ""}`;
+  ${ree ? `<div class="card tap" data-altro="libretti"><b>📘 ${ree} rapport${ree === 1 ? "o" : "i"} di efficienza</b> da fare o da inviare al catasto</div>` : ""}
+  ${mz ? `<div class="card tap" data-altro="mezzi"><b>🚚 ${mz} scadenz${mz === 1 ? "a" : "e"}</b> di furgoni, attrezzature o patentini nel prossimo mese</div>` : ""}`;
 }
 document.addEventListener("click", async e => {
   if (e.target.closest(".ov")) return;
@@ -4068,12 +4295,13 @@ const ALTRO = () => [
   ["contratti", "📝", "Contratti di manutenzione", "Canoni, rinnovi e visite"],
   ...(uffVero() ? [["fgas", "🧊", "Registro F-gas", "Interventi da comunicare e controlli perdite"],
     ["libretti", "📘", "Libretti e catasto", "Catasto CIT e rapporti di efficienza"],
-    ["detr", "🧾", "Detrazioni fiscali", "Documenti e comunicazione ENEA"]] : []),
+    ["detr", "🧾", "Detrazioni fiscali", "Documenti e comunicazione ENEA"],
+    ["mezzi", "🚚", "Mezzi e scadenze", "Revisione, assicurazione, bollo, tagliandi, attrezzature e patentini"]] : []),
   ...(puoContab() ? [["contab", "📒", "Contabilità", "Fatture fornitori e DDT (riservato)"]] : []),
   ...(puoEliminare() ? [["cestino", "🗑️", "Cestino e registro", "Ripristina ciò che è stato eliminato, chi ha cambiato cosa"]] : [])
 ];
 // ---- 🗑️ Cestino e registro delle modifiche (solo ufficio e amministratore) ----
-const NOMI_COL = {clienti: "Cliente", impianti: "Impianto", interventi: "Intervento", preventivi: "Preventivo", fatture: "Fattura", magazzino: "Articolo", dico: "DiCo", commesse: "Commessa", contratti: "Contratto", ordini: "Ordine", contabilita: "Fattura fornitore", crediti: "Da incassare", fgasOps: "Intervento F-gas", detrazioni: "Pratica detrazione", impostazioni: "Impostazioni", config: "Impostazioni"};
+const NOMI_COL = {clienti: "Cliente", impianti: "Impianto", interventi: "Intervento", preventivi: "Preventivo", fatture: "Fattura", magazzino: "Articolo", dico: "DiCo", commesse: "Commessa", contratti: "Contratto", ordini: "Ordine", contabilita: "Fattura fornitore", crediti: "Da incassare", fgasOps: "Intervento F-gas", detrazioni: "Pratica detrazione", mezzi: "Mezzo", attrezzature: "Attrezzatura", impostazioni: "Impostazioni", config: "Impostazioni"};
 const AZ = {crea: ["➕", "ha creato", "ok"], modifica: ["✏️", "ha modificato", ""], elimina: ["🗑️", "ha eliminato", "bad"], ripristina: ["♻️", "ha ripristinato", "ok"]};
 let CEST = {cestino: null, registro: null, carica: false};
 async function caricaCestino(){
@@ -4117,7 +4345,7 @@ document.addEventListener("click", async e => {
     try { await db.collection("cestino").doc(d.cestdel).delete(); CEST.cestino = CEST.cestino.filter(x => x.id !== d.cestdel); toast("Eliminato per sempre"); render(); } catch(err) { writeErr(err); } }
 });
 function vAltro(){
-  const V = {margini: vMargini, prezzi: vPrezzi, incassi: vIncassi, ordini: vOrdini, furgoni: vFurgoni, contratti: vContratti, fgas: () => vFgasOps() + vFgas(), libretti: vLibretti, detr: vDetrazioni, contab: vContab, cestino: vCestino};
+  const V = {margini: vMargini, prezzi: vPrezzi, incassi: vIncassi, ordini: vOrdini, furgoni: vFurgoni, contratti: vContratti, fgas: () => vFgasOps() + vFgas(), libretti: vLibretti, detr: vDetrazioni, contab: vContab, mezzi: vMezzi, cestino: vCestino};
   const cur = ALTRO().find(a => a[0] === ui.altro);
   if (cur && V[cur[0]]) return `<button class="btn sm" data-altro="">← Gestione</button><h2 style="margin-top:12px">${cur[1]} ${esc(cur[2])}</h2>${V[cur[0]]()}`;
   return `<h2>Gestione</h2><div class="tiles">${ALTRO().map(([k, ic, t, d]) => `<div class="tile" data-altro="${k}"><div style="font-size:24px">${ic}</div><div class="t" style="margin-top:4px">${esc(t)}</div><div class="l">${esc(d)}</div></div>`).join("")}</div>`;

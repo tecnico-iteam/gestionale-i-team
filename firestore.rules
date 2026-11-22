@@ -41,6 +41,9 @@ service cloud.firestore {
     // F-gas: i tecnici registrano l'intervento dal rapportino ma non lo vedono; detrazioni solo ufficio vero
     match /fgasOps/{id} { allow create: if active(); allow read, update, delete: if ufficio(); }
     match /detrazioni/{id} { allow read, write: if ufficio(); }
+    // furgoni, attrezzature e loro documenti: solo ufficio vero
+    match /mezzi/{id} { allow read, write: if ufficio(); }
+    match /attrezzature/{id} { allow read, write: if ufficio(); }
     // Trasferimento dal calendario dell'iPhone: solo il titolare
     match /calendariFeed/{id} { allow read, write: if owner(); }
     match /eventiCal/{id} { allow read, write: if owner(); }
@@ -86,8 +89,8 @@ service cloud.firestore {
     // Tutti gli altri dati (clienti, impianti, interventi, magazzino, dico, commesse, …):
     // gli attivi leggono, creano e modificano; ELIMINA solo l'ufficio (va nel cestino)
     match /{col}/{id} {
-      allow read, create, update: if active() && !(col in ['utenti', 'config', 'contabilita', 'crediti', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'calendariFeed', 'eventiCal', 'registro', 'cestino', 'preventivi', 'listino', 'magazzinoPrezzi', 'commesseRiservate', 'clienti']);
-      allow delete: if office() && !(col in ['utenti', 'config', 'contabilita', 'crediti', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'calendariFeed', 'eventiCal', 'registro', 'cestino', 'preventivi', 'listino', 'magazzinoPrezzi', 'commesseRiservate', 'clienti']);
+      allow read, create, update: if active() && !(col in ['utenti', 'config', 'contabilita', 'crediti', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'mezzi', 'attrezzature', 'calendariFeed', 'eventiCal', 'registro', 'cestino', 'preventivi', 'listino', 'magazzinoPrezzi', 'commesseRiservate', 'clienti']);
+      allow delete: if office() && !(col in ['utenti', 'config', 'contabilita', 'crediti', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'mezzi', 'attrezzature', 'calendariFeed', 'eventiCal', 'registro', 'cestino', 'preventivi', 'listino', 'magazzinoPrezzi', 'commesseRiservate', 'clienti']);
     }
   }
 }

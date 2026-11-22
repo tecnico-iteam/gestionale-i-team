@@ -58,6 +58,10 @@ in italiano semplice, senza gergo tecnico.
   rapportino con `campiFgasRap`/`salvaFgasRap`, id = id intervento, ma non li legge), Libretti e catasto (`vLibretti`,
   campi impianto `potenzaKw, codiceCatasto, statoCatasto, dataLibretto, ultimoREE, reeAnni, reeInviato`; REE da 12 kW,
   `stampaLibretto()`), Detrazioni (`detrazioni/{id}`, ENEA entro 90 gg da `fineLavori`). Avvisi in `extraOggiUff()`.
+- 🚚 Mezzi e scadenze (tab Gestione `mezzi`, `vMezzi()`, solo `uffVero()`, regole `ufficio()`): `mezzi/{id}` (targa, revisione calcolata da
+  `revisioneScad()` = 4 anni dall'immatricolazione poi 2, 1 se `oltre35`, fine mese; assicScad, bolloScad, tagliando per data e km,
+  noleggio/leasing con rata e km compresi, `documenti[]` caricati con `caricaDocMezzo()`/`fotoDocMezzo()`), `attrezzature/{id}`
+  (verifica/taratura ogni N mesi) e patentini F-gas dei tecnici (`patScad` in 👷). Avviso in `extraOggiUff()` con `scadenzeVicine()`. Prova: `test/prova-mezzi.js`.
 - Calendario: toccando un giorno (vista Mese) si apre `giornoPopup(g)` con gli appuntamenti; i tocchi dentro passano alla pagina.
 - Trasferimento dal calendario iPhone (solo titolare, `vTrasfCal()` dal Calendario): il titolare incolla il link del
   "Calendario pubblico" iCloud in `calendariFeed/impostazioni.icloudUrl`; `scripts/calendari.js` (workflow avvisi, ogni 10 min)
