@@ -2926,7 +2926,7 @@ function bigliettoDati(){
   return {nome: (acc && acc.nome) || ui.comm || "", ruolo: "Preventivi", tel: "", email: emailAcc};
 }
 // Tommy (titolare) e Irene (ufficio): nel QR anche i dati per fatture e pagamenti
-const conDatiFatt = d => /\b(carone|tommaso|tommy|irene|cavicchio)\b/i.test(d.nome || "") || (mioAccount() || {}).email === "carone.t46@gmail.com";
+const conDatiFatt = d => /\b(carone|tommaso|tommy|irene|cavicchio)\b/i.test(d.nome || "") || sonoTitolare();
 const ibanFmt = s => String(s || "").replace(/\s+/g, "").replace(/(.{4})/g, "$1 ").trim();
 const datiFattRighe = () => [["Ragione sociale", AZIENDA.ragione], ["P.IVA e C.F.", AZIENDA.piva], ["Codice SDI", AZIENDA.sdi], ["PEC", AZIENDA.pec], ["Sede legale", AZIENDA.legale],
   ...(CFG.iban ? [["IBAN", ibanFmt(CFG.iban)], ["Intestato a", CFG.intestatario || AZIENDA.ragione]] : []), ...(CFG.iban && CFG.banca ? [["Banca", CFG.banca]] : [])];

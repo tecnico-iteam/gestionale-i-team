@@ -86,7 +86,8 @@ in italiano semplice, senza gergo tecnico.
 ## Dati (Firestore)
 Collezioni: clienti, impianti, interventi, preventivi, fatture, magazzino, listino, dico, commesse, contratti, ordini, contabilita, config/impostazioni,
 utenti/{uid} = {email, nome, ruolo: admin|ufficio|tecnico|preventivatore|nuovo, attivo}.
-Il proprietario è carone.t46@gmail.com (sempre amministratore, costante OWNER in firebase-app.js e nelle regole).
+Il proprietario è carone.t46@gmail.com (sempre amministratore, costante OWNER in firebase-app.js e nelle regole);
+secondo titolare di riserva segreteria.iteam@gmail.com (`OWNERS` in firebase-app.js, stesso elenco in firestore.rules e storage.rules).
 Media: `interventi.media[] = {id, url, tipo, da, il}`; `magazzino.foto` + `fotoUrl`.
 
 ## Regole di lavoro

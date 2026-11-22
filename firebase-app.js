@@ -4,6 +4,8 @@
 (() => {
 "use strict";
 const OWNER = "carone.t46@gmail.com";
+// secondo titolare di riserva: se si perde l'account principale si entra con questo, con gli stessi poteri
+const OWNERS = [OWNER, "segreteria.iteam@gmail.com"];
 const RUOLI = [["admin", "Amministratore"], ["ufficio", "Ufficio"], ["ufficio_tecnico", "Ufficio + Tecnico"], ["tecnico", "Tecnico"], ["tecnico_preventivatore", "Tecnico + Preventivatore"], ["preventivatore", "Preventivatore"]];
 // Chi non ha un'email accede con un semplice nome utente (es. "maurizio"):
 // dietro le quinte diventa "maurizio@utenti.iteamservice.it" (nessuna email viene inviata lì).
@@ -115,7 +117,7 @@ function start(){
   auth.onAuthStateChanged(async u => {
     if (unsubProf) { unsubProf(); unsubProf = null; }
     if (!u) { if (started) location.reload(); else showLogin(); return; }
-    isOwner = (u.email || "").toLowerCase() === OWNER;
+    isOwner = OWNERS.includes((u.email || "").toLowerCase());
     if (isOwner && !u.emailVerified) {
       const g = gate(`<h2>Verifica la tua email</h2><p>Ti abbiamo inviato un link di conferma a <b>${esc(u.email)}</b>. Aprilo, poi premi «Ho confermato».</p><button class="p" id="gV">Ho confermato</button><button class="lk" id="gR">Invia di nuovo</button><br><button class="lk" id="gO">Esci</button>`);
       g.querySelector("#gV").onclick = async () => { await u.reload(); if (u.emailVerified) { await u.getIdToken(true); location.reload(); } };

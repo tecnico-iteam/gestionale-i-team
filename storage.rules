@@ -5,12 +5,12 @@ service firebase.storage {
   match /b/{bucket}/o {
     function active() {
       return request.auth != null && (
-        (request.auth.token.email.lower() == 'carone.t46@gmail.com' && request.auth.token.email_verified == true)
+        (request.auth.token.email.lower() in ['carone.t46@gmail.com', 'segreteria.iteam@gmail.com'] && request.auth.token.email_verified == true)
         || firestore.get(/databases/(default)/documents/utenti/$(request.auth.uid)).data.attivo == true);
     }
     function contab() {
       return request.auth != null && (
-        (request.auth.token.email.lower() == 'carone.t46@gmail.com' && request.auth.token.email_verified == true)
+        (request.auth.token.email.lower() in ['carone.t46@gmail.com', 'segreteria.iteam@gmail.com'] && request.auth.token.email_verified == true)
         || (firestore.get(/databases/(default)/documents/utenti/$(request.auth.uid)).data.attivo == true
             && firestore.get(/databases/(default)/documents/utenti/$(request.auth.uid)).data.get('contabilita', false) == true));
     }
