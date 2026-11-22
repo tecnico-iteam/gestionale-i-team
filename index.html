@@ -276,6 +276,7 @@ const NAV = [
 
 // ---------- stato ----------
 const S = Object.fromEntries(COLS.map(c => [c, []])); S.contabilita = []; S.fgasOps = []; S.detrazioni = []; S.crediti = []; S.eventiCal = []; S.calCfg = {};
+if (window.__store) window.__S = S;   // solo nei test (finto database)
 const DEFAULT_MANODOPERA = ["Installazione monosplit (fino a 3 m di linee)","Installazione dual split","Installazione trial split","Metro aggiuntivo linee frigorifere","Staffa per unità esterna","Pompa scarico condensa","Canalina (al metro)","Carotaggio muro","Linea elettrica dedicata","Smontaggio e smaltimento vecchio impianto","Dichiarazione di conformità e pratiche F-gas"].map(d => ({descrizione: d, prezzo: 0}));
 let CFG = {postazioni: ["Tommy", "Irene", "Alessandro"], titolare: "Carone Tommaso", respAB: "Carone Tommaso", respCE: "Sasso Francesco", fgas: "FGAS-A18879", cciaa: "Torino", rea: "TO-1331174", alboArt: "", abilitazioni: ["a) elettrici", "b) radiotelevisivi ed elettronici", "c) riscaldamento e climatizzazione", "e) gas"], tecnici: [], lavori: DEFAULT_LAVORI.slice(), scontoAcquisto: 0, scontoCliente: 0, costoOra: 45, costoGiornata: 300, manodopera: DEFAULT_MANODOPERA.map(x => ({...x}))};
 let assetsNS = null;
@@ -349,25 +350,88 @@ function registra(col, id, azione, dati, campi){
   if (!db || NO_REGISTRO.includes(col)) return;
   try { db.collection("registro").add(JSON.parse(JSON.stringify({col, docId: id || "", azione, titolo: titoloDoc(col, dati), campi: (campi || []).filter(k => !["aggiornato", "modificatoDa"].includes(k)).slice(0, 25), chi: chiRegistro(), uid: (mioAccount() || {}).id || "", il: new Date().toISOString()}))).catch(() => {}); } catch(e) {}
 }
+// Dati riservati: prezzi d'acquisto del magazzino (magazzinoPrezzi/{id}) e parti riservate delle commesse
+// (commesseRiservate/{id}: descrizione e documenti NON condivisi). Le regole li fanno leggere solo a chi deve;
+// nell'app sono uniti all'oggetto principale (S.magazzino, S.commesse), così il resto del codice non cambia.
+const RISERVATI = {magazzino: {col: "magazzinoPrezzi", campi: ["prezzoAcquisto", "prezzoListino", "sconto", "costo"]}, commesse: {col: "commesseRiservate", campi: ["descrizione"], docs: true}};
+const vedeRis = col => !mioAccount() || (col === "magazzino" ? puoEliminare() || ["preventivatore", "tecnico_preventivatore"].includes(ruolo()) : puoEliminare());
+const PUB = {magazzino: [], commesse: []}, RIS = {magazzino: {}, commesse: {}};
+function dividi(col, data){
+  const R = RISERVATI[col]; if (!R) return [data, null];
+  const pub = {...data}, ris = {};
+  R.campi.forEach(k => { if (k in pub) { ris[k] = pub[k]; delete pub[k]; } });
+  if (R.docs && Array.isArray(pub.documenti)) { ris.documenti = pub.documenti.filter(d => !d.condiviso); pub.documenti = pub.documenti.filter(d => d.condiviso); }
+  return [pub, Object.keys(ris).length ? ris : null];
+}
+function unisci(col){
+  const R = RISERVATI[col];
+  S[col] = PUB[col].map(p => { const r = RIS[col][p.id]; if (!r) return p; const o = {...p, ...r, id: p.id}; if (R.docs) { const ids = new Set((p.documenti || []).map(d => d.id)); o.documenti = [...(p.documenti || []), ...(r.documenti || []).filter(d => !ids.has(d.id))]; } return o; });
+}
+async function scriviRis(col, id, ris){ if (ris && vedeRis(col)) await db.collection(RISERVATI[col].col).doc(id).set(JSON.parse(JSON.stringify({...ris, aggiornato: new Date().toISOString()})), {merge: true}); }
+// Rubrica: i clienti "recenti" (attività nell'ultimo anno) li vedono tutti; gli altri solo Tommaso e Irene.
+const COL_ATTIVITA = ["interventi", "preventivi", "fatture", "commesse", "contratti", "dico", "impianti"];
+function toccaCliente(cid){
+  if (!cid || !db) return; const c = byId("clienti", cid);
+  if (c && c.recente === true && num(c.ultimoMs) > Date.now() - 864e5) return;
+  db.collection("clienti").doc(cid).update({ultimoMs: Date.now(), recente: true}).catch(() => {});
+}
 async function save(col, id, data){
   if (!db) { toast("Dati non raggiungibili: impossibile salvare"); throw new Error("no db"); }
   const ref = id ? db.collection(col).doc(id) : db.collection(col).doc();
   const prima = id && S[col] ? byId(col, id) : null;
   const body = JSON.parse(JSON.stringify({...data, aggiornato: new Date().toISOString(), modificatoDa: ui.modo === "ufficio" ? (ui.uff || "Ufficio") : ui.modo === "comm" ? ui.comm : ui.tecnico || ""}));
   delete body.id;
-  try { await ref.set(body); registra(col, ref.id, prima ? "modifica" : "crea", body, prima ? Object.keys(body).filter(k => normCampo(body[k]) !== normCampo(prima[k])) : []); return ref.id; }
+  if (col === "clienti" && (!prima || !body.importatoIl)) Object.assign(body, {ultimoMs: Date.now(), recente: true});
+  const [pub, ris] = dividi(col, body);
+  try { await ref.set(pub); await scriviRis(col, ref.id, ris); if (COL_ATTIVITA.includes(col)) toccaCliente(body.clienteId); registra(col, ref.id, prima ? "modifica" : "crea", body, prima ? Object.keys(body).filter(k => normCampo(body[k]) !== normCampo(prima[k])) : []); return ref.id; }
   catch(e){ writeErr(e); throw e; }
 }
 async function patch(col, id, data){
-  try { await db.collection(col).doc(id).update(JSON.parse(JSON.stringify({...data, aggiornato: new Date().toISOString()}))); registra(col, id, "modifica", {...(S[col] ? byId(col, id) || {} : {}), ...data}, Object.keys(data)); }
+  try { const [pub, ris] = dividi(col, JSON.parse(JSON.stringify({...data, aggiornato: new Date().toISOString()})));
+    await db.collection(col).doc(id).update(pub); await scriviRis(col, id, ris); if (COL_ATTIVITA.includes(col)) toccaCliente(data.clienteId || (byId(col, id) || {}).clienteId); registra(col, id, "modifica", {...(S[col] ? byId(col, id) || {} : {}), ...data}, Object.keys(data)); }
   catch(e){ writeErr(e); throw e; }
 }
 async function remove(col, id){
   try {
     const ref = db.collection(col).doc(id);
-    if (!NO_REGISTRO.includes(col)) { const sn = await ref.get(); if (sn.exists) await db.collection("cestino").add(JSON.parse(JSON.stringify({col, docId: id, dati: sn.data(), titolo: titoloDoc(col, sn.data()), chi: chiRegistro(), il: new Date().toISOString()}))); }
-    await ref.delete(); registra(col, id, "elimina", S[col] ? byId(col, id) : {}, []);
+    if (!NO_REGISTRO.includes(col)) { const sn = await ref.get(); if (sn.exists) { const dati = {...sn.data(), ...(RISERVATI[col] ? (() => { const o = {...(byId(col, id) || {})}; delete o.id; return o; })() : {})}; await db.collection("cestino").add(JSON.parse(JSON.stringify({col, docId: id, dati, titolo: titoloDoc(col, dati), chi: chiRegistro(), il: new Date().toISOString()}))); } }
+    await ref.delete(); if (RISERVATI[col] && vedeRis(col)) await db.collection(RISERVATI[col].col).doc(id).delete().catch(() => {}); registra(col, id, "elimina", S[col] ? byId(col, id) : {}, []);
   } catch(e){ writeErr(e); throw e; }
+}
+// Spostamento una tantum dei dati riservati e calcolo dei clienti recenti (lo fa il titolare, una volta sola)
+let migrando = false;
+async function migraRiservati(){
+  if (migrando || !db || !sonoTitolare()) return; migrando = true;
+  try {
+    const ref = db.doc("config/migrazioni"), sn = await ref.get(), m = sn.exists ? sn.data() : {};
+    const ancora = PUB.magazzino.some(x => RISERVATI.magazzino.campi.some(k => k in x)) || PUB.commesse.some(x => "descrizione" in x || (x.documenti || []).some(d => !d.condiviso));
+    if (ancora) m.riservati = null;
+    if (m.riservati && m.clientiRecenti) return;
+    const FV = firebase.firestore.FieldValue;
+    const lotto = async ops => { for (let i = 0; i < ops.length; i += 150) { const b = db.batch(); ops.slice(i, i + 150).forEach(o => o(b)); await b.commit(); } };
+    if (!m.riservati) {
+      toast("Metto al sicuro i prezzi d'acquisto e i documenti riservati…", 8000);
+      for (const col of Object.keys(RISERVATI)) {
+        const R = RISERVATI[col], docs = (await db.collection(col).get()).docs, ops = [];
+        docs.forEach(d => { const x = d.data(), [, ris] = dividi(col, x); if (!ris || (R.docs && !R.campi.some(k => k in x) && !(ris.documenti || []).length)) return;
+          const del = {}; R.campi.forEach(k => { if (k in x) del[k] = FV.delete(); }); if (R.docs && Array.isArray(x.documenti)) del.documenti = x.documenti.filter(z => z.condiviso);
+          if (R.docs) { const vecchi = (RIS[col][d.id] || {}).documenti || [], ids = new Set((ris.documenti || []).map(z => z.id)); ris.documenti = [...(ris.documenti || []), ...vecchi.filter(z => !ids.has(z.id))]; }
+          ops.push(b => { b.set(db.collection(R.col).doc(d.id), ris, {merge: true}); b.update(db.collection(col).doc(d.id), del); }); });
+        await lotto(ops);
+      }
+      await ref.set({riservati: new Date().toISOString()}, {merge: true});
+    }
+    if (!m.clientiRecenti) {
+      const lim = addDays(today(), -365), last = {}, su = (id, d) => { d = String(d || "").slice(0, 10); if (id && d && (!last[id] || d > last[id])) last[id] = d; };
+      S.interventi.forEach(x => su(x.clienteId, x.dataFine && x.dataFine > (x.data || "") ? x.dataFine : x.data)); S.preventivi.forEach(x => su(x.clienteId, x.data)); S.fatture.forEach(x => su(x.clienteId, x.data));
+      (S.contratti || []).forEach(x => su(x.clienteId, x.scadenza)); (S.commesse || []).forEach(x => su(x.clienteId, x.aggiornato)); (S.dico || []).forEach(x => su(x.clienteId, x.data || x.aggiornato));
+      S.clienti.forEach(c => { if (!c.importatoIl) su(c.id, c.aggiornato); });
+      const ops = S.clienti.map(c => { const d = last[c.id], rec = !!d && d >= lim, ms = d ? new Date(d + "T12:00:00").getTime() : 0; return (c.recente === rec && num(c.ultimoMs) === ms) ? null : b => b.update(db.collection("clienti").doc(c.id), {recente: rec, ultimoMs: ms}); }).filter(Boolean);
+      await lotto(ops);
+      await ref.set({clientiRecenti: new Date().toISOString()}, {merge: true});
+    }
+    toast("✅ Dati riservati sistemati", 4000);
+  } catch(e) { console.warn("migrazione", e); } finally { migrando = false; }
 }
 function writeErr(e){
   if (e && (e.code === "invalid_argument" || e.code === "permission-denied")) { canWrite = false; toast("Non hai i permessi per modificare i dati. Chiedi al titolare di controllare il tuo account (👤 → Utenti).", 4500); }
@@ -385,13 +449,16 @@ async function initDb(){
   if (puoContab()) db.collection("crediti").onSnapshot(snap => { S.crediti = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
   if (sonoTitolare()) { db.collection("eventiCal").onSnapshot(snap => { S.eventiCal = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}); db.collection("calendariFeed").doc("impostazioni").onSnapshot(sn => { S.calCfg = sn.exists ? sn.data() : {}; render(); }, () => {}); }
   if (uffVero()) ["fgasOps", "detrazioni"].forEach(c => db.collection(c).onSnapshot(snap => { S[c] = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}));
+  Object.keys(RISERVATI).filter(c => MIE.includes(c) && vedeRis(c)).forEach(c => db.collection(RISERVATI[c].col).onSnapshot(snap => { RIS[c] = Object.fromEntries(snap.docs.map(d => [d.id, d.data()])); unisci(c); render(); }, () => {}));
   MIE.forEach(c => {
-    db.collection(c).onSnapshot(snap => {
+    (c === "clienti" && !vedeTuttiClienti() ? db.collection(c).where("recente", "==", true) : db.collection(c)).onSnapshot(snap => {
+      if (RISERVATI[c]) { PUB[c] = snap.docs.map(d => ({id: d.id, ...d.data()})); unisci(c); } else
       S[c] = snap.docs.map(d => ({id: d.id, ...d.data()}));
       if (c === "listino") LISTINO = S.listino.flatMap(ch => (ch.items || []).map((it, i) => ({...it, _c: ch.id, _i: i})));
       if (!snap.metadata.fromCache) loaded.add(c);
       if (loaded.size >= MIE.length) { clearTimeout(timer); ui.stale = false; }
       if (c === "interventi") { notifyReports(snap); setTimeout(refreshMedia, 0); }
+      if (loaded.size >= MIE.length) setTimeout(migraRiservati, 1500);
       render();
     }, err => { loaded.add(c); clearTimeout(timer); ui.stale = true; render(); });
   });
@@ -558,8 +625,7 @@ function openForm(o){
 
 // ---------- form specifici ----------
 // rubrica: Tommy e Irene vedono tutti i clienti, gli altri solo quelli con attività nell'ultimo anno
-const vedeTuttiClienti = () => { const a = mioAccount() || {}; if (a.email === "carone.t46@gmail.com") return true;
-  return /\b(tommy|tommaso|carone|irene|cavicchio)\b/i.test([a.nome, ui.modo === "ufficio" ? ui.uff : "", ui.modo === "tecnico" ? ui.tecnico : "", ui.modo === "comm" ? ui.comm : ""].join(" ")); };
+const vedeTuttiClienti = () => { const a = mioAccount(); if (!a) return true; return sonoTitolare() || ["admin", "ufficio"].includes(a.ruolo); };
 const clientiRecentiSet = () => { const lim = addDays(today(), -365), s = new Set(), su = (id, d) => { if (id && String(d || "").slice(0, 10) >= lim) s.add(id); };
   S.interventi.forEach(x => su(x.clienteId, x.dataFine && x.dataFine > (x.data || "") ? x.dataFine : x.data)); S.preventivi.forEach(x => su(x.clienteId, x.data)); S.fatture.forEach(x => su(x.clienteId, x.data));
   (S.contratti || []).forEach(x => su(x.clienteId, x.scadenza)); (S.commesse || []).forEach(x => su(x.clienteId, x.aggiornato)); (S.dico || []).forEach(x => su(x.clienteId, x.data || x.aggiornato));
@@ -2731,7 +2797,7 @@ function formScontoMassivo(){
         for (let i = 0; i < l.length; i += 4) {
           await Promise.all(l.slice(i, i + 4).map(async m => {
             const sc = Math.min(100, Math.round((v.modo === "imposta" ? num(v.val) : num(m.sconto) + (v.modo === "piu" ? 1 : -1) * num(v.val)) * 10) / 10);
-            for (let t = 0; t < 5; t++) { try { await db.collection("magazzino").doc(m.id).update({sconto: sc, prezzoVendita: priceFromSc(m.prezzoListino, sc)}); n++; return; } catch(e) { if (e && (e.code === "resource_exhausted" || e.code === "unavailable")) await new Promise(r => setTimeout(r, 1500 * (t + 1))); else return; } }
+            for (let t = 0; t < 5; t++) { try { await db.collection("magazzino").doc(m.id).update({prezzoVendita: priceFromSc(m.prezzoListino, sc)}); await scriviRis("magazzino", m.id, {sconto: sc}); n++; return; } catch(e) { if (e && (e.code === "resource_exhausted" || e.code === "unavailable")) await new Promise(r => setTimeout(r, 1500 * (t + 1))); else return; } }
           }));
         }
         clearToasts(); toast(`✅ Sconto aggiornato su ${n} articoli`, 4000);
@@ -2785,8 +2851,9 @@ async function runMagImport(list){
     const prezzi = {prezzoListino: j.pl, sconto: j.sc, prezzoVendita: j.pc, ...(j.pa !== "" ? {prezzoAcquisto: j.pa} : {})};
     for (let t = 0; t < 6; t++) {
       try {
-        if (ex) { await db.collection("magazzino").doc(j.id).update({...prezzi, ...(j.it.img && !ex.img && !ex.foto ? {img: j.it.img} : {}), aggiornato: new Date().toISOString()}); agg++; }
-        else { await db.collection("magazzino").doc(j.id).set({...(j.it.img ? {img: j.it.img} : {}), codice: j.it.codice || "", descrizione: j.it.descrizione, categoria: magCatOf(j.it), serie: j.it.categoria || "", fornitore: j.forn, unita: /al metro/i.test(j.it.descrizione) ? "m" : "pz", quantita: 0, scortaMinima: 0, ...prezzi, aggiornato: new Date().toISOString()}); nuovi++; }
+        const [pp, pr] = dividi("magazzino", prezzi);
+        if (ex) { await db.collection("magazzino").doc(j.id).update({...pp, ...(j.it.img && !ex.img && !ex.foto ? {img: j.it.img} : {}), aggiornato: new Date().toISOString()}); await scriviRis("magazzino", j.id, pr); agg++; }
+        else { await db.collection("magazzino").doc(j.id).set({...(j.it.img ? {img: j.it.img} : {}), codice: j.it.codice || "", descrizione: j.it.descrizione, categoria: magCatOf(j.it), serie: j.it.categoria || "", fornitore: j.forn, unita: /al metro/i.test(j.it.descrizione) ? "m" : "pz", quantita: 0, scortaMinima: 0, ...pp, aggiornato: new Date().toISOString()}); await scriviRis("magazzino", j.id, pr); nuovi++; }
         return;
       } catch(e) {
         if (e && (e.code === "resource_exhausted" || e.code === "unavailable")) { await new Promise(r => setTimeout(r, 1500 * (t + 1))); continue; }
@@ -4043,7 +4110,7 @@ document.addEventListener("click", async e => {
   if (d.cestrip) { const c = CEST.cestino.find(x => x.id === d.cestrip); if (!c) return;
     try { const ref = db.collection(c.col).doc(c.docId), ex = await ref.get();
       if (ex.exists && !(await ask("Esiste già un elemento con lo stesso codice: lo sovrascrivo con quello del cestino?", "Sovrascrivi"))) return;
-      await ref.set(c.dati); await db.collection("cestino").doc(c.id).delete(); registra(c.col, c.docId, "ripristina", c.dati, []);
+      const [pub, ris] = dividi(c.col, c.dati); await ref.set(pub); if (ris) await db.collection(RISERVATI[c.col].col).doc(c.docId).set(ris); await db.collection("cestino").doc(c.id).delete(); registra(c.col, c.docId, "ripristina", c.dati, []);
       CEST.cestino = CEST.cestino.filter(x => x.id !== c.id); toast("Ripristinato"); render(); } catch(err) { writeErr(err); }
     return; }
   if (d.cestdel) { if (!(await ask("Eliminare per sempre? Non si potrà più ripristinare.", "Elimina"))) return;

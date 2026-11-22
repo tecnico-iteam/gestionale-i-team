@@ -20,3 +20,7 @@ jobs:
         run: node scripts/backup.js
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - name: Aggiorna i clienti recenti
+        run: node scripts/clienti-recenti.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

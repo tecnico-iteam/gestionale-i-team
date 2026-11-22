@@ -69,6 +69,16 @@ service cloud.firestore {
       allow read: if office() || preventivatore();
       allow write: if office();
     }
+    // Prezzi d'acquisto del magazzino: solo ufficio e preventivatori (i tecnici vedono quantità e prezzo di vendita)
+    match /magazzinoPrezzi/{id} { allow read, write: if office() || preventivatore(); }
+    // Parti riservate delle commesse (descrizione interna e documenti non condivisi): solo ufficio
+    match /commesseRiservate/{id} { allow read, write: if office(); }
+    // Rubrica clienti: Tommaso e Irene vedono tutto, gli altri solo i clienti con attività nell'ultimo anno
+    match /clienti/{id} {
+      allow read: if ufficio() || (active() && resource.data.get('recente', false) == true);
+      allow create, update: if active();
+      allow delete: if office();
+    }
     // Code di servizio (telefono→PC, notifiche, promemoria): chi le usa può anche toglierle
     match /scansioni/{id} { allow read, write: if active(); }
     match /dispositivi/{id} { allow read, write: if active(); }
@@ -76,8 +86,8 @@ service cloud.firestore {
     // Tutti gli altri dati (clienti, impianti, interventi, magazzino, dico, commesse, …):
     // gli attivi leggono, creano e modificano; ELIMINA solo l'ufficio (va nel cestino)
     match /{col}/{id} {
-      allow read, create, update: if active() && !(col in ['utenti', 'config', 'contabilita', 'crediti', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'calendariFeed', 'eventiCal', 'registro', 'cestino', 'preventivi', 'listino']);
-      allow delete: if office() && !(col in ['utenti', 'config', 'contabilita', 'crediti', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'calendariFeed', 'eventiCal', 'registro', 'cestino', 'preventivi', 'listino']);
+      allow read, create, update: if active() && !(col in ['utenti', 'config', 'contabilita', 'crediti', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'calendariFeed', 'eventiCal', 'registro', 'cestino', 'preventivi', 'listino', 'magazzinoPrezzi', 'commesseRiservate', 'clienti']);
+      allow delete: if office() && !(col in ['utenti', 'config', 'contabilita', 'crediti', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'calendariFeed', 'eventiCal', 'registro', 'cestino', 'preventivi', 'listino', 'magazzinoPrezzi', 'commesseRiservate', 'clienti']);
     }
   }
 }

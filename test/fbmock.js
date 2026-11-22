@@ -7,7 +7,7 @@
   const mkDoc = (col, id) => ({ id,
     async get(){ return docSnap(col, id); },
     async set(b, o){ store[col] = store[col] || {}; store[col][id] = o && o.merge ? {...store[col][id], ...b} : JSON.parse(JSON.stringify(b)); notify(); },
-    async update(b){ if (!(store[col] || {})[id]) throw {code: "not-found"}; store[col][id] = {...store[col][id], ...b}; notify(); },
+    async update(b){ if (!(store[col] || {})[id]) throw {code: "not-found"}; const o = {...store[col][id], ...JSON.parse(JSON.stringify(b, (k, v) => v && v.__del ? undefined : v))}; Object.keys(b).forEach(k => { if (b[k] && b[k].__del) delete o[k]; }); store[col][id] = o; notify(); },
     async delete(){ delete store[col][id]; notify(); },
     onSnapshot(fn){ const f = () => fn(docSnap(col, id)); subs.push(f); setTimeout(f); return () => {}; } });
   const fs = {
@@ -17,10 +17,13 @@
       return { doc(id){ return mkDoc(col, id || ("id" + (++n))); },
       async add(b){ const id = "id" + (++n); await mkDoc(col, id).set(b); return {id}; },
       orderBy(f, dir){ return q([f, dir]); }, limit(k){ return q(null, k); },
+      where(f, op, v){ const ok = d => op === "==" ? d[f] === v : op === ">" ? d[f] > v : true;
+        const docs = () => { const o = store[col] || {}; return Object.keys(o).filter(k => ok(o[k])).map(k => docSnap(col, k)); };
+        return { async get(){ return {docs: docs()}; }, onSnapshot(fn){ const f = () => fn({metadata: {fromCache: false}, docs: docs(), docChanges: () => []}); subs.push(f); setTimeout(f); return () => {}; } }; },
       async get(){ const o = store[col] || {}; return {docs: Object.keys(o).map(k => docSnap(col, k))}; },
       onSnapshot(fn){ const f = () => { const o = store[col] || {}; fn({metadata: {fromCache: false}, docs: Object.keys(o).map(k => docSnap(col, k)), docChanges: () => []}); }; subs.push(f); setTimeout(f); return () => {}; } }; },
     doc(p){ const [c, i] = p.split("/"); return mkDoc(c, i); },
-    batch(){ const ops = []; return {set(r, b){ ops.push(() => r.set(b)); }, async commit(){ for (const o of ops) await o(); }}; }
+    batch(){ const ops = []; return {set(r, b, o){ ops.push(() => r.set(b, o)); }, update(r, b){ ops.push(() => r.update(b)); }, delete(r){ ops.push(() => r.delete()); }, async commit(){ for (const o of ops) await o(); }}; }
   };
   let cur = null; const ls = [];
   const auth = { get currentUser(){ return cur; },
@@ -28,7 +31,7 @@
     async getRedirectResult(){ return null; },
     async signInWithPopup(){ cur = window.__nextUser; ls.forEach(f => f(cur)); },
     async signOut(){ cur = null; ls.forEach(f => f(null)); } };
-  const fb = { initializeApp(){}, auth: Object.assign(() => auth, {GoogleAuthProvider: function(){}}), firestore: () => fs,
+  const fb = { initializeApp(){}, auth: Object.assign(() => auth, {GoogleAuthProvider: function(){}}), firestore: Object.assign(() => fs, {FieldValue: {delete: () => ({__del: true})}}),
     storage: () => ({ ref: p => ({ async put(){}, async getDownloadURL(){ return "https://example.test/" + p; }, async delete(){} }) }) };
   window.firebase = fb;
 })();

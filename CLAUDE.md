@@ -72,6 +72,13 @@ in italiano semplice, senza gergo tecnico.
   Pagina Gestione → 🗑️ Cestino e registro (`vCestino`, ripristina = set del documento + cancella dal cestino; "per sempre" solo admin).
   Regole: preventivi solo ufficio e preventivatori; listino legge ufficio+preventivatori, scrive ufficio; registro solo aggiunte.
   I file di commesse e contabilità non si cancellano più con il documento (servono al ripristino).
+- Dati riservati (`RISERVATI`, `dividi()`/`unisci()`/`scriviRis()` in index.html): prezzi d'acquisto del magazzino (prezzoAcquisto,
+  prezzoListino, sconto, costo) stanno in `magazzinoPrezzi/{id}` (solo ufficio + preventivatori); descrizione e documenti NON condivisi
+  delle commesse in `commesseRiservate/{id}` (solo ufficio). save/patch dividono da soli; in memoria S.magazzino/S.commesse sono uniti.
+  Rubrica: `clienti.recente` (+ `ultimoMs`) = attività nell'ultimo anno; chi non è titolare/admin/ufficio carica solo `where("recente","==",true)`
+  e le regole lo impongono. `toccaCliente()` lo rimette a true a ogni intervento/preventivo/fattura…; `scripts/clienti-recenti.js` (workflow
+  backup, ogni notte) lo ricalcola. `migraRiservati()` (all'apertura del titolare, stato in `config/migrazioni`) sposta i dati vecchi.
+  Nei test `window.__S` = S (solo con il finto database).
 - Backup notturno: `.github/workflows/backup.yml` → `scripts/backup.js` salva `backups/backup-AAAA-MM-GG.json` in Storage (30 giorni).
 - Regole: `.github/workflows/regole.yml` → `scripts/regole.js` le pubblica da solo quando cambiano (se fallisce, vanno incollate a mano).
 
