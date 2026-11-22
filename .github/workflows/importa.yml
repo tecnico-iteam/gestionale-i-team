@@ -1,0 +1,23 @@
+# Importazione sicura di dati preparati da Claude (scripts/importa-sicuro.js): prima crea la chiave, poi importa il pacchetto cifrato.
+name: Importazione sicura
+on:
+  push:
+    branches: [main]
+    paths: [importa/**, scripts/importa-sicuro.js]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  importa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --prefix scripts --no-save --no-audit --no-fund firebase-admin@12
+      - name: Importa
+        run: node scripts/importa-sicuro.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
