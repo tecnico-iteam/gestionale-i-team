@@ -28,7 +28,7 @@ async function esegui({db, bucket, log = console.log, oggi = new Date()}){
     if (m && m[1] < limite) { await f.delete().catch(() => {}); tolti++; }
   }
   if (tolti) log(`Tolti ${tolti} backup più vecchi di ${GIORNI} giorni`);
-  return {nome, docs, tolti};
+  return {nome, docs, tolti, out};
 }
 
 module.exports = {esegui};
@@ -41,5 +41,24 @@ if (require.main === module) {
   const bucketName = process.env.BUCKET || `${cred.project_id}.firebasestorage.app`;
   admin.initializeApp({credential: admin.credential.cert(cred), storageBucket: bucketName});
   esegui({db: admin.firestore(), bucket: admin.storage().bucket()})
-    .then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); });
+    .then(r => copiaPerEmail(r)).then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); });
+}
+
+// Copia FUORI da Firebase: ogni domenica (o con EMAIL_ORA=1) il backup compresso arriva per email al titolare.
+// Così, anche se Firebase avesse un problema, i dati sono anche nella sua casella. Mittente: ufficio@iteamservice.it.
+async function copiaPerEmail({out, docs}){
+  const pass = process.env.SMTP_PASSWORD, oggi = new Date();
+  if (!pass) { console.log("Manca SMTP_PASSWORD: copia per email non inviata"); return; }
+  if (oggi.getUTCDay() !== 0 && !process.env.EMAIL_ORA) return;
+  const zlib = require("zlib"), nodemailer = require("nodemailer");
+  const giorno = oggi.toISOString().slice(0, 10), gz = zlib.gzipSync(JSON.stringify(out));
+  const user = process.env.SMTP_USER || "ufficio@iteamservice.it";
+  const tr = nodemailer.createTransport({host: process.env.SMTP_HOST || "smtp.hostinger.com", port: 465, secure: true, auth: {user, pass}});
+  await tr.sendMail({from: `"Gestionale iTeam" <${user}>`, to: process.env.BACKUP_EMAIL || "carone.t46@gmail.com",
+    subject: `Copia di sicurezza gestionale – ${giorno}`,
+    text: `Ciao Tommaso,\n\nin allegato la copia di sicurezza settimanale del gestionale (${docs} schede: clienti, interventi, fatture, magazzino…).\n\n` +
+      `Non serve fare niente: tienila nella posta. Se un giorno servisse ripristinare i dati, si apre il gestionale → 👤 → Backup → Importa e si sceglie questo file.\n` +
+      `Le foto e i PDF restano in Firebase; qui ci sono tutti i dati scritti.\n\nAttenzione: contiene i dati dei clienti, non inoltrarla.\n`,
+    attachments: [{filename: `backup-gestionale-${giorno}.json.gz`, content: gz}]});
+  console.log(`Copia per email inviata (${Math.round(gz.length / 1024)} KB)`);
 }

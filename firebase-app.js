@@ -346,10 +346,12 @@ async function backup(){
   await downloads.save({filename: `Backup gestionale iTeam ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.json`, data: new Blob([JSON.stringify(out)], {type: "application/json"})});
 }
 function importa(){
-  const inp = document.createElement("input"); inp.type = "file"; inp.accept = ".json,application/json";
+  const inp = document.createElement("input"); inp.type = "file"; inp.accept = ".json,.gz,application/json,application/gzip";
   inp.onchange = async () => {
     const f = inp.files[0]; if (!f) return;
-    let data; try { data = JSON.parse(await f.text()); } catch(e) { return toastMsg("File non valido"); }
+    // anche la copia compressa che arriva per email ogni domenica (.json.gz)
+    const testo = async () => /\.gz$/i.test(f.name) ? await new Response(f.stream().pipeThrough(new DecompressionStream("gzip"))).text() : await f.text();
+    let data; try { data = JSON.parse(await testo()); } catch(e) { return toastMsg("File non valido"); }
     const cols = data.collections || {};
     const n = Object.values(cols).reduce((s, l) => s + (Array.isArray(l) ? l.length : 0), 0);
     if (!n) return toastMsg("Il file non contiene dati");

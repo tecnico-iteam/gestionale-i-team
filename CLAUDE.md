@@ -79,7 +79,8 @@ in italiano semplice, senza gergo tecnico.
   e le regole lo impongono. `toccaCliente()` lo rimette a true a ogni intervento/preventivo/fattura…; `scripts/clienti-recenti.js` (workflow
   backup, ogni notte) lo ricalcola. `migraRiservati()` (all'apertura del titolare, stato in `config/migrazioni`) sposta i dati vecchi.
   Nei test `window.__S` = S (solo con il finto database).
-- Backup notturno: `.github/workflows/backup.yml` → `scripts/backup.js` salva `backups/backup-AAAA-MM-GG.json` in Storage (30 giorni).
+- Backup notturno: `.github/workflows/backup.yml` → `scripts/backup.js` salva `backups/backup-AAAA-MM-GG.json` in Storage (30 giorni);
+  la domenica (o avvio a mano) manda anche la copia compressa `.json.gz` per email a carone.t46@gmail.com (fuori da Firebase); 👤 → Importa accetta il .gz.
 - Regole: `.github/workflows/regole.yml` → `scripts/regole.js` le pubblica da solo quando cambiano (se fallisce, vanno incollate a mano).
 
 ## Dati (Firestore)

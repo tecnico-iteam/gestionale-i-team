@@ -15,11 +15,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install --prefix scripts --no-save --no-audit --no-fund firebase-admin@12
+      - run: npm install --prefix scripts --no-save --no-audit --no-fund firebase-admin@12 nodemailer@6
       - name: Salva il backup
         run: node scripts/backup.js
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          EMAIL_ORA: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
       - name: Aggiorna i clienti recenti
         run: node scripts/clienti-recenti.js
         env:
