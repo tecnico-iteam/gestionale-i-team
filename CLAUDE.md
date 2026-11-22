@@ -85,6 +85,10 @@ in italiano semplice, senza gergo tecnico.
   Nei test `window.__S` = S (solo con il finto database).
 - Backup notturno: `.github/workflows/backup.yml` → `scripts/backup.js` salva `backups/backup-AAAA-MM-GG.json` in Storage (30 giorni);
   la domenica (o avvio a mano) manda anche la copia compressa `.json.gz` per email a carone.t46@gmail.com e carone.t@me.com (fuori da Firebase); 👤 → Importa accetta il .gz.
+- Importazione sicura di dati riservati (per ora solo `mezzi`, `attrezzature`): `.github/workflows/importa.yml` → `scripts/importa-sicuro.js`.
+  Push senza `importa/pacchetto.enc` = crea chiave (privata in Storage `importa/`, pubblica nel log: `gh run view ID --log`); poi si cifra il JSON
+  {collections, media: {idVecchio: dataUrl}} (RSA-OAEP sha256 + AES-256-GCM: {chiave, iv, tag, dati} base64), push in `importa/pacchetto.enc`
+  → importa e distrugge la chiave. Poi togliere il file con commit "[skip ci]". Anche 👤 → Importa carica i `documenti[]` dai `media`.
 - Regole: `.github/workflows/regole.yml` → `scripts/regole.js` le pubblica da solo quando cambiano (se fallisce, vanno incollate a mano).
 
 ## Dati (Firestore)
