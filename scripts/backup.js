@@ -41,7 +41,7 @@ if (require.main === module) {
   const bucketName = process.env.BUCKET || `${cred.project_id}.firebasestorage.app`;
   admin.initializeApp({credential: admin.credential.cert(cred), storageBucket: bucketName});
   esegui({db: admin.firestore(), bucket: admin.storage().bucket()})
-    .then(r => copiaPerEmail(r)).then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); });
+    .then(r => copiaPerEmail(r).catch(e => console.log("Copia per email NON inviata: " + (e && (e.responseCode || e.code || e.message)) + " (controlla il segreto SMTP_PASSWORD)"))).then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); });
 }
 
 // Copia FUORI da Firebase: ogni domenica (o con EMAIL_ORA=1) il backup compresso arriva per email al titolare.
