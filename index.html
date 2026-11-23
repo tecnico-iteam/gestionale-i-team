@@ -279,7 +279,7 @@ const NAV = [
 ];
 
 // ---------- stato ----------
-const S = Object.fromEntries(COLS.map(c => [c, []])); S.contabilita = []; S.fgasOps = []; S.detrazioni = []; S.mezzi = []; S.attrezzature = []; S.crediti = []; S.eventiCal = []; S.calCfg = {};
+const S = Object.fromEntries(COLS.map(c => [c, []])); S.contabilita = []; S.fgasOps = []; S.detrazioni = []; S.oreLibere = []; S.mezzi = []; S.attrezzature = []; S.crediti = []; S.eventiCal = []; S.calCfg = {};
 if (window.__store) window.__S = S;   // solo nei test (finto database)
 const DEFAULT_MANODOPERA = ["Installazione monosplit (fino a 3 m di linee)","Installazione dual split","Installazione trial split","Metro aggiuntivo linee frigorifere","Staffa per unità esterna","Pompa scarico condensa","Canalina (al metro)","Carotaggio muro","Linea elettrica dedicata","Smontaggio e smaltimento vecchio impianto","Dichiarazione di conformità e pratiche F-gas"].map(d => ({descrizione: d, prezzo: 0}));
 let CFG = {postazioni: ["Tommy", "Irene", "Alessandro"], titolare: "Carone Tommaso", respAB: "Carone Tommaso", respCE: "Sasso Francesco", fgas: "FGAS-A18879", cciaa: "Torino", rea: "TO-1331174", alboArt: "", abilitazioni: ["a) elettrici", "b) radiotelevisivi ed elettronici", "c) riscaldamento e climatizzazione", "e) gas"], tecnici: [], lavori: DEFAULT_LAVORI.slice(), scontoAcquisto: 0, scontoCliente: 0, costoOra: 45, costoGiornata: 300, manodopera: DEFAULT_MANODOPERA.map(x => ({...x}))};
@@ -452,6 +452,7 @@ async function initDb(){
   if (puoContab()) db.collection("contabilita").onSnapshot(snap => { S.contabilita = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
   if (puoContab()) db.collection("crediti").onSnapshot(snap => { S.crediti = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
   if (sonoTitolare()) { db.collection("eventiCal").onSnapshot(snap => { S.eventiCal = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}); db.collection("calendariFeed").doc("impostazioni").onSnapshot(sn => { S.calCfg = sn.exists ? sn.data() : {}; render(); }, () => {}); }
+  caricaOreLibere();
   if (uffVero()) ["fgasOps", "detrazioni", "mezzi", "attrezzature"].forEach(c => db.collection(c).onSnapshot(snap => { S[c] = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}));
   Object.keys(RISERVATI).filter(c => MIE.includes(c) && vedeRis(c)).forEach(c => db.collection(RISERVATI[c].col).onSnapshot(snap => { RIS[c] = Object.fromEntries(snap.docs.map(d => [d.id, d.data()])); unisci(c); render(); }, () => {}));
   MIE.forEach(c => {
@@ -1858,73 +1859,144 @@ function vOggi(){
   <p class="m" style="margin-top:28px;text-align:center">${esc(AZIENDA.nome)} · P.IVA ${esc(AZIENDA.piva)} · SDI ${esc(AZIENDA.sdi)}<br>Sede legale: ${esc(AZIENDA.legale)}<br>Sede operativa: ${esc(AZIENDA.operativa)}<br>Tel. ${esc(AZIENDA.tel)} · ${esc(AZIENDA.email)}</p>`;
 }
 
-// ---- ⏱ Ore dei tecnici: dal rapportino, divise per tecnico e per giorno, con totale del mese ----
+// ---- ⏱ Ore dei tecnici: dai rapportini + ore libere (altri lavori, ferie, permessi, malattia), per tecnico e per giorno, totale del mese ----
 // rapportino.minutiLavoro = ore di tutti; rapportino.minutiTec = {nome: minuti} quando i tecnici hanno fatto orari diversi
-const ORE_GIORNO = 8 * 60; // oltre le 8 ore in un giorno = straordinario
+// oreLibere/{id} = {tecnico, uid, tipo, data, dataFine (ferie/malattia su più giorni, sabato e domenica esclusi), minuti (al giorno), descrizione, da}
+const ORE_GIORNO = 8 * 60; // giornata intera; oltre le 8 ore lavorate in un giorno = straordinario
+const TIPI_ORE = [["Altro lavoro", "🔧", true, ""], ["Ferie", "🏖️", false, "F"], ["Permesso", "🕐", false, "P"], ["Malattia", "🤒", false, "M"]];
+const tipoOre = t => TIPI_ORE.find(x => x[0] === t) || TIPI_ORE[0];
+const ASSENZE = TIPI_ORE.filter(t => !t[2]).map(t => t[0]);
 const hmc = m => { m = Math.max(0, Math.round(num(m))) || 0; return Math.floor(m / 60) + ":" + pad(m % 60); };
+let MIO_UID = null;
+function giorniTra(da, a){
+  const out = [], fine = a && a > da ? a : da; let d = da, n = 0;
+  while (d <= fine && n++ < 370) { const g = new Date(d + "T12:00:00").getDay(); if (d === da || (g !== 0 && g !== 6)) out.push(d); d = addDays(d, 1); }
+  return out;
+}
 function oreRap(x){
   const r = x.rapportino || {}, ks = tecDi(x).length ? tecDi(x) : [r.inviatoDa || "—"];
   return ks.map(k => { const mt = r.minutiTec && Object.keys(r.minutiTec).find(n => sameTec(n, k)); return {tec: k, min: mt != null ? num(r.minutiTec[mt]) : num(r.minutiLavoro), via: num(r.viaggioMin)}; });
 }
+// tutte le righe del mese: rapportini (con x) e ore libere (con lib); lavoro = conta come ora lavorata
 function righeOre(mese, tec){
   const out = [];
-  S.interventi.filter(x => x.rapportino && (x.data || "").startsWith(mese)).forEach(x => oreRap(x).forEach(o => { if (!tec || sameTec(o.tec, tec)) out.push({...o, data: x.data, x}); }));
-  return out.sort((a, b) => (a.data + (a.x.rapportino.inizio || "")).localeCompare(b.data + (b.x.rapportino.inizio || "")));
+  S.interventi.filter(x => x.rapportino && (x.data || "").startsWith(mese)).forEach(x => oreRap(x).forEach(o => { if (!tec || sameTec(o.tec, tec)) out.push({...o, data: x.data, x, lavoro: true}); }));
+  (S.oreLibere || []).forEach(e => { if (!e.data || (tec && !sameTec(e.tecnico, tec))) return;
+    giorniTra(e.data, e.dataFine).filter(d => d.startsWith(mese)).forEach(d => out.push({tec: e.tecnico || "—", data: d, min: num(e.minuti), via: 0, lib: e, tipo: e.tipo || "Altro lavoro", lavoro: tipoOre(e.tipo)[2]})); });
+  const k = r => r.data + (r.x ? (r.x.rapportino.inizio || "") : r.lavoro ? "98" : "99");
+  return out.sort((a, b) => k(a).localeCompare(k(b)));
 }
-// totali per tecnico: {tec: {min, via, giorni: {data: min}, n}}
+// totali per tecnico: {tec: {min (lavorate), lib (lavori senza cliente), via, n (rapportini), giorni: {data: min}, ass: {tipo: min}, assG: {data: [{tipo, min}]}, extra}}
 function totaliOre(righe){
   const by = {};
-  righe.forEach(r => { const b = by[r.tec] = by[r.tec] || {min: 0, via: 0, n: 0, giorni: {}}; b.min += r.min; b.via += r.via; b.n++; b.giorni[r.data] = (b.giorni[r.data] || 0) + r.min; });
+  righe.forEach(r => { const b = by[r.tec] = by[r.tec] || {min: 0, lib: 0, via: 0, n: 0, giorni: {}, ass: {}, assG: {}};
+    if (r.lavoro) { b.min += r.min; b.via += r.via; if (r.x) b.n++; else b.lib += r.min; b.giorni[r.data] = (b.giorni[r.data] || 0) + r.min; }
+    else { b.ass[r.tipo] = (b.ass[r.tipo] || 0) + r.min; (b.assG[r.data] = b.assG[r.data] || []).push({tipo: r.tipo, min: r.min}); } });
   Object.values(by).forEach(b => { b.extra = Object.values(b.giorni).reduce((s, m) => s + Math.max(0, m - ORE_GIORNO), 0); });
   return by;
 }
+const vuotoOre = () => ({min: 0, lib: 0, via: 0, n: 0, giorni: {}, ass: {}, assG: {}, extra: 0});
+const durAss = m => m && m % ORE_GIORNO === 0 ? `${m / ORE_GIORNO} giorn${m === ORE_GIORNO ? "o" : "i"}` : hm(m);
+const assTxt = b => ASSENZE.filter(t => b.ass[t]).map(t => `${tipoOre(t)[1]} ${t.toLowerCase()} ${durAss(b.ass[t])}`).join(" · ");
 const giornoCorto = d => new Date(d + "T12:00:00").toLocaleDateString("it-IT", {weekday: "short", day: "numeric"});
 const meseNome = m => new Date(m + "-15T12:00:00").toLocaleDateString("it-IT", {month: "long", year: "numeric"});
 const navMese = () => `<div class="calnav"><button class="btn sm" data-orem="-1">‹</button><b>${esc(meseNome(ui.oreM))}</b><button class="btn sm" data-orem="1">›</button></div>`;
 // tabella: una riga per giorno, una colonna per tecnico, in fondo il totale del mese
 function tabellaOre(righe){
   const by = totaliOre(righe), tecs = Object.keys(by).sort((a, b) => a.localeCompare(b)), giorni = [...new Set(righe.map(r => r.data))].sort();
-  const td = m => `<td class="${m > ORE_GIORNO ? "over" : ""}">${m ? hmc(m) : `<span class="m">–</span>`}</td>`;
+  const td = (b, g) => { const m = b.giorni[g] || 0, a = b.assG[g] || [];
+    return `<td class="${m > ORE_GIORNO ? "over" : ""}">${m ? hmc(m) : a.length ? "" : `<span class="m">–</span>`}${a.map(x => ` <span class="chip" title="${esc(x.tipo)}" style="font-size:11px;padding:1px 6px">${tipoOre(x.tipo)[3]}${x.min !== ORE_GIORNO ? " " + hmc(x.min) : ""}</span>`).join("")}</td>`; };
+  const riga = (lab, f, tot = true) => `<tr class="m"><td>${lab}</td>${tecs.map(t => `<td>${f(by[t]) ? hmc(f(by[t])) : "–"}</td>`).join("")}<td>${tot ? hmc(tecs.reduce((s, t) => s + f(by[t]), 0)) : ""}</td></tr>`;
   return `<div style="overflow-x:auto;margin-bottom:12px"><table class="oretab"><thead><tr><th>Giorno</th>${tecs.map(t => `<th>${esc(t.split(/\s+/)[0])}</th>`).join("")}<th>Totale</th></tr></thead><tbody>
-  ${giorni.map(g => { const tot = tecs.reduce((s, t) => s + (by[t].giorni[g] || 0), 0); return `<tr><td>${esc(giornoCorto(g))}</td>${tecs.map(t => td(by[t].giorni[g] || 0)).join("")}<td><b>${hmc(tot)}</b></td></tr>`; }).join("")}
-  </tbody><tfoot><tr><td>Totale mese</td>${tecs.map(t => `<td>${hmc(by[t].min)}</td>`).join("")}<td>${hmc(tecs.reduce((s, t) => s + by[t].min, 0))}</td></tr>
-  <tr class="m"><td>Giorni lavorati</td>${tecs.map(t => `<td>${Object.keys(by[t].giorni).length}</td>`).join("")}<td></td></tr>
-  ${tecs.some(t => by[t].extra) ? `<tr class="m"><td>Oltre 8 ore/giorno</td>${tecs.map(t => `<td>${by[t].extra ? hmc(by[t].extra) : "–"}</td>`).join("")}<td>${hmc(tecs.reduce((s, t) => s + by[t].extra, 0))}</td></tr>` : ""}
-  <tr class="m"><td>Viaggio</td>${tecs.map(t => `<td>${hmc(by[t].via)}</td>`).join("")}<td>${hmc(tecs.reduce((s, t) => s + by[t].via, 0))}</td></tr></tfoot></table></div>
-  <p class="m" style="margin-top:-4px">In rosso i giorni con più di 8 ore. Le ore sono quelle lavorate (fine meno inizio, meno la pausa); il viaggio è a parte.</p>`;
+  ${giorni.map(g => { const tot = tecs.reduce((s, t) => s + (by[t].giorni[g] || 0), 0); return `<tr><td>${esc(giornoCorto(g))}</td>${tecs.map(t => td(by[t], g)).join("")}<td><b>${tot ? hmc(tot) : ""}</b></td></tr>`; }).join("")}
+  </tbody><tfoot><tr><td>Ore lavorate</td>${tecs.map(t => `<td>${hmc(by[t].min)}</td>`).join("")}<td>${hmc(tecs.reduce((s, t) => s + by[t].min, 0))}</td></tr>
+  <tr class="m"><td>Giorni lavorati</td>${tecs.map(t => `<td>${Object.values(by[t].giorni).filter(Boolean).length}</td>`).join("")}<td></td></tr>
+  ${tecs.some(t => by[t].lib) ? riga("di cui senza cliente", b => b.lib) : ""}
+  ${tecs.some(t => by[t].extra) ? riga("Oltre 8 ore/giorno", b => b.extra) : ""}
+  ${ASSENZE.filter(a => tecs.some(t => by[t].ass[a])).map(a => riga(`${tipoOre(a)[1]} ${a}`, b => b.ass[a] || 0)).join("")}
+  ${riga("Viaggio", b => b.via)}</tfoot></table></div>
+  <p class="m" style="margin-top:-4px">In rosso i giorni con più di 8 ore. F = ferie, P = permesso, M = malattia (senza ore = giornata intera). Le ore lavorate comprendono rapportini e altri lavori; il viaggio è a parte.</p>`;
 }
-// dettaglio giorno per giorno di un tecnico (lavori, orari, totale del giorno)
+// dettaglio giorno per giorno (lavori, orari, ore libere)
 function dettaglioOre(righe){
   const giorni = [...new Set(righe.map(r => r.data))].sort().reverse();
-  return giorni.map(g => { const rs = righe.filter(r => r.data === g), tot = rs.reduce((s, r) => s + r.min, 0);
-    return `<div class="card"><div class="row"><b>${esc(fdl(g))}</b><span class="sp"></span><span class="chip ${tot > ORE_GIORNO ? "warn" : "ok"}">${hm(tot)}</span></div>
-    ${rs.map(r => { const rp = r.x.rapportino; return `<div class="row tap" data-int="${r.x.id}" style="gap:8px;padding:6px 0;border-top:1px solid var(--line)"><span class="sp" style="min-width:0"><b>${esc(cliName(r.x.clienteId))}</b><br><span class="m">${esc([r.x.tipo, rp.inizio && rp.fine && rp.inizio + "–" + rp.fine, num(rp.pausaMin) && "pausa " + rp.pausaMin + " min", r.via && "viaggio " + hm(r.via), rp.minutiTec && "ore proprie"].filter(Boolean).join(" · "))}</span></span><b>${hm(r.min)}</b></div>`; }).join("")}</div>`; }).join("");
+  return giorni.map(g => { const rs = righe.filter(r => r.data === g), tot = rs.filter(r => r.lavoro).reduce((s, r) => s + r.min, 0), ass = rs.filter(r => !r.lavoro);
+    return `<div class="card"><div class="row"><b>${esc(fdl(g))}</b><span class="sp"></span>${ass.map(r => `<span class="chip">${tipoOre(r.tipo)[1]} ${esc(r.tipo)}</span>`).join(" ")}${tot || !ass.length ? `<span class="chip ${tot > ORE_GIORNO ? "warn" : "ok"}">${hm(tot)}</span>` : ""}</div>
+    ${rs.map(r => { if (r.lib) return `<div class="row tap" data-orelib="${r.lib.id}" style="gap:8px;padding:6px 0;border-top:1px solid var(--line)"><span class="sp" style="min-width:0"><b>${tipoOre(r.tipo)[1]} ${esc(r.tipo)}</b>${r.lib.descrizione ? ` · ${esc(r.lib.descrizione)}` : ""}<br><span class="m">${esc([r.lib.dataFine && "dal " + fd(r.lib.data) + " al " + fd(r.lib.dataFine), r.lib.da && "segnato da " + r.lib.da, "tocca per modificare"].filter(Boolean).join(" · "))}</span></span><b>${hm(r.min)}</b></div>`;
+      const rp = r.x.rapportino; return `<div class="row tap" data-int="${r.x.id}" style="gap:8px;padding:6px 0;border-top:1px solid var(--line)"><span class="sp" style="min-width:0"><b>${esc(cliName(r.x.clienteId))}</b><br><span class="m">${esc([r.x.tipo, rp.inizio && rp.fine && rp.inizio + "–" + rp.fine, num(rp.pausaMin) && "pausa " + rp.pausaMin + " min", r.via && "viaggio " + hm(r.via), rp.minutiTec && "ore proprie"].filter(Boolean).join(" · "))}</span></span><b>${hm(r.min)}</b></div>`; }).join("")}</div>`; }).join("");
 }
+// segnare ore libere: altri lavori (magazzino, fornitori, corsi…), ferie, permessi, malattia
+function formOreLibere(e = {}, tecFisso){
+  const uff = puoEliminare() && ui.modo !== "tecnico", lib = TIPI_ORE.filter(t => !t[2]).map(t => t[0]);
+  openForm({title: e.id ? "Modifica " + (e.tipo || "ore").toLowerCase() : "Segna ore, ferie o permesso",
+    values: {tipo: "Altro lavoro", data: today(), tecnico: tecFisso || "", ...e, giornata: e.id ? (lib.includes(e.tipo) && num(e.minuti) === ORE_GIORNO) : false, ore: e.minuti && !(lib.includes(e.tipo) && num(e.minuti) === ORE_GIORNO) ? String(r2(num(e.minuti) / 60)).replace(".", ",") : ""},
+    intro: `<p class="m">Per le ore che non hanno un rapportino: lavoro in magazzino, giro dai fornitori, corsi, ufficio… oppure ferie, permessi e malattia.</p>`,
+    fields: [
+      ...(uff && !tecFisso ? [{k:"tecnico", label:"Tecnico", type:"select", req:true, options: () => [["", "— Scegli —"], ...tecnici()]}] : []),
+      {k:"tipo", label:"Cosa", type:"select", rerender:true, options: TIPI_ORE.map(t => [t[0], t[1] + " " + t[0]])},
+      {k:"data", label:"Giorno", type:"date", req:true, half:true, rerender:true},
+      {k:"dataFine", label:"Fino al (se sono più giorni)", type:"date", half:true, rerender:true, show: v => v.tipo === "Ferie" || v.tipo === "Malattia"},
+      {k:"giornata", label:"Giornata intera (8 ore)", type:"checkbox", rerender:true, show: v => v.tipo !== "Altro lavoro"},
+      {k:"ore", label: "Ore (es. 2,5 = due ore e mezza)", type:"number", ph:"es. 2,5", show: v => v.tipo === "Altro lavoro" || !v.giornata},
+      {k:"giorniInfo", type:"info", show: v => (v.tipo === "Ferie" || v.tipo === "Malattia") && v.dataFine && v.data && v.dataFine > v.data, html: v => `${giorniTra(v.data, v.dataFine).length} giorni lavorativi (sabato e domenica esclusi)`},
+      {k:"descrizione", label:"Descrizione", ph:"es. Magazzino, giro fornitori, corso F-gas, visita medica…"}
+    ],
+    onSave: async v => {
+      const minuti = v.tipo !== "Altro lavoro" && v.giornata ? ORE_GIORNO : Math.round(num(v.ore) * 60);
+      if (!minuti) { toast("Scrivi le ore, oppure spunta \"Giornata intera\""); throw new Error("ore"); }
+      if (minuti > 16 * 60) { toast("Controlla le ore: sono più di 16 in un giorno"); throw new Error("ore"); }
+      const tec = tecFisso || v.tecnico || e.tecnico; if (!tec) { toast("Scegli il tecnico"); throw new Error("tec"); }
+      const multi = (v.tipo === "Ferie" || v.tipo === "Malattia") && v.dataFine && v.dataFine > v.data;
+      await save("oreLibere", e.id || null, {tecnico: tec, tipo: v.tipo, data: v.data, dataFine: multi ? v.dataFine : "", minuti, descrizione: (v.descrizione || "").trim(),
+        da: e.da || (ui.modo === "tecnico" ? ui.tecnico : ui.uff || "Ufficio"), uid: e.id ? (e.uid || "") : (uff ? "" : MIO_UID || "")});
+      toast(`${tipoOre(v.tipo)[1]} Salvato`); render();
+    },
+    onDelete: e.id && puoEliminare() ? async () => { await remove("oreLibere", e.id); closeModal(); toast("Eliminato"); render(); } : null
+  });
+}
+async function caricaOreLibere(){
+  S.oreLibere = []; if (!db) return;
+  try { const u = await claude.use("user"); MIO_UID = u && u.id ? await u.id() : null; } catch(e){}
+  if (puoEliminare()) { db.collection("oreLibere").onSnapshot(sn => { S.oreLibere = sn.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}); return; }
+  // il tecnico vede solo le sue (le regole lo impongono): quelle che ha segnato lui e quelle segnate dall'ufficio a suo nome
+  const parti = {}, metti = (k, sn) => { parti[k] = sn.docs.map(d => ({id: d.id, ...d.data()})); const m = new Map(); Object.values(parti).flat().forEach(d => m.set(d.id, d)); S.oreLibere = [...m.values()]; render(); };
+  if (MIO_UID) db.collection("oreLibere").where("uid", "==", MIO_UID).onSnapshot(sn => metti("u", sn), () => {});
+  const t = mioTecnico(); if (t) db.collection("oreLibere").where("tecnico", "==", t).onSnapshot(sn => metti("t", sn), () => {});
+}
+document.addEventListener("click", e => {
+  if (e.target.closest(".ov")) return;
+  const el = e.target.closest("[data-orelib],[data-orelibnew]"); if (!el) return;
+  if (el.dataset.orelibnew !== undefined) return formOreLibere({tecnico: el.dataset.orelibnew || ""}, ui.modo === "tecnico" ? ui.tecnico : "");
+  const x = (S.oreLibere || []).find(o => o.id === el.dataset.orelib); if (x) formOreLibere(x, ui.modo === "tecnico" ? ui.tecnico : "");
+});
 function vOre(){
   if (!ui.oreM) ui.oreM = today().slice(0, 7);
   const righe = righeOre(ui.oreM), by = totaliOre(righe), ks = Object.keys(by).sort((a, b) => a.localeCompare(b));
-  const tot = ks.reduce((s, k) => s + by[k].min, 0), extra = ks.reduce((s, k) => s + by[k].extra, 0), nRap = new Set(righe.map(r => r.x.id)).size;
+  const tot = ks.reduce((s, k) => s + by[k].min, 0), extra = ks.reduce((s, k) => s + by[k].extra, 0), nRap = new Set(righe.filter(r => r.x).map(r => r.x.id)).size;
   const seg = `<div class="seg">${[["oggi","Oggi"],["prossimi","Prossimi"],["verifica","Da verificare"],["aperti","Non chiusi"],["completati","Completati"],["tutti","Tutti"],["ore","Ore tecnici"]].map(([k, l]) => `<button class="${ui.intF === k ? "on" : ""}" data-intf="${k}">${l}</button>`).join("")}</div>`;
+  const nuovo = t => `<button class="btn pri" data-orelibnew="${esc(t || "")}" style="margin-bottom:10px">+ Segna ore, ferie o permesso</button>`;
   if (ui.oreTec) {
-    const rs = righe.filter(r => sameTec(r.tec, ui.oreTec)), b = totaliOre(rs)[rs[0]?.tec] || {min: 0, via: 0, extra: 0, giorni: {}};
+    const rs = righe.filter(r => sameTec(r.tec, ui.oreTec)), b = (rs[0] && totaliOre(rs)[rs[0].tec]) || vuotoOre();
     return `<h2>Interventi</h2>${seg}<button class="btn sm" data-oretec="">← Tutti i tecnici</button><h3>👷 ${esc(ui.oreTec)}</h3>${navMese()}
-    <div class="tiles" style="margin-bottom:10px"><div class="tile"><div class="n">${hm(b.min)}</div><div class="l">Ore nel mese</div></div><div class="tile"><div class="n">${Object.keys(b.giorni).length}</div><div class="l">Giorni lavorati</div></div><div class="tile"><div class="n">${hm(b.extra)}</div><div class="l">Oltre 8 ore/giorno</div></div></div>
-    ${rs.length ? dettaglioOre(rs) : empty("Nessun rapportino in questo mese.")}`;
+    <div class="tiles" style="margin-bottom:10px"><div class="tile"><div class="n">${hm(b.min)}</div><div class="l">Ore lavorate nel mese</div></div><div class="tile"><div class="n">${Object.values(b.giorni).filter(Boolean).length}</div><div class="l">Giorni lavorati</div></div><div class="tile"><div class="n">${hm(b.extra)}</div><div class="l">Oltre 8 ore/giorno</div></div>${ASSENZE.filter(a => b.ass[a]).map(a => `<div class="tile"><div class="n">${durAss(b.ass[a])}</div><div class="l">${tipoOre(a)[1]} ${a}</div></div>`).join("")}</div>
+    ${nuovo(ui.oreTec)}${rs.length ? dettaglioOre(rs) : empty("Nessuna ora segnata in questo mese.")}`;
   }
   return `<h2>Interventi</h2>${seg}${navMese()}
   <div class="tiles" style="margin-bottom:10px"><div class="tile"><div class="n">${nRap}</div><div class="l">Rapportini nel mese</div></div><div class="tile"><div class="n">${hm(tot)}</div><div class="l">Ore lavorate totali</div></div>${extra ? `<div class="tile"><div class="n" style="color:var(--warn)">${hm(extra)}</div><div class="l">Oltre 8 ore/giorno</div></div>` : ""}</div>
-  ${ks.length ? `<h3>Totale del mese per tecnico</h3>${ks.map(k => { const b = by[k], g = Object.keys(b.giorni).length; return `<div class="card tap" data-oretec="${esc(k)}"><div class="row"><span class="t">👷 ${esc(k)}</span><span class="sp"></span><b>${hm(b.min)}</b></div><div class="m">${b.n} ${b.n === 1 ? "intervento" : "interventi"} · ${g} ${g === 1 ? "giorno lavorato" : "giorni lavorati"} · media ${hm(g ? b.min / g : 0)} al giorno · viaggio ${hm(b.via)}${b.extra ? " · oltre 8 ore: " + hm(b.extra) : ""}</div><div class="m">Valore manodopera: ${eur(b.min / 60 * CFG.costoOra)} a ore · ${eur(g * CFG.costoGiornata)} a giornata · tocca per il dettaglio</div></div>`; }).join("")}
+  ${nuovo("")}
+  ${ks.length ? `<h3>Totale del mese per tecnico</h3>${ks.map(k => { const b = by[k], g = Object.values(b.giorni).filter(Boolean).length; return `<div class="card tap" data-oretec="${esc(k)}"><div class="row"><span class="t">👷 ${esc(k)}</span><span class="sp"></span><b>${hm(b.min)}</b></div><div class="m">${b.n} ${b.n === 1 ? "intervento" : "interventi"}${b.lib ? " + " + hm(b.lib) + " senza cliente" : ""} · ${g} ${g === 1 ? "giorno lavorato" : "giorni lavorati"} · media ${hm(g ? b.min / g : 0)} al giorno · viaggio ${hm(b.via)}${b.extra ? " · oltre 8 ore: " + hm(b.extra) : ""}</div>${assTxt(b) ? `<div class="m">${esc(assTxt(b))}</div>` : ""}<div class="m">Valore manodopera: ${eur(b.min / 60 * CFG.costoOra)} a ore · ${eur(g * CFG.costoGiornata)} a giornata · tocca per il dettaglio</div></div>`; }).join("")}
   <h3>Giorno per giorno</h3>${tabellaOre(righe)}
-  <button class="btn big" data-a="orecsv">⬇ Esporta il dettaglio del mese (Excel)</button>` : empty("Nessun rapportino in questo mese.")}`;
+  <button class="btn big" data-a="orecsv">⬇ Esporta il dettaglio del mese (Excel)</button>` : empty("Nessuna ora segnata in questo mese.")}`;
 }
-// pagina del tecnico: le sue ore del mese, giorno per giorno
+// pagina del tecnico: le sue ore del mese, giorno per giorno, e le sue ore libere
 function vMieOre(me){
   if (!ui.oreM) ui.oreM = today().slice(0, 7);
-  const rs = righeOre(ui.oreM, me), b = totaliOre(rs)[rs[0]?.tec] || {min: 0, via: 0, extra: 0, giorni: {}}, oggi = rs.filter(r => r.data === today()).reduce((s, r) => s + r.min, 0);
+  const rs = righeOre(ui.oreM, me), b = (rs[0] && totaliOre(rs)[rs[0].tec]) || vuotoOre(), oggi = rs.filter(r => r.lavoro && r.data === today()).reduce((s, r) => s + r.min, 0);
   return `${navMese()}
-  <div class="tiles" style="margin-bottom:10px">${ui.oreM === today().slice(0, 7) ? `<div class="tile"><div class="n">${hm(oggi)}</div><div class="l">Oggi</div></div>` : ""}<div class="tile"><div class="n">${hm(b.min)}</div><div class="l">Totale del mese</div></div><div class="tile"><div class="n">${Object.keys(b.giorni).length}</div><div class="l">Giorni lavorati</div></div>${b.extra ? `<div class="tile"><div class="n">${hm(b.extra)}</div><div class="l">Oltre 8 ore/giorno</div></div>` : ""}</div>
-  <p class="m">Le ore arrivano dai rapportini che invii (inizio, fine e pausa). Se lavorate in due con orari diversi, ognuno segna le sue ore nel rapportino.</p>
-  ${rs.length ? dettaglioOre(rs) : empty("Nessun rapportino in questo mese.")}`;
+  <div class="tiles" style="margin-bottom:10px">${ui.oreM === today().slice(0, 7) ? `<div class="tile"><div class="n">${hm(oggi)}</div><div class="l">Oggi</div></div>` : ""}<div class="tile"><div class="n">${hm(b.min)}</div><div class="l">Ore lavorate nel mese</div></div><div class="tile"><div class="n">${Object.values(b.giorni).filter(Boolean).length}</div><div class="l">Giorni lavorati</div></div>${b.extra ? `<div class="tile"><div class="n">${hm(b.extra)}</div><div class="l">Oltre 8 ore/giorno</div></div>` : ""}${ASSENZE.filter(a => b.ass[a]).map(a => `<div class="tile"><div class="n">${durAss(b.ass[a])}</div><div class="l">${tipoOre(a)[1]} ${a}</div></div>`).join("")}</div>
+  <button class="btn pri big" data-orelibnew="" style="margin-bottom:10px">+ Segna ore, ferie o permesso</button>
+  <p class="m">Le ore dei lavori dai clienti arrivano da sole dai rapportini. Qui segni il resto: magazzino, fornitori, corsi, ferie, permessi, malattia.</p>
+  ${rs.length ? dettaglioOre(rs) : empty("Nessuna ora segnata in questo mese.")}`;
 }
 function vInterventi(){
   if (ui.intF === "ore") return vOre();
@@ -4367,7 +4439,7 @@ const ALTRO = () => [
   ...(puoEliminare() ? [["cestino", "🗑️", "Cestino e registro", "Ripristina ciò che è stato eliminato, chi ha cambiato cosa"]] : [])
 ];
 // ---- 🗑️ Cestino e registro delle modifiche (solo ufficio e amministratore) ----
-const NOMI_COL = {clienti: "Cliente", impianti: "Impianto", interventi: "Intervento", preventivi: "Preventivo", fatture: "Fattura", magazzino: "Articolo", dico: "DiCo", commesse: "Commessa", contratti: "Contratto", ordini: "Ordine", contabilita: "Fattura fornitore", crediti: "Da incassare", fgasOps: "Intervento F-gas", detrazioni: "Pratica detrazione", mezzi: "Mezzo", attrezzature: "Attrezzatura", impostazioni: "Impostazioni", config: "Impostazioni"};
+const NOMI_COL = {clienti: "Cliente", impianti: "Impianto", interventi: "Intervento", preventivi: "Preventivo", fatture: "Fattura", magazzino: "Articolo", dico: "DiCo", commesse: "Commessa", contratti: "Contratto", ordini: "Ordine", contabilita: "Fattura fornitore", crediti: "Da incassare", fgasOps: "Intervento F-gas", detrazioni: "Pratica detrazione", mezzi: "Mezzo", attrezzature: "Attrezzatura", oreLibere: "Ore / ferie / permesso", impostazioni: "Impostazioni", config: "Impostazioni"};
 const AZ = {crea: ["➕", "ha creato", "ok"], modifica: ["✏️", "ha modificato", ""], elimina: ["🗑️", "ha eliminato", "bad"], ripristina: ["♻️", "ha ripristinato", "ok"]};
 let CEST = {cestino: null, registro: null, carica: false};
 async function caricaCestino(){
@@ -4595,7 +4667,7 @@ document.addEventListener("click", async e => {
   if (a === "lnew") formListinoItem();
   if (a === "magimp") formImportMag();
   if (a === "magsc") formScontoMassivo();
-  if (a === "orecsv") { const rs = righeOre(ui.oreM, ui.oreTec || ""); saveCsv(`Ore tecnici ${ui.oreM}${ui.oreTec ? " " + ui.oreTec : ""}.csv`, ["Data", "Tecnico", "Cliente", "Tipo", "Inizio", "Fine", "Pausa min", "Ore lavorate", "Viaggio min", "Lavori", "Materiali", "Esito"], rs.map(o => { const x = o.x, r = x.rapportino; return [x.data, o.tec, cliName(x.clienteId), x.tipo || "", r.inizio, r.fine, r.pausaMin || 0, String(r2(o.min / 60)).replace(".", ","), r.viaggioMin || 0, (r.lavori || []).join(", "), (r.materiali || []).map(m => m.qta + " " + m.descrizione).join(", "), r.esito || ""]; })); }
+  if (a === "orecsv") { const rs = righeOre(ui.oreM, ui.oreTec || ""); const h = o => String(r2(o.min / 60)).replace(".", ","); saveCsv(`Ore tecnici ${ui.oreM}${ui.oreTec ? " " + ui.oreTec : ""}.csv`, ["Data", "Tecnico", "Cliente", "Tipo", "Inizio", "Fine", "Pausa min", "Ore lavorate", "Viaggio min", "Ferie/permesso/malattia (ore)", "Lavori / descrizione", "Materiali", "Esito"], rs.map(o => { if (o.lib) return [o.data, o.tec, "", o.tipo, "", "", "", o.lavoro ? h(o) : "", 0, o.lavoro ? "" : h(o), o.lib.descrizione || "", "", ""]; const x = o.x, r = x.rapportino; return [x.data, o.tec, cliName(x.clienteId), x.tipo || "", r.inizio, r.fine, r.pausaMin || 0, h(o), r.viaggioMin || 0, "", [...(r.lavori || []), r.altro].filter(Boolean).join(", "), (r.materiali || []).map(m => m.qta + " " + m.descrizione).join(", "), r.esito || ""]; })); }
   if (a === "expcli") saveCsv("Clienti iTeam.csv", ["Nome", "Tipo", "Telefono", "Email", "Indirizzo", "CAP", "Città", "P.IVA/CF", "Referente", "Note"], clientiVisibili().map(c => [c.nome, c.tipo, c.telefono, c.email, c.indirizzo, c.cap, c.citta, c.piva, c.referente, c.note]));
   if (a === "expint") saveCsv("Interventi iTeam.csv", ["Data", "Ora", "Cliente", "Tipo", "Tecnico", "Stato", "Descrizione", "Ore lavorate", "Esito"], S.interventi.slice().sort(sortInt).map(x => [x.data, x.ora, cliName(x.clienteId), x.tipo, tecTxt(x), x.stato, x.descrizione, x.rapportino ? String(r2(num(x.rapportino.minutiLavoro) / 60)).replace(".", ",") : "", x.rapportino?.esito || ""]));
   if (a === "expmag") saveCsv("Magazzino iTeam.csv", ["Codice", "Descrizione", "Fornitore", "Categoria", "Serie", "Quantità", "Unità", "Scorta minima", "Prezzo listino", "Sconto %", "Prezzo cliente", "Costo"], S.magazzino.map(m => [m.codice, m.descrizione, m.fornitore, m.categoria, m.serie, m.quantita, m.unita, m.scortaMinima, m.prezzoListino, m.sconto, m.prezzoVendita, m.prezzoAcquisto].map(v => typeof v === "number" ? String(v).replace(".", ",") : v)));

@@ -21,6 +21,10 @@ const {chromium} = require('playwright');
       x4:{clienteId:'c1', data:oggi, tipo:'Installazione', tecnico:'Mario Rossi', tecnico2:'Luca Bianchi', stato:'Completato', rapportino:{inizio:'14:00', fine:'18:30', pausaMin:0, minutiLavoro:270, minutiTec:{'Mario Rossi':270, 'Luca Bianchi':150}, lavori:['x'], materiali:[], esito:'Risolto', inviatoIl:T.toISOString(), inviatoDa:'Mario Rossi'}},
       x5:{clienteId:'c1', data:add(-1) < oggi.slice(0,7) + '-01' ? oggi : add(-1), tipo:'Riparazione', tecnico:'Luca Bianchi', stato:'Completato', rapportino:{inizio:'09:00', fine:'12:00', minutiLavoro:180, lavori:['x'], materiali:[], esito:'Risolto', inviatoIl:T.toISOString(), inviatoDa:'Luca Bianchi'}},
       x6:{clienteId:'c1', data:oggi, ora:'15:00', tipo:'Riparazione', tecnico:'Mario Rossi', tecnico2:'Luca Bianchi', stato:'In corso'}},
+    oreLibere: {
+      l1:{tecnico:'Luca Bianchi', tipo:'Ferie', data:oggi.slice(0,7)+'-02', dataFine:oggi.slice(0,7)+'-06', minuti:480, descrizione:'Ferie', da:'Irene', uid:''},
+      l2:{tecnico:'Mario Rossi', tipo:'Permesso', data:oggi, minuti:120, descrizione:'Visita', da:'Mario Rossi', uid:'u2'},
+      l3:{tecnico:'Luca Bianchi', tipo:'Altro lavoro', data:oggi, minuti:90, descrizione:'Magazzino', da:'Luca', uid:'u9'}},
     fatture: {f1:{clienteId:'c1', numero:'12/2026', data:add(-60), scadenza:add(-30), imponibile:500, iva:'22', interventoId:'x1'}},
     preventivi: {p1:{clienteId:'c1', numero:'3/2026', data:oggi, stato:'Accettato', iva:'22', righe:[{descrizione:'ER-RAME38 - Tubo rame 3/8 isolato 9 mm', codice:'ER-RAME38', qta:10, prezzo:6, costo:3.2}, {descrizione:'Manodopera tecnico (a ore) (4 h × € 45,00)', qta:4, prezzo:45, unita:'ore'}]}},
     fgasOps: {o1:{impiantoId:'i1', clienteId:'c1', data:add(-26), operazione:'Controllo perdite', gas:'R410A', perdite:'no', tecnico:'Mario Rossi', comunicato:false}},
@@ -64,6 +68,16 @@ const {chromium} = require('playwright');
   await t.evaluate(() => document.querySelectorAll('.ov').forEach(o => o.remove()));
   await t.click('[data-tecf="ore"]'); await t.waitForTimeout(300);
   console.log('MARIO DOPO:', (await txt(t, '#app')).slice(0, 200));
+  // ufficio segna malattia per Luca
+  await p.click('[data-orelibnew=""]'); await p.waitForTimeout(300);
+  await p.selectOption('.ov [data-k="tecnico"]', 'Luca Bianchi'); await p.selectOption('.ov [data-k="tipo"]', 'Malattia'); await p.waitForTimeout(200);
+  await p.check('.ov [data-k="giornata"]'); await p.waitForTimeout(200); await p.click('.ov button[type=submit]'); await p.waitForTimeout(600);
+  console.log('UFF DOPO:', (await txt(p, '#app')).match(/GIORNO PER GIORNO.*/)?.[0].slice(0, 700)); await p.screenshot({path:'/home/claude/work/ore-uff2.png', fullPage:true});
+  // tecnico segna 2 ore di magazzino
+  await t.click('[data-orelibnew=""]'); await t.waitForTimeout(300);
+  await t.fill('.ov [data-k="ore"]', '2'); await t.fill('.ov [data-k="descrizione"]', 'Giro fornitori'); await t.click('.ov button[type=submit]'); await t.waitForTimeout(600);
+  console.log('TEC SALVATO:', JSON.stringify(Object.values(await t.evaluate(() => window.__store.oreLibere)).filter(o => o.descrizione === 'Giro fornitori')));
+  console.log('MARIO FINE:', (await txt(t, '#app')).slice(0, 500)); await t.screenshot({path:'/home/claude/work/ore-tec2.png', fullPage:true});
   console.log('ERRORI:', errs.length ? errs : 'nessuno');
   await b.close();
 })();

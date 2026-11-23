@@ -65,6 +65,9 @@ in italiano semplice, senza gergo tecnico.
 - ⏱ Ore tecnici: rapportino `minutiLavoro` (fine − inizio − pausa) e, se due tecnici con orari diversi (spunta `stessoOrario` tolta),
   `minutiTec = {nome: minuti}`. `oreRap(x)`/`righeOre(mese, tec)`/`totaliOre()`: Interventi → Ore tecnici (`vOre`: totale mese per tecnico,
   `tabellaOre` giorni × tecnici con rosso oltre `ORE_GIORNO` = 8 h, dettaglio con `ui.oreTec`) e per il tecnico la scheda ⏱ Le mie ore (`vMieOre`). Prova: `test/prova-ore.js`.
+  Ore libere `oreLibere/{id}` = {tecnico, uid, tipo (`TIPI_ORE`: Altro lavoro = ora lavorata; Ferie/Permesso/Malattia = assenze), data, dataFine
+  (più giorni, `giorniTra()` salta sabato e domenica), minuti al giorno, descrizione, da}: `formOreLibere()`, `caricaOreLibere()` (ufficio tutte; tecnico solo
+  `where uid` + `where tecnico` = `mioTecnico()`, le regole `mieOre()` lo impongono; cancella solo l'ufficio).
 - Calendario: toccando un giorno (vista Mese) si apre `giornoPopup(g)` con gli appuntamenti; i tocchi dentro passano alla pagina.
 - Trasferimento dal calendario iPhone (solo titolare, `vTrasfCal()` dal Calendario): il titolare incolla il link del
   "Calendario pubblico" iCloud in `calendariFeed/impostazioni.icloudUrl`; `scripts/calendari.js` (workflow avvisi, ogni 10 min)
