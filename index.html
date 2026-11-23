@@ -222,6 +222,10 @@ nav.tabs button.on svg{background:var(--pri-2);border-radius:12px;padding:3px 10
 .hero{background:var(--pri);color:#fff;border-radius:24px;padding:16px 18px;margin:4px 0 14px;display:flex;align-items:center;gap:12px}
 .hero .hc{font-size:13px;opacity:.9}.hero .hd{font-size:20px;font-weight:800;line-height:1.2}
 .hero .hn{margin-left:auto;background:var(--cor);border-radius:18px;padding:8px 12px;text-align:center;font-weight:800;font-size:22px;line-height:1}.hero .hn small{display:block;font-size:11px;font-weight:700;margin-top:2px}
+.oretab{width:100%;border-collapse:collapse;font-size:14px;background:var(--card);border-radius:12px;overflow:hidden}
+.oretab th,.oretab td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.oretab th:first-child,.oretab td:first-child{text-align:left}.oretab thead th{font-size:12px;color:var(--mute)}
+.oretab td.over{color:var(--bad);font-weight:800}.oretab tfoot tr:first-child td{font-weight:800;border-top:2px solid var(--ink)}
 </style>
 </head>
 <body>
@@ -722,7 +726,7 @@ function formRapportino(x){
   const already = !!r.scaricato;
   const v0 = {inizio: r.inizio || x.inizioReale || x.ora || "", fine: r.fine || nowTime(), pausaMin: r.pausaMin ?? "", viaggioMin: r.viaggioMin ?? "",
     lavori: r.lavori || [], altro: r.altro || "", materiali: r.materiali || [], esito: r.esito || "Risolto",
-    note: r.note || "", firmatoDa: r.firmatoDa || "", firma: r.firma || "", clienteAssente: !!r.clienteAssente, emailCliente: r.emailCliente || byId("clienti", x.clienteId)?.email || "", fgOp: (r.fgas || {}).operazione || "", fgCar: (r.fgas || {}).kgCaricati || "", fgRec: (r.fgas || {}).kgRecuperati || "", fgPerd: (r.fgas || {}).perdite || "", aggiornaMan: imp ? (x.tipo === "Manutenzione") : false};
+    note: r.note || "", firmatoDa: r.firmatoDa || "", firma: r.firma || "", clienteAssente: !!r.clienteAssente, emailCliente: r.emailCliente || byId("clienti", x.clienteId)?.email || "", fgOp: (r.fgas || {}).operazione || "", fgCar: (r.fgas || {}).kgCaricati || "", fgRec: (r.fgas || {}).kgRecuperati || "", fgPerd: (r.fgas || {}).perdite || "", stessoOrario: !r.minutiTec, ...Object.fromEntries(tecDi(x).map((n, i) => { const k = r.minutiTec && Object.keys(r.minutiTec).find(t => sameTec(t, n)); return ["oreT" + i, k != null ? String(r2(num(r.minutiTec[k]) / 60)).replace(".", ",") : ""]; })), aggiornaMan: imp ? (x.tipo === "Manutenzione") : false};
   openForm({ title: "Rapportino · " + cliName(x.clienteId),
     intro: `<p class="m" style="margin-top:-6px">${esc(fdl(x.data))}${imp ? " · " + esc(impName(imp)) : ""}</p>${commVisibili(x.clienteId).length ? commBox(x.clienteId) : ""}${mediaBox(x)}`,
     values: v0, saveLabel: "Invia all'ufficio",
@@ -732,6 +736,9 @@ function formRapportino(x){
       {k:"pausaMin", label:"Pausa (minuti)", type:"number", half:true},
       {k:"viaggioMin", label:"Viaggio (minuti)", type:"number", half:true},
       {k:"durata", type:"info", html: v => { const m = minsBetween(v.inizio, v.fine) - num(v.pausaMin); return v.inizio && v.fine ? `Ore lavorate: <b>${hm(m)}</b>${num(v.viaggioMin) ? ` · viaggio ${hm(num(v.viaggioMin))}` : ""}` : "Inserisci inizio e fine"; }},
+      ...(tecDi(x).length > 1 ? [{k:"stessoOrario", label:`${tecTxt(x)}: avete lavorato con lo stesso orario`, type:"checkbox", rerender:true},
+        ...tecDi(x).map((n, i) => ({k:"oreT" + i, label:`Ore lavorate da ${n}`, type:"number", half:true, ph:"es. 3,5", show: v => !v.stessoOrario})),
+        {k:"oreTinfo", type:"info", show: v => !v.stessoOrario, html: () => "Scrivi le ore di ognuno (es. 3,5 = tre ore e mezza). Servono per il conteggio delle ore del mese."}] : []),
       {k:"lavori", label:"Lavori eseguiti (seleziona)", type:"checks", options: CFG.lavori},
       {k:"altro", label:"Altri lavori / dettagli", type:"textarea", ph:"Descrivi eventuali altri lavori"},
       {k:"materiali", label:"Materiali utilizzati", type:"rows", addLabel:"Aggiungi materiale", newRow: () => ({articoloId:"", descrizione:"", qta:1}),
@@ -754,7 +761,13 @@ function formRapportino(x){
         return {articoloId: m.articoloId || "", descrizione: a ? a.descrizione : m.descrizione, codice: a?.codice || "", qta: num(m.qta) || 1, unita: a?.unita || "pz", prezzo: a ? num(a.prezzoVendita) : 0, costo: a ? num(a.prezzoAcquisto) : 0};
       });
       const minuti = Math.max(0, minsBetween(v.inizio, v.fine) - num(v.pausaMin));
-      const rap = {inizio: v.inizio, fine: v.fine, pausaMin: num(v.pausaMin), viaggioMin: num(v.viaggioMin), minutiLavoro: minuti,
+      let minutiTec = null;
+      if (tecDi(x).length > 1 && !v.stessoOrario) {
+        minutiTec = Object.fromEntries(tecDi(x).map((n, i) => [n, Math.round(num(v["oreT" + i]) * 60)]));
+        if (!Object.values(minutiTec).some(m => m > 0)) { toast("Scrivi le ore lavorate da ognuno, oppure spunta \"stesso orario\""); throw new Error("ore"); }
+        if (Object.values(minutiTec).some(m => m > 16 * 60)) { toast("Controlla le ore: più di 16 ore in un lavoro?"); throw new Error("ore"); }
+      }
+      const rap = {inizio: v.inizio, fine: v.fine, pausaMin: num(v.pausaMin), viaggioMin: num(v.viaggioMin), minutiLavoro: minuti, minutiTec,
         lavori: v.lavori, altro: v.altro, materiali, esito: v.esito, note: v.note, firmatoDa: v.clienteAssente ? "" : v.firmatoDa, firma: v.clienteAssente ? "" : v.firma, clienteAssente: !!v.clienteAssente, firmatoIl: v.clienteAssente ? "" : new Date().toISOString(),
         inviatoIl: new Date().toISOString(), inviatoDa: ui.tecnico || x.tecnico || "", scaricato: true};
       const fg = await salvaFgasRap(x, imp, v, r); if (fg) rap.fgas = fg; else if (r.fgas) rap.fgas = r.fgas;
@@ -1845,20 +1858,73 @@ function vOggi(){
   <p class="m" style="margin-top:28px;text-align:center">${esc(AZIENDA.nome)} · P.IVA ${esc(AZIENDA.piva)} · SDI ${esc(AZIENDA.sdi)}<br>Sede legale: ${esc(AZIENDA.legale)}<br>Sede operativa: ${esc(AZIENDA.operativa)}<br>Tel. ${esc(AZIENDA.tel)} · ${esc(AZIENDA.email)}</p>`;
 }
 
+// ---- ⏱ Ore dei tecnici: dal rapportino, divise per tecnico e per giorno, con totale del mese ----
+// rapportino.minutiLavoro = ore di tutti; rapportino.minutiTec = {nome: minuti} quando i tecnici hanno fatto orari diversi
+const ORE_GIORNO = 8 * 60; // oltre le 8 ore in un giorno = straordinario
+const hmc = m => { m = Math.max(0, Math.round(num(m))) || 0; return Math.floor(m / 60) + ":" + pad(m % 60); };
+function oreRap(x){
+  const r = x.rapportino || {}, ks = tecDi(x).length ? tecDi(x) : [r.inviatoDa || "—"];
+  return ks.map(k => { const mt = r.minutiTec && Object.keys(r.minutiTec).find(n => sameTec(n, k)); return {tec: k, min: mt != null ? num(r.minutiTec[mt]) : num(r.minutiLavoro), via: num(r.viaggioMin)}; });
+}
+function righeOre(mese, tec){
+  const out = [];
+  S.interventi.filter(x => x.rapportino && (x.data || "").startsWith(mese)).forEach(x => oreRap(x).forEach(o => { if (!tec || sameTec(o.tec, tec)) out.push({...o, data: x.data, x}); }));
+  return out.sort((a, b) => (a.data + (a.x.rapportino.inizio || "")).localeCompare(b.data + (b.x.rapportino.inizio || "")));
+}
+// totali per tecnico: {tec: {min, via, giorni: {data: min}, n}}
+function totaliOre(righe){
+  const by = {};
+  righe.forEach(r => { const b = by[r.tec] = by[r.tec] || {min: 0, via: 0, n: 0, giorni: {}}; b.min += r.min; b.via += r.via; b.n++; b.giorni[r.data] = (b.giorni[r.data] || 0) + r.min; });
+  Object.values(by).forEach(b => { b.extra = Object.values(b.giorni).reduce((s, m) => s + Math.max(0, m - ORE_GIORNO), 0); });
+  return by;
+}
+const giornoCorto = d => new Date(d + "T12:00:00").toLocaleDateString("it-IT", {weekday: "short", day: "numeric"});
+const meseNome = m => new Date(m + "-15T12:00:00").toLocaleDateString("it-IT", {month: "long", year: "numeric"});
+const navMese = () => `<div class="calnav"><button class="btn sm" data-orem="-1">‹</button><b>${esc(meseNome(ui.oreM))}</b><button class="btn sm" data-orem="1">›</button></div>`;
+// tabella: una riga per giorno, una colonna per tecnico, in fondo il totale del mese
+function tabellaOre(righe){
+  const by = totaliOre(righe), tecs = Object.keys(by).sort((a, b) => a.localeCompare(b)), giorni = [...new Set(righe.map(r => r.data))].sort();
+  const td = m => `<td class="${m > ORE_GIORNO ? "over" : ""}">${m ? hmc(m) : `<span class="m">–</span>`}</td>`;
+  return `<div style="overflow-x:auto;margin-bottom:12px"><table class="oretab"><thead><tr><th>Giorno</th>${tecs.map(t => `<th>${esc(t.split(/\s+/)[0])}</th>`).join("")}<th>Totale</th></tr></thead><tbody>
+  ${giorni.map(g => { const tot = tecs.reduce((s, t) => s + (by[t].giorni[g] || 0), 0); return `<tr><td>${esc(giornoCorto(g))}</td>${tecs.map(t => td(by[t].giorni[g] || 0)).join("")}<td><b>${hmc(tot)}</b></td></tr>`; }).join("")}
+  </tbody><tfoot><tr><td>Totale mese</td>${tecs.map(t => `<td>${hmc(by[t].min)}</td>`).join("")}<td>${hmc(tecs.reduce((s, t) => s + by[t].min, 0))}</td></tr>
+  <tr class="m"><td>Giorni lavorati</td>${tecs.map(t => `<td>${Object.keys(by[t].giorni).length}</td>`).join("")}<td></td></tr>
+  ${tecs.some(t => by[t].extra) ? `<tr class="m"><td>Oltre 8 ore/giorno</td>${tecs.map(t => `<td>${by[t].extra ? hmc(by[t].extra) : "–"}</td>`).join("")}<td>${hmc(tecs.reduce((s, t) => s + by[t].extra, 0))}</td></tr>` : ""}
+  <tr class="m"><td>Viaggio</td>${tecs.map(t => `<td>${hmc(by[t].via)}</td>`).join("")}<td>${hmc(tecs.reduce((s, t) => s + by[t].via, 0))}</td></tr></tfoot></table></div>
+  <p class="m" style="margin-top:-4px">In rosso i giorni con più di 8 ore. Le ore sono quelle lavorate (fine meno inizio, meno la pausa); il viaggio è a parte.</p>`;
+}
+// dettaglio giorno per giorno di un tecnico (lavori, orari, totale del giorno)
+function dettaglioOre(righe){
+  const giorni = [...new Set(righe.map(r => r.data))].sort().reverse();
+  return giorni.map(g => { const rs = righe.filter(r => r.data === g), tot = rs.reduce((s, r) => s + r.min, 0);
+    return `<div class="card"><div class="row"><b>${esc(fdl(g))}</b><span class="sp"></span><span class="chip ${tot > ORE_GIORNO ? "warn" : "ok"}">${hm(tot)}</span></div>
+    ${rs.map(r => { const rp = r.x.rapportino; return `<div class="row tap" data-int="${r.x.id}" style="gap:8px;padding:6px 0;border-top:1px solid var(--line)"><span class="sp" style="min-width:0"><b>${esc(cliName(r.x.clienteId))}</b><br><span class="m">${esc([r.x.tipo, rp.inizio && rp.fine && rp.inizio + "–" + rp.fine, num(rp.pausaMin) && "pausa " + rp.pausaMin + " min", r.via && "viaggio " + hm(r.via), rp.minutiTec && "ore proprie"].filter(Boolean).join(" · "))}</span></span><b>${hm(r.min)}</b></div>`; }).join("")}</div>`; }).join("");
+}
 function vOre(){
   if (!ui.oreM) ui.oreM = today().slice(0, 7);
-  const rows = S.interventi.filter(x => x.rapportino && (x.data || "").startsWith(ui.oreM));
-  const by = {};
-  rows.forEach(x => { const ks = tecDi(x).length ? tecDi(x) : [x.rapportino.inviatoDa || "—"]; ks.forEach((k, i) => { const b = by[k] = by[k] || {n: 0, lav: 0, via: 0, mat: 0, giorni: new Set()}; b.n++; b.lav += num(x.rapportino.minutiLavoro); b.via += num(x.rapportino.viaggioMin); if (!i) b.mat += (x.rapportino.materiali || []).reduce((s, m) => s + num(m.prezzo) * num(m.qta), 0); b.giorni.add(x.data); }); });
-  const ks = Object.keys(by).sort();
-  const mName = new Date(ui.oreM + "-15T12:00:00").toLocaleDateString("it-IT", {month: "long", year: "numeric"});
-  const tot = ks.reduce((s, k) => s + by[k].lav, 0);
-  return `<h2>Interventi</h2>
-  <div class="seg">${[["oggi","Oggi"],["prossimi","Prossimi"],["verifica","Da verificare"],["aperti","Non chiusi"],["completati","Completati"],["tutti","Tutti"],["ore","Ore tecnici"]].map(([k, l]) => `<button class="${ui.intF === k ? "on" : ""}" data-intf="${k}">${l}</button>`).join("")}</div>
-  <div class="calnav"><button class="btn sm" data-orem="-1">‹</button><b>${esc(mName)}</b><button class="btn sm" data-orem="1">›</button></div>
-  <div class="tiles" style="margin-bottom:10px"><div class="tile"><div class="n">${rows.length}</div><div class="l">Rapportini nel mese</div></div><div class="tile"><div class="n">${hm(tot)}</div><div class="l">Ore lavorate totali</div></div></div>
-  ${ks.length ? ks.map(k => { const b = by[k]; return `<div class="card"><div class="row"><span class="t">👷 ${esc(k)}</span><span class="sp"></span><b>${hm(b.lav)}</b></div><div class="m">${b.n} ${b.n === 1 ? "intervento" : "interventi"} · ${b.giorni.size} ${b.giorni.size === 1 ? "giorno lavorato" : "giorni lavorati"} · viaggio ${hm(b.via)}${b.mat ? " · materiali " + eur(b.mat) : ""}</div><div class="m">Valore manodopera: ${eur(b.lav / 60 * CFG.costoOra)} a ore · ${eur(b.giorni.size * CFG.costoGiornata)} a giornata</div></div>`; }).join("") : empty("Nessun rapportino in questo mese.")}
-  ${rows.length ? `<button class="btn big" data-a="orecsv">⬇ Esporta il dettaglio del mese (Excel)</button>` : ""}`;
+  const righe = righeOre(ui.oreM), by = totaliOre(righe), ks = Object.keys(by).sort((a, b) => a.localeCompare(b));
+  const tot = ks.reduce((s, k) => s + by[k].min, 0), extra = ks.reduce((s, k) => s + by[k].extra, 0), nRap = new Set(righe.map(r => r.x.id)).size;
+  const seg = `<div class="seg">${[["oggi","Oggi"],["prossimi","Prossimi"],["verifica","Da verificare"],["aperti","Non chiusi"],["completati","Completati"],["tutti","Tutti"],["ore","Ore tecnici"]].map(([k, l]) => `<button class="${ui.intF === k ? "on" : ""}" data-intf="${k}">${l}</button>`).join("")}</div>`;
+  if (ui.oreTec) {
+    const rs = righe.filter(r => sameTec(r.tec, ui.oreTec)), b = totaliOre(rs)[rs[0]?.tec] || {min: 0, via: 0, extra: 0, giorni: {}};
+    return `<h2>Interventi</h2>${seg}<button class="btn sm" data-oretec="">← Tutti i tecnici</button><h3>👷 ${esc(ui.oreTec)}</h3>${navMese()}
+    <div class="tiles" style="margin-bottom:10px"><div class="tile"><div class="n">${hm(b.min)}</div><div class="l">Ore nel mese</div></div><div class="tile"><div class="n">${Object.keys(b.giorni).length}</div><div class="l">Giorni lavorati</div></div><div class="tile"><div class="n">${hm(b.extra)}</div><div class="l">Oltre 8 ore/giorno</div></div></div>
+    ${rs.length ? dettaglioOre(rs) : empty("Nessun rapportino in questo mese.")}`;
+  }
+  return `<h2>Interventi</h2>${seg}${navMese()}
+  <div class="tiles" style="margin-bottom:10px"><div class="tile"><div class="n">${nRap}</div><div class="l">Rapportini nel mese</div></div><div class="tile"><div class="n">${hm(tot)}</div><div class="l">Ore lavorate totali</div></div>${extra ? `<div class="tile"><div class="n" style="color:var(--warn)">${hm(extra)}</div><div class="l">Oltre 8 ore/giorno</div></div>` : ""}</div>
+  ${ks.length ? `<h3>Totale del mese per tecnico</h3>${ks.map(k => { const b = by[k], g = Object.keys(b.giorni).length; return `<div class="card tap" data-oretec="${esc(k)}"><div class="row"><span class="t">👷 ${esc(k)}</span><span class="sp"></span><b>${hm(b.min)}</b></div><div class="m">${b.n} ${b.n === 1 ? "intervento" : "interventi"} · ${g} ${g === 1 ? "giorno lavorato" : "giorni lavorati"} · media ${hm(g ? b.min / g : 0)} al giorno · viaggio ${hm(b.via)}${b.extra ? " · oltre 8 ore: " + hm(b.extra) : ""}</div><div class="m">Valore manodopera: ${eur(b.min / 60 * CFG.costoOra)} a ore · ${eur(g * CFG.costoGiornata)} a giornata · tocca per il dettaglio</div></div>`; }).join("")}
+  <h3>Giorno per giorno</h3>${tabellaOre(righe)}
+  <button class="btn big" data-a="orecsv">⬇ Esporta il dettaglio del mese (Excel)</button>` : empty("Nessun rapportino in questo mese.")}`;
+}
+// pagina del tecnico: le sue ore del mese, giorno per giorno
+function vMieOre(me){
+  if (!ui.oreM) ui.oreM = today().slice(0, 7);
+  const rs = righeOre(ui.oreM, me), b = totaliOre(rs)[rs[0]?.tec] || {min: 0, via: 0, extra: 0, giorni: {}}, oggi = rs.filter(r => r.data === today()).reduce((s, r) => s + r.min, 0);
+  return `${navMese()}
+  <div class="tiles" style="margin-bottom:10px">${ui.oreM === today().slice(0, 7) ? `<div class="tile"><div class="n">${hm(oggi)}</div><div class="l">Oggi</div></div>` : ""}<div class="tile"><div class="n">${hm(b.min)}</div><div class="l">Totale del mese</div></div><div class="tile"><div class="n">${Object.keys(b.giorni).length}</div><div class="l">Giorni lavorati</div></div>${b.extra ? `<div class="tile"><div class="n">${hm(b.extra)}</div><div class="l">Oltre 8 ore/giorno</div></div>` : ""}</div>
+  <p class="m">Le ore arrivano dai rapportini che invii (inizio, fine e pausa). Se lavorate in due con orari diversi, ognuno segna le sue ore nel rapportino.</p>
+  ${rs.length ? dettaglioOre(rs) : empty("Nessun rapportino in questo mese.")}`;
 }
 function vInterventi(){
   if (ui.intF === "ore") return vOre();
@@ -2990,8 +3056,8 @@ function vTecnico(){
   };
   return `<h2>Ciao ${esc(me)}</h2>
   ${boxNotifiche()}
-  <div class="seg segwrap"><button class="${ui.tecF === "oggi" ? "on" : ""}" data-tecf="oggi">Da fare oggi (${F.oggi.filter(x => x.stato !== "Completato").length})</button><button class="${ui.tecF === "prossimi" ? "on" : ""}" data-tecf="prossimi">Prossimi (${F.prossimi.length})</button><button class="${ui.tecF === "cal" ? "on" : ""}" data-tecf="cal">Calendario</button><button class="${ui.tecF === "cli" ? "on" : ""}" data-tecf="cli">Clienti</button><button class="${ui.tecF === "inviati" ? "on" : ""}" data-tecf="inviati">Inviati</button><button class="${ui.tecF === "furgone" ? "on" : ""}" data-tecf="furgone">🚐 Furgone</button></div>
-  ${ui.tecF === "cal" ? vCalendario(me) : ui.tecF === "cli" ? vTecClienti() : ui.tecF === "furgone" ? vTecFurgone() : `
+  <div class="seg segwrap"><button class="${ui.tecF === "oggi" ? "on" : ""}" data-tecf="oggi">Da fare oggi (${F.oggi.filter(x => x.stato !== "Completato").length})</button><button class="${ui.tecF === "prossimi" ? "on" : ""}" data-tecf="prossimi">Prossimi (${F.prossimi.length})</button><button class="${ui.tecF === "cal" ? "on" : ""}" data-tecf="cal">Calendario</button><button class="${ui.tecF === "cli" ? "on" : ""}" data-tecf="cli">Clienti</button><button class="${ui.tecF === "inviati" ? "on" : ""}" data-tecf="inviati">Inviati</button><button class="${ui.tecF === "furgone" ? "on" : ""}" data-tecf="furgone">🚐 Furgone</button><button class="${ui.tecF === "ore" ? "on" : ""}" data-tecf="ore">⏱ Le mie ore</button></div>
+  ${ui.tecF === "cal" ? vCalendario(me) : ui.tecF === "cli" ? vTecClienti() : ui.tecF === "furgone" ? vTecFurgone() : ui.tecF === "ore" ? vMieOre(me) : `
   ${ui.tecF === "prossimi" && list.length ? `<button class="btn" style="width:100%;margin-bottom:10px" data-ics="all">📅 Metti tutti i miei appuntamenti nel calendario del telefono</button>` : ""}
   ${list.length ? (ui.tecF === "prossimi" ? groupByDate(list, {noTec: true, addr: true}) : list.map(x => intCard(x, {noTec: true, addr: true, data: x.data !== t && !isCant(x), giorno: ui.tecF === "oggi" ? t : undefined, actions: ui.tecF === "inviati" ? "" : act(x)})).join("")) : empty(ui.tecF === "oggi" ? "Nessun lavoro assegnato per oggi." : "Niente qui.")}
   ${ui.tecF === "oggi" && free.length ? `<h3>Da assegnare</h3>${free.map(x => intCard(x, {noTec: true, data: true, addr: true, actions: `<div style="margin-top:8px"><button class="btn sm" data-take="${x.id}">Prendo io</button></div>`})).join("")}` : ""}
@@ -4448,7 +4514,7 @@ document.addEventListener("change", e => {
 });
 document.addEventListener("click", async e => {
   if (e.target.closest(".ov") || e.target.closest("a[href]")) return;
-  const el = e.target.closest("[data-tab],[data-a],[data-int],[data-cli],[data-imp],[data-prev],[data-fat],[data-paga],[data-art],[data-mq],[data-intf],[data-doc],[data-fatf],[data-cat],[data-go],[data-scroll],[data-prog],[data-mode],[data-tecf],[data-start],[data-rap],[data-take],[data-cald],[data-calv],[data-calmv],[data-calnew],[data-tcli],[data-cf],[data-bundle],[data-scs],[data-dico],[data-orem],[data-ics],[data-push]");
+  const el = e.target.closest("[data-tab],[data-a],[data-int],[data-cli],[data-imp],[data-prev],[data-fat],[data-paga],[data-art],[data-mq],[data-intf],[data-doc],[data-fatf],[data-cat],[data-go],[data-scroll],[data-prog],[data-mode],[data-tecf],[data-start],[data-rap],[data-take],[data-cald],[data-calv],[data-calmv],[data-calnew],[data-tcli],[data-cf],[data-bundle],[data-scs],[data-dico],[data-orem],[data-oretec],[data-ics],[data-push]");
   if (!el) return; const d = el.dataset;
   if (d.tab) return go(d.tab);
   if (d.mode) {
@@ -4493,6 +4559,7 @@ document.addEventListener("click", async e => {
   }
   if (d.calnew) return formIntervento({data: d.calnew});
   if (d.dico) return detDico(byId("dico", d.dico));
+  if (d.oretec !== undefined) { ui.oreTec = d.oretec; return render(); }
   if (d.orem) { const k = Number(d.orem); ui.oreM = addMonths((ui.oreM || today().slice(0, 7)) + "-15", k).slice(0, 7); return render(); }
   if (d.scs) { e.stopPropagation(); return stepSconto(d.scs, Number(d.d)); }
   if (d.bundle) { el.disabled = true; await loadBundle(d.bundle); el.disabled = false; return; }
@@ -4528,7 +4595,7 @@ document.addEventListener("click", async e => {
   if (a === "lnew") formListinoItem();
   if (a === "magimp") formImportMag();
   if (a === "magsc") formScontoMassivo();
-  if (a === "orecsv") { const rows = S.interventi.filter(x => x.rapportino && (x.data || "").startsWith(ui.oreM)).sort(sortInt); saveCsv(`Ore tecnici ${ui.oreM}.csv`, ["Data", "Tecnico", "Cliente", "Tipo", "Inizio", "Fine", "Pausa min", "Ore lavorate", "Viaggio min", "Lavori", "Materiali", "Esito"], rows.map(x => { const r = x.rapportino; return [x.data, tecTxt(x) || r.inviatoDa || "", cliName(x.clienteId), x.tipo || "", r.inizio, r.fine, r.pausaMin || 0, String(r2(num(r.minutiLavoro) / 60)).replace(".", ","), r.viaggioMin || 0, (r.lavori || []).join(", "), (r.materiali || []).map(m => m.qta + " " + m.descrizione).join(", "), r.esito || ""]; })); }
+  if (a === "orecsv") { const rs = righeOre(ui.oreM, ui.oreTec || ""); saveCsv(`Ore tecnici ${ui.oreM}${ui.oreTec ? " " + ui.oreTec : ""}.csv`, ["Data", "Tecnico", "Cliente", "Tipo", "Inizio", "Fine", "Pausa min", "Ore lavorate", "Viaggio min", "Lavori", "Materiali", "Esito"], rs.map(o => { const x = o.x, r = x.rapportino; return [x.data, o.tec, cliName(x.clienteId), x.tipo || "", r.inizio, r.fine, r.pausaMin || 0, String(r2(o.min / 60)).replace(".", ","), r.viaggioMin || 0, (r.lavori || []).join(", "), (r.materiali || []).map(m => m.qta + " " + m.descrizione).join(", "), r.esito || ""]; })); }
   if (a === "expcli") saveCsv("Clienti iTeam.csv", ["Nome", "Tipo", "Telefono", "Email", "Indirizzo", "CAP", "Città", "P.IVA/CF", "Referente", "Note"], clientiVisibili().map(c => [c.nome, c.tipo, c.telefono, c.email, c.indirizzo, c.cap, c.citta, c.piva, c.referente, c.note]));
   if (a === "expint") saveCsv("Interventi iTeam.csv", ["Data", "Ora", "Cliente", "Tipo", "Tecnico", "Stato", "Descrizione", "Ore lavorate", "Esito"], S.interventi.slice().sort(sortInt).map(x => [x.data, x.ora, cliName(x.clienteId), x.tipo, tecTxt(x), x.stato, x.descrizione, x.rapportino ? String(r2(num(x.rapportino.minutiLavoro) / 60)).replace(".", ",") : "", x.rapportino?.esito || ""]));
   if (a === "expmag") saveCsv("Magazzino iTeam.csv", ["Codice", "Descrizione", "Fornitore", "Categoria", "Serie", "Quantità", "Unità", "Scorta minima", "Prezzo listino", "Sconto %", "Prezzo cliente", "Costo"], S.magazzino.map(m => [m.codice, m.descrizione, m.fornitore, m.categoria, m.serie, m.quantita, m.unita, m.scortaMinima, m.prezzoListino, m.sconto, m.prezzoVendita, m.prezzoAcquisto].map(v => typeof v === "number" ? String(v).replace(".", ",") : v)));
