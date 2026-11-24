@@ -226,6 +226,15 @@ nav.tabs button.on svg{background:var(--pri-2);border-radius:12px;padding:3px 10
 .oretab th,.oretab td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
 .oretab th:first-child,.oretab td:first-child{text-align:left}.oretab thead th{font-size:12px;color:var(--mute)}
 .oretab td.over{color:var(--bad);font-weight:800}.oretab tfoot tr:first-child td{font-weight:800;border-top:2px solid var(--ink)}
+.xls-wrap{overflow:auto;max-height:72vh;width:calc(100vw - 32px);max-width:max-content;min-width:100%;position:relative;left:50%;transform:translateX(-50%);border:1px solid var(--line);border-radius:12px;background:#fff;margin-bottom:8px}
+.xls{border-collapse:separate;border-spacing:0;font-size:13px;table-layout:fixed;width:max-content}
+.xls th{position:sticky;top:0;z-index:2;background:#f1edff;color:#3b2a8f;font-weight:800;text-align:left;padding:7px 8px;border-bottom:2px solid #c9bdfb;border-right:1px solid #e3dcff;cursor:pointer;white-space:nowrap;user-select:none}
+.xls td{border-bottom:1px solid #eee;border-right:1px solid #f0f0f0;padding:0 4px;height:32px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xls th.num,.xls td.num{text-align:right}.xls tbody tr:nth-child(even) td{background:#fafaff}.xls tbody tr:hover td{background:#f3f0ff}
+.xls tr.scaduta td{background:#fff0ed!important}.xls td.apri{cursor:pointer;color:#4b2fc9;font-weight:700}
+.xls td input,.xls td select{box-sizing:border-box;min-width:0;max-width:100%;border:0;background:transparent;font:inherit;width:100%;padding:6px 2px;margin:0;min-height:0;border-radius:4px;box-shadow:none}
+.xls td input:focus,.xls td select:focus{outline:2px solid #6c4cf1;background:#fff}.xls td input[type=checkbox]{width:18px;height:18px}
+.xls td input.salvata{background:#d6f5e8}.xls td input.vuota:not(:focus){color:transparent}.xls tfoot td{position:sticky;bottom:0;background:#f1edff;font-weight:800;border-top:2px solid #c9bdfb;padding:0 8px}
 </style>
 </head>
 <body>
@@ -3721,11 +3730,12 @@ const MESI_LUNGHI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno
 function vContab(){
   if (!puoContab()) return empty("La contabilità è visibile solo al titolare e a chi è abilitato.");
   const sez = ui.conSez || "riepilogo";
-  const segSez = `<div class="seg" style="margin-bottom:12px;flex-wrap:wrap;gap:4px">${[["riepilogo", "📊 Analisi"], ["vendite", "🟢 Vendite"], ["acquisti", "🔴 Acquisti"], ["crediti", "💰 Da incassare"], ["prev", "📝 Preventivi"]].map(([k, lb]) => `<button class="${sez === k ? "on" : ""}" data-consez="${k}" style="flex:1 1 30%;white-space:nowrap;padding-left:8px;padding-right:8px">${lb}</button>`).join("")}</div>`;
+  const segSez = `<div class="seg" style="margin-bottom:12px;flex-wrap:wrap;gap:4px">${[["riepilogo", "📊 Analisi"], ["tabella", "📋 Tabella"], ["vendite", "🟢 Vendite"], ["acquisti", "🔴 Acquisti"], ["crediti", "💰 Da incassare"], ["prev", "📝 Preventivi"]].map(([k, lb]) => `<button class="${sez === k ? "on" : ""}" data-consez="${k}" style="flex:1 1 30%;white-space:nowrap;padding-left:8px;padding-right:8px">${lb}</button>`).join("")}</div>`;
   const vuoto = !(S.fatture || []).length && !(S.contabilita || []).length;
   const pac = sonoTitolare() && vuoto ? `<button class="btn" data-contab="pacchetto" style="margin-bottom:10px;width:100%">📥 Importa pacchetto preparato da Claude (.json)</button>` : "";
   if (sez === "vendite") return segSez + pac + vContabVendite();
   if (sez === "crediti") return segSez + vContabCrediti();
+  if (sez === "tabella") return segSez + pac + vContabTabella();
   if (sez === "prev") return segSez + vContabPrev();
   if (sez === "riepilogo") return segSez + pac + vContabRiepilogo() + (sonoTitolare() && !vuoto ? `<button class="btn sm" data-contab="pacchetto" style="margin-top:6px">📥 Importa un altro pacchetto</button>` : "");
   return segSez + pac + vContabAcquisti();
@@ -3747,6 +3757,101 @@ function vContabVendite(){
   <input class="search" placeholder="Cerca cliente, numero…" value="${esc(ui.q)}" data-q>
   ${l.length ? perMese(l, f => num(f.imponibile), fatTot, fatCard) : empty("Nessuna fattura in questo periodo.")}`;
 }
+// ---- 📋 Tabella in stile Excel (Contabilità): vendite e acquisti a righe e colonne, celle modificabili, ordinamento, totali, scarica .xlsx ----
+// Le celle salvano da sole quando si esce dalla casella (patch sul documento). ui.tabV = "vendite" | "acquisti", ui.tabOrd = {k, dir}.
+const TAB_COL = {
+  vendite: [
+    {k:"numero", l:"N.", w:70, ed:"text"}, {k:"data", l:"Data", w:112, ed:"date"},
+    {k:"cliente", l:"Cliente", w:170, v: f => cliName(f.clienteId), apri: true}, {k:"descrizione", l:"Descrizione", w:180, ed:"text"},
+    {k:"tipo", l:"Tipo", w:110, v: f => f.tipo === "Nota di credito" ? "Nota di credito" : f.stornata ? "Stornata" : "Fattura"},
+    {k:"imponibile", l:"Imponibile", w:105, ed:"num", m:true, tot:true}, {k:"iva", l:"IVA %", w:62, v: f => num(f.iva ?? 22), n:true},
+    {k:"ivaE", l:"IVA €", w:90, v: f => fatTot(f) - num(f.imponibile), m:true, tot:true}, {k:"totale", l:"Totale", w:105, v: fatTot, m:true, tot:true},
+    {k:"scadenza", l:"Scadenza", w:112, ed:"date"}, {k:"metodo", l:"Pagamento", w:105, ed:"sel", opt:["Bonifico","Contanti","POS / carta","Assegno","RiBa"]},
+    {k:"pagata", l:"Pagata", w:64, ed:"chk"}, {k:"dataPagamento", l:"Pagata il", w:112, ed:"date"},
+    {k:"residuo", l:"Da incassare", w:105, v: f => daIncassare(f) ? residuo(f) : 0, m:true, tot:true}],
+  acquisti: [
+    {k:"tipo", l:"Tipo", w:130, v: d => d.tipo || ""}, {k:"numero", l:"N.", w:80, ed:"text"}, {k:"data", l:"Data", w:112, ed:"date"},
+    {k:"fornitore", l:"Fornitore", w:190, v: d => d.fornitore || "—", apri: true}, {k:"importo", l:"Totale (IVA incl.)", w:120, ed:"num", m:true, tot:true},
+    {k:"netto", l:"Senza IVA", w:105, v: d => d.tipo === "DDT" ? 0 : netAcq(d), m:true, tot:true},
+    {k:"scadenza", l:"Scadenza", w:112, ed:"date"}, {k:"pagata", l:"Pagata", w:64, ed:"chk"}, {k:"pagataIl", l:"Pagata il", w:112, ed:"date"},
+    {k:"categoria", l:"Tipo di costo", w:170, v: d => d.tipo === "DDT" ? "" : catCosto(d)}, {k:"rif", l:"Cantiere / rif.", w:150, ed:"text"}, {k:"note", l:"Note", w:180, ed:"text"}]
+};
+const tabVal = (c, x) => c.v ? c.v(x) : c.ed === "num" ? num(x[c.k]) : c.ed === "chk" ? !!x[c.k] : (x[c.k] ?? "");
+function righeTabella(quale){
+  const col = quale === "vendite" ? "fatture" : "contabilita", all = S[col] || [], P = periodoBar(all), q = (ui.q || "").toLowerCase(), cols = TAB_COL[quale];
+  let l = all.filter(P.filtra);
+  if (q) l = l.filter(x => cols.map(c => String(tabVal(c, x))).join(" ").toLowerCase().includes(q));
+  const o = ui.tabOrd && ui.tabOrd.q === quale ? ui.tabOrd : {k: "data", dir: -1}, c = cols.find(c => c.k === o.k) || cols[1];
+  l.sort((a, b) => { const va = tabVal(c, a), vb = tabVal(c, b); return (typeof va === "number" || typeof va === "boolean" ? (va - vb) : String(va).localeCompare(String(vb), "it", {numeric: true})) * o.dir || (b.data || "").localeCompare(a.data || ""); });
+  return {l, P, cols, col, o};
+}
+function vContabTabella(){
+  const quale = ui.tabV || "vendite", {l, P, cols, col, o} = righeTabella(quale);
+  const cella = (c, x) => {
+    const v = tabVal(c, x), id = `${col}|${x.id}|${c.k}`;
+    if (c.ed === "chk") return `<td style="text-align:center"><input type="checkbox" data-tcell="${id}" data-tt="chk" ${v ? "checked" : ""}></td>`;
+    if (c.ed === "sel") return `<td><select data-tcell="${id}" data-tt="sel"><option value=""></option>${c.opt.map(op => `<option ${op === v ? "selected" : ""}>${esc(op)}</option>`).join("")}</select></td>`;
+    if (c.ed) return `<td><input data-tcell="${id}" data-tt="${c.ed}" type="${c.ed === "date" ? "date" : c.ed === "num" ? "number" : "text"}" ${c.ed === "num" ? 'step="0.01" inputmode="decimal"' : ""} value="${esc(c.ed === "num" ? (num(x[c.k]) || "") : (x[c.k] || ""))}" class="${c.ed === "date" && !x[c.k] ? "vuota" : ""}" style="${c.m ? "text-align:right" : ""}"></td>`;
+    const txt = c.m ? eur(v) : c.n ? v + "%" : esc(v);
+    return `<td class="${c.m ? "num" : ""}${c.apri ? " apri" : ""}" ${c.apri ? `data-topen="${col}|${x.id}" title="Apri la scheda"` : ""}>${c.apri ? "↗ " : ""}${txt}${c.k === "tipo" && x.file && x.file.url ? ` <a href="${esc(x.file.url)}" target="_blank" rel="noopener" title="Apri il PDF">📎</a>` : ""}</td>`;
+  };
+  const rossa = x => quale === "vendite" ? (daIncassare(x) && x.scadenza && x.scadenza < today()) : (x.tipo === "Fattura fornitore" && !x.pagata && x.scadenza && x.scadenza < today());
+  const per = P.mese ? MESI_LUNGHI[+P.mese - 1] + " " + P.anno : "tutto il " + P.anno;
+  return `${P.html}
+  <div class="row wrap" style="gap:8px;margin-bottom:8px"><div class="seg" style="margin:0;flex:1;min-width:240px">${[["vendite", "🟢 Vendite"], ["acquisti", "🔴 Acquisti"]].map(([k, lb]) => `<button class="${quale === k ? "on" : ""}" data-ttab="${k}">${lb}</button>`).join("")}</div>
+  <button class="btn" data-tnew="${quale}">+ Nuova riga</button><button class="btn pri" data-txls>⬇ Scarica Excel</button></div>
+  <input class="search" placeholder="Cerca in tutte le colonne…" value="${esc(ui.q)}" data-q>
+  <div class="xls-wrap"><table class="xls"><thead><tr>${cols.map(c => `<th data-tsort="${c.k}" style="width:${c.w}px" class="${c.m || c.n ? "num" : ""}">${esc(c.l)}${o.k === c.k ? (o.dir > 0 ? " ▲" : " ▼") : ""}</th>`).join("")}</tr></thead>
+  <tbody>${l.map(x => `<tr class="${rossa(x) ? "scaduta" : ""}">${cols.map(c => cella(c, x)).join("")}</tr>`).join("") || `<tr><td colspan="${cols.length}" class="m" style="padding:16px">Nessuna riga in questo periodo.</td></tr>`}</tbody>
+  <tfoot><tr>${cols.map((c, i) => `<td class="${c.m ? "num" : ""}">${i === 0 ? `<b>${l.length} righe</b>` : c.tot ? `<b>${eur(l.reduce((s, x) => s + num(tabVal(c, x)), 0))}</b>` : ""}</td>`).join("")}</tr></tfoot></table></div>
+  <p class="m">Periodo: ${esc(per)}. Scrivi direttamente nelle caselle bianche: si salva da solo quando passi alla casella dopo. Tocca un titolo per ordinare; ↗ apre la scheda completa. In rosso le scadute non pagate. Il file Excel contiene vendite e acquisti del periodo scelto.</p>`;
+}
+async function salvaCella(el){
+  const [col, id, k] = el.dataset.tcell.split("|"), t = el.dataset.tt, x = byId(col, id); if (!x) return;
+  let v = t === "chk" ? el.checked : t === "num" ? num(el.value) : el.value.trim();
+  if (String(v) === String(x[k] ?? (t === "chk" ? false : t === "num" ? 0 : ""))) return;
+  const p = {[k]: v};
+  if (k === "pagata" && v) { const dk = col === "fatture" ? "dataPagamento" : "pagataIl"; if (!x[dk]) p[dk] = today(); }
+  if (k === "pagata" && !v) { p[col === "fatture" ? "dataPagamento" : "pagataIl"] = ""; }
+  try { await patch(col, id, p); el.classList.add("salvata"); setTimeout(() => el.classList.remove("salvata"), 900); } catch(e) {}
+}
+async function scaricaExcelContab(){
+  let X; try { X = await loadXLSX(); } catch(e) { toast("Non riesco a preparare il file Excel: controlla la connessione e riprova", 4500); return; }
+  let dl = null; try { dl = await claude.use("downloads"); } catch(e){}
+  if (!dl) { toast("Il salvataggio dei file non è disponibile qui", 4000); return; }
+  const qPrima = ui.q; ui.q = "";
+  const dataXls = s => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ""); return m ? new Date(+m[1], +m[2] - 1, +m[3], 12) : ""; };
+  const wb = X.utils.book_new(); let per = "";
+  ["vendite", "acquisti"].forEach(quale => {
+    const {l, P, cols} = righeTabella(quale); per = P.mese ? MESI_LUNGHI[+P.mese - 1] + " " + P.anno : P.anno;
+    const dati = l.slice().sort((a, b) => (a.data || "").localeCompare(b.data || "")).map(x => cols.map(c => { const v = tabVal(c, x); return c.ed === "date" ? dataXls(v) : c.ed === "chk" ? (v ? "Sì" : "No") : c.m ? Math.round(num(v) * 100) / 100 : v; }));
+    const ws = X.utils.aoa_to_sheet([cols.map(c => c.l), ...dati], {cellDates: true});
+    const n = dati.length, L = i => X.utils.encode_col(i);
+    cols.forEach((c, i) => { for (let r = 1; r <= n; r++) { const cell = ws[L(i) + (r + 1)]; if (!cell) continue; if (c.m) cell.z = '#,##0.00 "€"'; if (c.ed === "date" && cell.t === "d") cell.z = "dd/mm/yyyy"; } });
+    const rt = n + 2; ws["A" + rt] = {t: "s", v: "TOTALE"};
+    cols.forEach((c, i) => { if (c.tot && n) ws[L(i) + rt] = {t: "n", f: `SUBTOTAL(9,${L(i)}2:${L(i)}${n + 1})`, v: Math.round(dati.reduce((s, r) => s + num(r[i]), 0) * 100) / 100, z: '#,##0.00 "€"'}; });
+    ws["!ref"] = `A1:${L(cols.length - 1)}${rt}`;
+    ws["!cols"] = cols.map(c => ({wch: Math.max(8, Math.round(c.w / 7.5))}));
+    ws["!autofilter"] = {ref: `A1:${L(cols.length - 1)}${n + 1}`};
+    ws["!freeze"] = {xSplit: 0, ySplit: 1};
+    X.utils.book_append_sheet(wb, ws, (quale === "vendite" ? "Vendite " : "Acquisti ") + String(per).replace(/[\\/?*[\]:]/g, " ").slice(0, 20));
+  });
+  ui.q = qPrima;
+  const out = X.write(wb, {bookType: "xlsx", type: "array"});
+  try { await dl.save({filename: `Contabilità iTeam ${per}.xlsx`, data: new Blob([out], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})}); toast("File Excel pronto", 3000); }
+  catch(e) { if (e && e.code !== "declined") toast("Salvataggio non riuscito", 3500); }
+}
+document.addEventListener("change", e => { const el = e.target.closest("[data-tcell]"); if (el && !el.closest(".ov") && puoContab()) salvaCella(el); });
+document.addEventListener("keydown", e => { const el = e.target.closest && e.target.closest("input[data-tcell]"); if (el && e.key === "Enter") { e.preventDefault(); const all = [...document.querySelectorAll("input[data-tcell]:not([type=checkbox])")], i = all.indexOf(el); el.blur(); (all[i + 1] || el).focus(); } });
+document.addEventListener("click", e => {
+  if (e.target.closest(".ov") || e.target.closest("a")) return;
+  const el = e.target.closest("[data-ttab],[data-tsort],[data-tnew],[data-txls],[data-topen]"); if (!el || !puoContab()) return; const d = el.dataset;
+  if (d.ttab) { ui.tabV = d.ttab; ui.q = ""; return render(); }
+  if (d.tsort) { const q = ui.tabV || "vendite", o = ui.tabOrd && ui.tabOrd.q === q ? ui.tabOrd : {k: "data", dir: -1}; ui.tabOrd = {q, k: d.tsort, dir: o.k === d.tsort ? -o.dir : 1}; return render(); }
+  if (d.tnew) return d.tnew === "vendite" ? formFattura({data: today()}) : formContab({tipo: "Fattura fornitore"});
+  if (d.txls !== undefined) return scaricaExcelContab();
+  if (d.topen) { const [col, id] = d.topen.split("|"), x = byId(col, id); if (x) return col === "fatture" ? formFattura(x) : formContab(x); }
+});
 // ---- 📝 Preventivi in contabilità: fatti e accettati, con le fatture di acconto e saldo collegate (fatture.preventivoId) ----
 const fatDiPrev = p => (S.fatture || []).filter(f => f.preventivoId === p.id);
 function statoPrevFat(p){
@@ -4553,6 +4658,7 @@ function render(){
   if (ui.modo === "tecnico" && TEC().length && !TEC().some(t => sameTec(t.nome, ui.tecnico))) { ui.modo = ""; ls.set("modo", ""); toast("Il tuo profilo tecnico è cambiato: rientra con il tuo codice", 4000); }
   const app = $("#app"), nav = $("#nav"), fab = $("#fabwrap");
   const focusQ = document.activeElement && document.activeElement.hasAttribute("data-q");
+  const ae = document.activeElement, focusT = ae && ae.dataset && ae.dataset.tcell && ae.type !== "checkbox" ? {k: ae.dataset.tcell, v: ae.value} : null;
   const caret = focusQ ? document.activeElement.selectionStart : 0;
   let banner = "";
   if (ui.stale === "nodb") banner = `<div class="banner warn">I dati non sono raggiungibili. Controlla la connessione a internet e riapri l’app.</div>`;
@@ -4575,6 +4681,7 @@ function render(){
   const fabs = {oggi: ["newint", "+ Intervento"], calendario: ["calnewsel", "+ Intervento"], interventi: ["newint", "+ Intervento"], clienti: ui.cliente ? ["cliint", "+ Intervento"] : ["newcli", "+ Cliente"], documenti: ui.docTab === "dico" ? ["newdico", "+ DiCo"] : ui.docTab === "preventivi" ? ["newprev", "+ Preventivo"] : ui.docTab === "fatture" ? ["newfat", "+ Fattura"] : null, magazzino: ["newart", "+ Articolo"]};
   const fb = fabs[ui.tab]; fab.innerHTML = fb ? `<button class="fab" data-a="${fb[0]}">${fb[1]}</button>` : "";
   if (focusQ) { const el = app.querySelector("[data-q]"); if (el) { el.focus(); try { el.setSelectionRange(caret, caret); } catch(e){} } }
+  if (focusT) { const el = app.querySelector(`[data-tcell="${CSS.escape(focusT.k)}"]`); if (el) { el.value = focusT.v; el.focus(); } }
 }
 
 // ---------- eventi ----------
