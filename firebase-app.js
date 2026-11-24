@@ -339,11 +339,11 @@ function openPasswords(){
   });
 }
 function confirmBox(m){ return window.confirm(m); }
-const COLLEZIONI = ["clienti","impianti","interventi","preventivi","fatture","magazzino","listino","dico","commesse","contratti","ordini","contabilita","crediti","fgasOps","detrazioni","mezzi","attrezzature","oreLibere","magazzinoPrezzi","commesseRiservate","config"];
+const COLLEZIONI = ["clienti","impianti","interventi","preventivi","fatture","magazzino","listino","dico","commesse","contratti","ordini","contabilita","crediti","spese","fgasOps","detrazioni","mezzi","attrezzature","oreLibere","magazzinoPrezzi","commesseRiservate","config"];
 async function backup(){
   toastMsg("Preparo il backup…");
   const out = {app: "iteam-gestionale", creato: new Date().toISOString(), collections: {}};
-  for (const c of COLLEZIONI) { try { const s = await db.collection(c).get(); out.collections[c] = s.docs.map(d => ({id: d.id, ...d.data()})); } catch(e) { if (!["contabilita", "crediti", "fgasOps", "detrazioni", "mezzi", "attrezzature", "oreLibere", "magazzinoPrezzi", "commesseRiservate"].includes(c)) throw e; } }
+  for (const c of COLLEZIONI) { try { const s = await db.collection(c).get(); out.collections[c] = s.docs.map(d => ({id: d.id, ...d.data()})); } catch(e) { if (!["contabilita", "crediti", "spese", "fgasOps", "detrazioni", "mezzi", "attrezzature", "oreLibere", "magazzinoPrezzi", "commesseRiservate"].includes(c)) throw e; } }
   const d = new Date(); const p = n => String(n).padStart(2, "0");
   await downloads.save({filename: `Backup gestionale iTeam ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.json`, data: new Blob([JSON.stringify(out)], {type: "application/json"})});
 }

@@ -9,12 +9,12 @@ let j = 1; for (let m = 1; m <= 11; m++) for (let k = 0; k < 5; k++) { con['a' +
 (async () => {
   const b = await chromium.launch(); const errs = [];
   const p = await (await b.newContext({viewport: {width: 1300, height: 900}, acceptDownloads: true, deviceScaleFactor: 2})).newPage();
-  p.on('pageerror', e => errs.push(e.message));
+  p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept());
   await p.route('https://cdnjs.cloudflare.com/**', r => r.fulfill({path: /xlsx/.test(r.request().url()) ? '/tmp/node_modules/xlsx/dist/xlsx.full.min.js' : '/tmp/node_modules/jspdf/dist/jspdf.umd.min.js', contentType: 'text/javascript'}));
   await p.route(/^https:\/\/(?!cdnjs)/, r => r.fulfill({body: '', contentType: 'text/javascript'}));
   await p.addInitScript({path: 'test/fbmock.js'});
   await p.addInitScript(d => { window.__nextUser = {uid: 'u1', email: 'carone.t46@gmail.com', emailVerified: true, displayName: 'Tommaso Carone'};
-    Object.assign(window.__store, {...d, utenti: {u1: {email: 'carone.t46@gmail.com', nome: 'Tommaso Carone', ruolo: 'admin', attivo: true}}}); }, {clienti: cli, fatture: fat, contabilita: con});
+    Object.assign(window.__store, {...d, utenti: {u1: {email: 'carone.t46@gmail.com', nome: 'Tommaso Carone', ruolo: 'admin', attivo: true}}}); }, {clienti: cli, fatture: fat, contabilita: con, spese: {s1: {data: '2026-10-27', categoria: 'Stipendi', descrizione: 'Stipendio ottobre', beneficiario: 'Mario Rossi', importo: 1800, pagata: true, ricorrente: true}, s2: {data: '2026-10-16', categoria: 'Contributi e F24', descrizione: 'F24 ottobre', importo: 2400, pagata: true}, s3: {data: '2026-03-10', categoria: 'Assicurazioni', descrizione: 'RCA furgone', importo: 1100, pagata: true}}});
   await p.route('**/firebase-config.js', r => r.fulfill({body: 'window.FIREBASE_CONFIG={apiKey:"x",projectId:"p"};', contentType: 'text/javascript'}));
   await p.goto('http://localhost:8786/index.html'); await p.waitForTimeout(500); await p.click('#gGoogle'); await p.waitForTimeout(1000);
   await p.click('[data-mode="ufficio"] >> nth=0').catch(() => {}); await p.waitForTimeout(300);
@@ -37,5 +37,22 @@ let j = 1; for (let m = 1; m <= 11; m++) for (let k = 0; k < 5; k++) { con['a' +
   const [dl] = await Promise.all([p.waitForEvent('download', {timeout: 15000}), p.click('[data-txls]')]);
   await dl.saveAs('/home/claude/work/prova.xlsx'); console.log('FILE:', dl.suggestedFilename());
   await p.click('[data-topen="contabilita|a1"]'); await p.waitForTimeout(300); console.log('Scheda aperta:', await p.isVisible('.ov'));
+  await p.evaluate(() => document.querySelectorAll('.ov').forEach(o => o.remove()));
+  await p.click('[data-consez="spese"]'); await p.waitForTimeout(300);
+  console.log('SPESE:', (await t()).slice(200, 900));
+  await p.click('[data-spesecopia]'); await p.waitForTimeout(300);
+  const nuove = await p.evaluate(() => Object.values(window.__store.spese).filter(x => x.data.startsWith('2026-11')).map(x => [x.descrizione, x.data, x.pagata]));
+  console.log('COPIATE in novembre:', JSON.stringify(nuove));
+  await p.click('[data-spesanew]'); await p.waitForTimeout(300);
+  await p.selectOption('.ov [data-k="categoria"]', 'Bolli e tasse auto'); await p.fill('.ov [data-k="descrizione"]', 'Bollo Doblò'); await p.fill('.ov [data-k="importo"]', '310');
+  await p.click('.ov button[type=submit]'); await p.waitForTimeout(500);
+  await p.screenshot({path: '/home/claude/work/spese.png', fullPage: true});
+  await p.click('[data-consez="riepilogo"]'); await p.waitForTimeout(300);
+  console.log('ANALISI:', (await t()).match(/🟠 Altre spese.{0,260}/)?.[0]);
+  console.log('PUNTI:', (await t()).match(/Cosa dicono i numeri.{0,330}/)?.[0]);
+  await p.click('[data-consez="tabella"]'); await p.waitForTimeout(300); await p.click('[data-ttab="spese"]'); await p.waitForTimeout(300);
+  console.log('TAB SPESE:', (await p.innerText('.xls')).replace(/\s+/g, ' ').slice(0, 300));
+  const [dl2] = await Promise.all([p.waitForEvent('download', {timeout: 15000}), p.click('[data-txls]')]);
+  await dl2.saveAs('/home/claude/work/prova2.xlsx');
   console.log('errors', errs); await b.close(); srv.close();
 })();

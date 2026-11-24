@@ -31,6 +31,8 @@ service cloud.firestore {
     // Contabilità (fatture dei fornitori e DDT): solo il titolare e chi ha la spunta "Contabilità" in 👤 Utenti
     function contab() { return owner() || (active() && prof().get('contabilita', false) == true); }
     match /crediti/{id} { allow read, write: if contab(); }
+    // Altre spese senza fattura (stipendi, F24, assicurazioni, bolli…): come la contabilità
+    match /spese/{id} { allow read, write: if contab(); }
     match /contabilita/{id} {
       allow read, write: if contab();
     }
@@ -98,8 +100,8 @@ service cloud.firestore {
     // Tutti gli altri dati (clienti, impianti, interventi, magazzino, dico, commesse, …):
     // gli attivi leggono, creano e modificano; ELIMINA solo l'ufficio (va nel cestino)
     match /{col}/{id} {
-      allow read, create, update: if active() && !(col in ['utenti', 'config', 'contabilita', 'crediti', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'mezzi', 'attrezzature', 'oreLibere', 'calendariFeed', 'eventiCal', 'registro', 'cestino', 'preventivi', 'listino', 'magazzinoPrezzi', 'commesseRiservate', 'clienti']);
-      allow delete: if office() && !(col in ['utenti', 'config', 'contabilita', 'crediti', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'mezzi', 'attrezzature', 'oreLibere', 'calendariFeed', 'eventiCal', 'registro', 'cestino', 'preventivi', 'listino', 'magazzinoPrezzi', 'commesseRiservate', 'clienti']);
+      allow read, create, update: if active() && !(col in ['utenti', 'config', 'contabilita', 'crediti', 'spese', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'mezzi', 'attrezzature', 'oreLibere', 'calendariFeed', 'eventiCal', 'registro', 'cestino', 'preventivi', 'listino', 'magazzinoPrezzi', 'commesseRiservate', 'clienti']);
+      allow delete: if office() && !(col in ['utenti', 'config', 'contabilita', 'crediti', 'spese', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'mezzi', 'attrezzature', 'oreLibere', 'calendariFeed', 'eventiCal', 'registro', 'cestino', 'preventivi', 'listino', 'magazzinoPrezzi', 'commesseRiservate', 'clienti']);
     }
   }
 }
