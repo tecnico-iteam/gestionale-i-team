@@ -2068,7 +2068,7 @@ function vCliente(c){
 }
 
 const prevCard = p => { const t = prevTot(p); const s = p.stato || "Bozza"; return `<div class="card tap" data-prev="${p.id}"><div class="row"><span class="t">N. ${esc(p.numero)} · ${esc(cliName(p.clienteId))}</span><span class="sp"></span><span class="chip ${s === "Accettato" ? "ok" : s === "Rifiutato" ? "bad" : s === "Inviato" ? "pri" : ""}">${esc(s)}</span></div><div class="row m"><span>${esc(fd(p.data))}${p.creatoDa ? " · " + esc(p.creatoDa) : ""}${p.oggetto ? " · " + esc(p.oggetto) : ""}</span><span class="sp"></span><b class="money" style="color:var(--ink)">${eur(t.tot)}</b></div></div>`; };
-const fatCard = f => { const sc = !f.pagata && f.scadenza && f.scadenza < today(); return `<div class="card tap" data-fat="${f.id}"><div class="row"><span class="t">N. ${esc(f.numero)} · ${esc(cliName(f.clienteId))}</span><span class="sp"></span><span class="chip ${f.tipo === "Nota di credito" || f.stornata ? "" : f.pagata ? "ok" : sc ? "bad" : "warn"}">${f.tipo === "Nota di credito" ? "Nota di credito" : f.stornata ? "Stornata" : f.pagata ? "Pagata" : sc ? "Scaduta" : "Da incassare"}</span></div><div class="row m"><span>${f.file ? "📎 " : ""}${esc(fd(f.data))}${f.scadenza && !f.pagata ? " · scade " + esc(fd(f.scadenza)) : ""}</span><span class="sp"></span><b class="money" style="color:var(--ink)">${eur(fatTot(f))}</b></div>${f.file && f.file.url || !f.pagata ? `<div class="row" style="margin-top:8px;gap:6px">${f.file && f.file.url ? `<a class="btn sm" style="text-decoration:none" href="${esc(f.file.url)}" target="_blank" rel="noopener">📎 Apri PDF</a>` : ""}${!f.pagata ? `<button class="btn sm" data-paga="${f.id}">Segna pagata</button>` : ""}</div>` : ""}</div>`; };
+const fatCard = f => { const sc = !f.pagata && f.scadenza && f.scadenza < today(); return `<div class="card tap" data-fat="${f.id}"><div class="row"><span class="t">N. ${esc(f.numero)} · ${esc(cliName(f.clienteId))}</span><span class="sp"></span><span class="chip ${f.tipo === "Nota di credito" || f.stornata ? "" : f.pagata ? "ok" : sc ? "bad" : "warn"}">${f.tipo === "Nota di credito" ? "Nota di credito" : f.stornata ? "Stornata" : f.pagata ? "Pagata" : sc ? "Scaduta" : "Da incassare"}</span></div><div class="row m"><span>${f.file ? "📎 " : ""}${esc(fd(f.data))}${f.scadenza && !f.pagata ? " · scade " + esc(fd(f.scadenza)) : ""}</span><span class="sp"></span><b class="money" style="color:var(--ink)">${eur(fatTot(f))}</b></div>${f.file && f.file.url || !f.pagata ? `<div class="row" style="margin-top:8px;gap:6px">${f.file && f.file.url ? `<a class="btn sm" style="text-decoration:none" href="${esc(f.file.url)}" target="_blank" rel="noopener">📎 Apri ${/xml/i.test((f.file.tipo || "") + (f.file.nome || "")) ? "XML" : "PDF"}</a>` : ""}${!f.pagata ? `<button class="btn sm" data-paga="${f.id}">Segna pagata</button>` : ""}</div>` : ""}</div>`; };
 
 function vDocumenti(){
   const q = ui.q.toLowerCase(), t = today();
@@ -3756,8 +3756,87 @@ function vContabVendite(){
     <div class="tile" data-convf="dainc"><div class="n money" style="font-size:19px">${eur(daInc.reduce((s, f) => s + residuo(f), 0))}</div><div class="l">Da incassare (${daInc.length})</div></div>
     <div class="tile" data-convf="dainc"><div class="n" style="color:${scad.length ? "var(--bad)" : "inherit"}">${scad.length}</div><div class="l">Scadute</div></div></div>
   <div class="seg">${[["tutte", "Tutte"], ["dainc", "Da incassare"], ["nc", "Note di credito"]].map(([k, lb]) => `<button class="${F === k ? "on" : ""}" data-convf="${k}">${lb}</button>`).join("")}</div>
+  <div class="row wrap" style="gap:8px;margin-bottom:10px"><button class="btn pri big" data-contab="upv" style="flex:1 1 60%">⬆ Carica fatture emesse (PDF, foto o XML)</button><button class="btn" data-contab="newv" style="flex:1 1 30%">+ Nuova fattura a mano</button></div>
   <input class="search" placeholder="Cerca cliente, numero…" value="${esc(ui.q)}" data-q>
   ${l.length ? perMese(l, f => num(f.imponibile), fatTot, fatCard) : empty("Nessuna fattura in questo periodo.")}`;
+}
+// ---- ⬆ Carica fatture emesse: PDF/foto (si scrivono i dati) o XML della fattura elettronica (si compila da sola) ----
+// XML e PDF con lo stesso nome (es. IT123_00045.xml + IT123_00045.pdf) diventano una sola fattura col PDF allegato.
+function leggiFatturaXml(txt){
+  const d = new DOMParser().parseFromString(txt.replace(/^\uFEFF/, ""), "application/xml");
+  if (d.getElementsByTagName("parsererror").length) return null;
+  const tag = (el, n) => { if (!el) return ""; const x = [...el.getElementsByTagName("*")].find(e => e.localName === n); return x ? x.textContent.trim() : ""; };
+  const sez = (el, n) => el ? [...el.getElementsByTagName("*")].find(e => e.localName === n) : null;
+  const tutti = (el, n) => el ? [...el.getElementsByTagName("*")].filter(e => e.localName === n) : [];
+  const ces = sez(d, "CessionarioCommittente"), body = sez(d, "FatturaElettronicaBody"), gen = sez(body, "DatiGeneraliDocumento");
+  if (!gen) return null;
+  const anag = sez(ces, "Anagrafica"), sede = sez(ces, "Sede");
+  const nome = tag(anag, "Denominazione") || [tag(anag, "Nome"), tag(anag, "Cognome")].filter(Boolean).join(" ");
+  const riep = tutti(body, "DatiRiepilogo");
+  const imponibile = riep.reduce((s, r) => s + num(tag(r, "ImponibileImporto")), 0), imposta = riep.reduce((s, r) => s + num(tag(r, "Imposta")), 0);
+  const aliq = riep.slice().sort((a, b) => num(tag(b, "ImponibileImporto")) - num(tag(a, "ImponibileImporto")))[0];
+  let iva = aliq ? String(Math.round(num(tag(aliq, "AliquotaIVA")))) : "22"; if (!["22", "10", "4", "0"].includes(iva)) iva = "22";
+  const righe = tutti(body, "DettaglioLinee").map(r => tag(r, "Descrizione")).filter(Boolean);
+  const tipoDoc = tag(gen, "TipoDocumento"), pag = sez(body, "DettaglioPagamento");
+  const MP = {MP01: "Contanti", MP02: "Assegno", MP05: "Bonifico", MP08: "POS / carta", MP12: "RiBa"};
+  const tot = num(tag(gen, "ImportoTotaleDocumento")) || imponibile + imposta;
+  return {
+    cliente: {nome, piva: tag(sez(ces, "IdFiscaleIVA"), "IdCodice"), cf: tag(sez(ces, "DatiAnagrafici"), "CodiceFiscale"),
+      indirizzo: [tag(sede, "Indirizzo"), tag(sede, "NumeroCivico")].filter(Boolean).join(" "), cap: tag(sede, "CAP"), citta: tag(sede, "Comune"), provincia: tag(sede, "Provincia")},
+    fattura: {numero: tag(gen, "Numero"), data: tag(gen, "Data"), tipo: /TD04/.test(tipoDoc) ? "Nota di credito" : undefined,
+      descrizione: (tag(gen, "Causale") || righe.slice(0, 3).join(" · ")).slice(0, 200), imponibile: Math.round(imponibile * 100) / 100, iva,
+      totaleXml: Math.round(tot * 100) / 100, scadenza: tag(pag, "DataScadenzaPagamento") || "", metodo: MP[tag(pag, "ModalitaPagamento")] || "Bonifico"}
+  };
+}
+const normPiva = v => String(v || "").replace(/^IT/i, "").replace(/\s/g, "").toUpperCase();
+const normNome = v => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+function trovaCliente(c){
+  const l = S.clienti || [];
+  return (c.piva && l.find(x => normPiva(x.piva) === normPiva(c.piva))) || (c.cf && l.find(x => normPiva(x.cf) === normPiva(c.cf))) || (c.nome && l.find(x => normNome(x.nome) === normNome(c.nome) || normNome(x.ragioneSociale) === normNome(c.nome))) || null;
+}
+function caricaVendite(){
+  if (!assetsNS) { toast("Il caricamento dei file non è attivo: controlla la connessione"); return; }
+  const inp = document.createElement("input"); inp.type = "file"; inp.accept = "application/pdf,image/*,.xml,text/xml,application/xml"; inp.multiple = true;
+  inp.onchange = async () => {
+    const files = [...inp.files]; if (!files.length) return;
+    const base = n => n.replace(/\.(xml|pdf|jpe?g|png|heic|webp)$/i, "").replace(/\.xml$/i, "").toLowerCase();
+    const xml = files.filter(f => /\.xml$/i.test(f.name) || /xml/.test(f.type)), altri = files.filter(f => !xml.includes(f));
+    const carica = async f => { let blob = f, type = f.type || "application/pdf"; if (type.startsWith("image/")) { const r = await shrinkImage(f, 2400); if (r) { blob = r.blob; type = r.type; } }
+      const up = await assetsNS.upload(blob, {type, cartella: "contabilita"}); return {id: up.id, url: up.url, path: up.path || "", nome: f.name, tipo: type}; };
+    // 1) fatture elettroniche XML: si salvano da sole
+    let fatte = 0, doppie = 0, nuoviCli = 0, errori = [];
+    const usati = new Set();
+    for (const [i, f] of xml.entries()) {
+      toast(`Leggo la fattura ${i + 1} di ${xml.length}…`, 60000);
+      try {
+        const r = leggiFatturaXml(await f.text()); if (!r || !r.fattura.numero) { errori.push(f.name + " (non è una fattura elettronica)"); continue; }
+        const F = r.fattura, anno = (F.data || "").slice(0, 4);
+        if ((S.fatture || []).some(x => String(x.numero) === String(F.numero) && (x.data || "").slice(0, 4) === anno && (x.tipo === "Nota di credito") === (F.tipo === "Nota di credito"))) { doppie++; continue; }
+        let cli = trovaCliente(r.cliente);
+        if (!cli && r.cliente.nome) { const c = Object.fromEntries(Object.entries({...r.cliente, ragioneSociale: r.cliente.piva ? r.cliente.nome : ""}).filter(([, v]) => v));
+          const id = await save("clienti", null, {...c, tipo: r.cliente.piva ? "Azienda" : "Privato", creatoDa: ui.uff || "Ufficio", note: "Creato dalla fattura n. " + F.numero}); cli = {id}; nuoviCli++; }
+        const pdf = altri.find(a => base(a.name) === base(f.name) && !usati.has(a)); let file = null;
+        if (pdf) { usati.add(pdf); try { file = await carica(pdf); } catch(e) {} }
+        if (!file) { try { file = await carica(f); } catch(e) {} }
+        const {totaleXml, ...dati} = F; Object.keys(dati).forEach(k => dati[k] === undefined && delete dati[k]);
+        await save("fatture", null, {...dati, clienteId: cli ? cli.id : "", pagata: false, ...(file ? {file} : {}), caricataDa: "xml"}); fatte++;
+      } catch(e) { errori.push(f.name + errDet(e)); }
+    }
+    clearToasts();
+    if (xml.length) toast([fatte && `✓ ${fatte} fattur${fatte === 1 ? "a caricata" : "e caricate"}`, nuoviCli && `${nuoviCli} clienti nuovi creati`, doppie && `${doppie} già presenti (saltate)`, errori.length && `non lette: ${errori.join(", ")}`].filter(Boolean).join(" · ") || "Nessuna fattura letta", 6000);
+    // 2) PDF o foto senza XML: si apre la scheda da completare (una alla volta)
+    const resto = altri.filter(a => !usati.has(a));
+    for (const [i, f] of resto.entries()) {
+      toast(`Carico ${f.name}…`, 60000); let file;
+      try { file = await carica(f); } catch(e) { clearToasts(); toast("Caricamento non riuscito: " + f.name + errDet(e), 5000); continue; }
+      clearToasts();
+      formFattura({file});
+      if (resto.length > 1) toast(`Fattura ${i + 1} di ${resto.length}: scegli il cliente e scrivi l'importo, poi Salva`, 6000);
+      if (i < resto.length - 1) await new Promise(ok => { const t = setInterval(() => { if (!document.querySelector(".ov")) { clearInterval(t); ok(); } }, 400); });
+    }
+    render();
+  };
+  inp.click();
 }
 // ---- 🟠 Altre spese: costi senza fattura che pesano sul conto economico (stipendi, F24, assicurazioni, bolli…) ----
 // spese/{id} = {data, categoria (CAT_SPESE), descrizione, beneficiario, importo, pagata, ricorrente (si ricopia ogni mese), note, documenti[]}
@@ -4708,6 +4787,8 @@ document.addEventListener("click", async e => {
   if (d.fgascsv) { const l = S.impianti.filter(i => fgasMesi(i) > 0); await saveCsv("Registro F-gas iTeam.csv", ["Cliente", "Indirizzo", "Impianto", "Matricola", "Gas", "Carica kg", "t CO2 eq", "Frequenza mesi", "Ultimo controllo", "Prossimo controllo"], l.map(i => { const c = byId("clienti", i.clienteId); return [c?.nome || "", addr(c), impName(i), i.matricola || "", i.gas || "", i.caricaKg || "", tco2(i).toFixed(2), fgasMesi(i), i.ultimoControlloPerdite || "", fgasProssimo(i)]; })); return; }
   if (d.impd) return detImpianto(byId("impianti", d.impd));
   if (d.contab === "up") return caricaContab();
+  if (d.contab === "upv") return caricaVendite();
+  if (d.contab === "newv") return formFattura();
   if (d.contab === "pacchetto") return importaPacchetto();
   if (d.consez) { ui.conSez = d.consez; ui.q = ""; return render(); }
   if (d.convf) { ui.conVF = d.convf; return render(); }
