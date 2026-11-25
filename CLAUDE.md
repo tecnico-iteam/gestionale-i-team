@@ -74,7 +74,7 @@ in italiano semplice, senza gergo tecnico.
   senza rapportino. Una volta sola: `allarmi/{turno}-{data}_{tecnico}` con create(). Notifica "forte" (`data.forte` → `sw.js`: requireInteraction, vibrazione).
   ⏰ `mettiSveglia()` scarica un .ics con i due allarmi ricorrenti nel calendario del telefono. Ufficio: `boxAperture()` in `extraOggiUff()`.
   Prove: `test/prova-allarmi.js` (script, finto Firestore), `test/prova-apertura.js` (pagine).
-- 📅 Pagina del tecnico: in alto `settimanaTec()` (lun–dom, frecce `ui.tecW`, giorno scelto `ui.tecG`, assenze da oreLibere); sotto, nella scheda "oggi", gli interventi del giorno scelto per esteso (`intCard` con `esteso` + `dettaglioTec()`: indirizzo con mappe, telefono, impianto, collega, descrizione intera). Prova: `test/prova-settimana.js`.
+- 📅 Pagina del tecnico: in alto `settimanaTec()` (lun–dom, frecce `ui.tecW`, giorno scelto `ui.tecG`, assenze da oreLibere); sotto, nella scheda "oggi", gli interventi del giorno scelto per esteso (`intCard` con `esteso` + `dettaglioTec()`: indirizzo con mappe, telefono, impianto, collega, descrizione intera). Sotto la settimana solo i lavori del giorno; le altre sezioni (prossimi, mese, clienti, inviati, furgone, ore, da assegnare `liberi`, + lavoro non programmato) sono nel ☰ Menu (`menuTecnico()`, `data-m`), aperte con `ui.tecF` e il pulsante ← I lavori del giorno. Prova: `test/prova-settimana.js`.
 - Calendario: toccando un giorno (vista Mese) si apre `giornoPopup(g)` con gli appuntamenti; i tocchi dentro passano alla pagina.
 - Trasferimento dal calendario iPhone (solo titolare, `vTrasfCal()` dal Calendario): il titolare incolla il link del
   "Calendario pubblico" iCloud in `calendariFeed/impostazioni.icloudUrl`; `scripts/calendari.js` (workflow avvisi, ogni 10 min)

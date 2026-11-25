@@ -61,7 +61,7 @@ const {chromium} = require('playwright');
   console.log('DOMANI:', (await txt(t, '#app')).match(/Da fare oggi|(lunedì|martedì|mercoledì|giovedì|venerdì|sabato|domenica).{0,600}/)?.[0]);
   await t.screenshot({path:'/home/claude/work/sett2.png', fullPage: true});
   await t.click('[data-tecw="1"]'); await t.waitForTimeout(300); console.log('SETT DOPO:', (await txt(t, '.sett-wrap')).slice(0, 80));
-  await t.click('[data-tecw="0"]'); await t.waitForTimeout(300); console.log('TORNA OGGI:', (await txt(t, '.seg')).slice(0, 40));
+  await t.click('[data-tecw="0"]'); await t.waitForTimeout(300); console.log('TORNA OGGI:', (await txt(t, '.tecpage')).match(/(Oggi|lunedì|martedì|mercoledì|giovedì|venerdì).{0,30}/)?.[0]);
   console.log('ERRORI:', errs.length ? errs : 'nessuno');
   await b.close();
 })();

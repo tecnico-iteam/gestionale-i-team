@@ -54,7 +54,7 @@ const {chromium} = require('playwright');
   console.log('LUCA:', (await txt(p, '#app')).slice(0, 600));
   await p.click('[data-oretec=""]'); await p.waitForTimeout(200);
   const t = await apri({uid:'u2', email:'mario@utenti.iteamservice.it', emailVerified:true, displayName:'Mario Rossi', providerData:[{providerId:'password'}]});
-  await t.click('[data-tecf="ore"]'); await t.waitForTimeout(300);
+  await t.click('[data-a="tecmenu"]'); await t.click('.ov [data-m="ore"]'); await t.waitForTimeout(300);
   console.log('MARIO:', (await txt(t, '#app')).slice(0, 700)); await t.screenshot({path:'/home/claude/work/ore-tec.png', fullPage:true});
   // rapportino in due con orari diversi
   await t.click('[data-tecf="oggi"]'); await t.waitForTimeout(300);
@@ -66,7 +66,7 @@ const {chromium} = require('playwright');
   await t.click('.ov button[type=submit]'); await t.waitForTimeout(800);
   console.log('SALVATO minutiTec:', JSON.stringify(await t.evaluate(() => window.__store.interventi.x6.rapportino && window.__store.interventi.x6.rapportino.minutiTec)));
   await t.evaluate(() => document.querySelectorAll('.ov').forEach(o => o.remove()));
-  await t.click('[data-tecf="ore"]'); await t.waitForTimeout(300);
+  await t.click('[data-a="tecmenu"]'); await t.click('.ov [data-m="ore"]'); await t.waitForTimeout(300);
   console.log('MARIO DOPO:', (await txt(t, '#app')).slice(0, 200));
   // ufficio segna malattia per Luca
   await p.click('[data-orelibnew=""]'); await p.waitForTimeout(300);

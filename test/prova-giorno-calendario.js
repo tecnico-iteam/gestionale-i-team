@@ -55,7 +55,7 @@ const {chromium} = require('playwright');
   console.log('Nuovo con data:', await p.$eval('.ov [data-k="data"]', s => s.value));
   await p.evaluate(() => document.querySelectorAll('.ov').forEach(o => o.remove()));
   const t = await apri({uid:'u2', email:'mario@utenti.iteamservice.it', emailVerified:true, displayName:'Mario Rossi', providerData:[{providerId:'password'}]});
-  await t.click('[data-tecf="cal"]'); await t.waitForTimeout(300);
+  await t.click('[data-a="tecmenu"]'); await t.click('.ov [data-m="cal"]'); await t.waitForTimeout(300);
   await t.click(`[data-cald="${oggi}"]`); await t.waitForTimeout(300);
   console.log('Tecnico finestra:', (await txt(t, '.ov')).slice(0, 300));
   await t.click('.ov [data-rap]').catch(e => console.log('nessun rapportino')); await t.waitForTimeout(400);

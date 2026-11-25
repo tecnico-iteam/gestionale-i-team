@@ -104,8 +104,8 @@ const {chromium} = require('playwright');
   // tecnico: furgone e rapportino che scarica dal furgone, con posizione
   const t = await apri({uid:'u2', email:'mario@utenti.iteamservice.it', emailVerified:true, displayName:'Mario Rossi', providerData:[{providerId:'password'}]});
   await t.waitForTimeout(300);
-  console.log('Tecnico: nav visibile?', await t.isVisible('#nav'), 'tab furgone:', await t.isVisible('[data-tecf="furgone"]'));
-  await t.click('[data-tecf="furgone"]'); await t.waitForTimeout(300);
+  console.log('Tecnico: nav visibile?', await t.isVisible('#nav'), 'menu:', await t.isVisible('[data-a="tecmenu"]'));
+  await t.click('[data-a="tecmenu"]'); await t.click('.ov [data-m="furgone"]'); await t.waitForTimeout(300);
   console.log('Furgone tecnico:', (await txt(t, '#app')).slice(0, 400));
   await t.screenshot({path:'test/gestione-tecnico-furgone.png', fullPage:true});
   await t.click('[data-tecf="oggi"]'); await t.waitForTimeout(200);

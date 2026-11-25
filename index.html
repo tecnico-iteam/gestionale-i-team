@@ -243,7 +243,7 @@ nav.tabs button.on svg{background:var(--pri-2);border-radius:12px;padding:3px 10
 .sgi{font-size:10.5px;line-height:1.2;background:#f1edff;color:#3b2a8f;border-radius:6px;padding:2px 2px;margin-top:3px;overflow:hidden;text-align:center}.sgi b,.sgi span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sgi b{font-size:11px}
 .sgi.ok{background:#d6f5e8;color:#0b5a3c}.sgi.warn{background:#fff1cc;color:#7a5300}.sgi.ass{background:#ffe3da;color:#a8361a}.sgi.more{background:transparent;color:var(--mute);text-align:center}
 @media(min-width:700px){.sg{min-height:120px;padding:6px}.sgi{font-size:12.5px;padding:3px 5px}}
-.tec-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0 10px;font-size:19px}.tec-top .chip{font-size:12.5px}
+.tec-top{display:flex;align-items:center;gap:8px;margin:2px 0 10px;font-size:19px}.tec-top .chip{font-size:12.5px}
 .tec-apri{margin:-2px 0 12px}
 .seg.segtec{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}.seg.segtec::-webkit-scrollbar{display:none}.seg.segtec button{flex:0 0 auto;padding:7px 12px}
 @media(max-width:600px){.tecpage .card{padding:11px 12px;margin-bottom:8px}.tecpage .tec-act .btn{padding:9px 8px;font-size:14px}.tecpage .sg{min-height:76px}
@@ -1925,9 +1925,10 @@ function mettiSveglia(){
 }
 function boxApertura(me){
   const g = giornataAperta(me), dow = new Date().getDay(), nome = esc(String(me || "").split(/\s+/)[0]);
-  if (g) return `<div class="tec-top"><b>Ciao ${nome}</b><span class="chip ok">🟢 aperta alle ${esc(g.alle)}</span></div>`;
-  if (dow === 0 || dow === 6) return `<div class="tec-top"><b>Ciao ${nome}</b></div>`;
-  return `<div class="tec-top"><b>Ciao ${nome}</b></div><button class="btn pri big tec-apri" data-a="apri">🟢 Apri l'attività</button>`;
+  const menu = `<button class="btn sm" data-a="tecmenu" aria-label="Menu" style="margin-left:auto">☰ Menu</button>`;
+  if (g) return `<div class="tec-top"><b>Ciao ${nome}</b><span class="chip ok">🟢 ${esc(g.alle)}</span>${menu}</div>`;
+  if (dow === 0 || dow === 6) return `<div class="tec-top"><b>Ciao ${nome}</b>${menu}</div>`;
+  return `<div class="tec-top"><b>Ciao ${nome}</b>${menu}</div><button class="btn pri big tec-apri" data-a="apri">🟢 Apri l'attività</button>`;
 }
 const bottoneSveglia = () => svegliaMessa() ? "" : `<button class="btn sm" data-a="sveglia" style="width:100%;margin-bottom:10px">⏰ Metti sul telefono gli allarmi delle 8 e delle 17:30</button>`;
 // per l'ufficio (pagina Oggi): chi ha aperto l'attività e chi no
@@ -3247,16 +3248,35 @@ function vTecnico(){
     if (x.stato === "Completato") return `<div class="m" style="margin-top:6px">${x.verificato ? "✔ Verificato dall'ufficio" : "📨 Inviato all'ufficio"}</div>`;
     return `<div class="row tec-act" style="margin-top:10px;gap:6px">${x.stato === "Programmato" ? `<button class="btn" style="flex:1" data-start="${x.id}">▶ Inizia</button>` : `<span class="chip warn">Iniziato ${esc(x.inizioReale || x.rapportino?.inizio || "")}</span>`}${commVisibili(x.clienteId).length ? `<button class="btn" style="flex:none" data-commcli="${x.clienteId}" title="Documenti della commessa" aria-label="Documenti della commessa">📁 ${commVisibili(x.clienteId).reduce((n, c) => n + docVisibili(c).length, 0)}</button>` : ""}${assetsNS ? `<button class="btn" style="flex:none" data-media="${x.id}" title="Foto e video">📷${(x.media || []).length ? " " + x.media.length : ""}</button>` : ""}<button class="btn pri" style="flex:2" data-rap="${x.id}">📝 Rapportino</button></div>` + (x.stato !== "Programmato" ? waTecnico(x) : "");
   };
+  const VOCI = [["prossimi", "📋", `Prossimi lavori (${F.prossimi.length})`], ["cal", "📅", "Calendario del mese"], ["cli", "👥", "Clienti"], ["inviati", "📨", "Rapportini inviati"],
+    ["furgone", "🚐", "Furgone"], ["ore", "⏱", "Le mie ore, ferie e permessi"], ["liberi", "🙋", `Lavori da assegnare (${free.length})`]];
+  if (ui.tecF !== "oggi") {
+    const v = VOCI.find(x => x[0] === ui.tecF) || ["", "", ""];
+    const corpo = ui.tecF === "cal" ? vCalendario(me) : ui.tecF === "cli" ? vTecClienti() : ui.tecF === "furgone" ? vTecFurgone() : ui.tecF === "ore" ? bottoneSveglia() + vMieOre(me)
+      : ui.tecF === "liberi" ? (free.length ? free.map(x => intCard(x, {noTec: true, data: true, addr: true, actions: `<div style="margin-top:8px"><button class="btn sm" data-take="${x.id}">Prendo io</button></div>`})).join("") : empty("Nessun lavoro da assegnare."))
+      : `${ui.tecF === "prossimi" && list.length ? `<button class="btn" style="width:100%;margin-bottom:10px" data-ics="all">📅 Metti tutti i miei appuntamenti nel calendario del telefono</button>` : ""}
+        ${list.length ? (ui.tecF === "prossimi" ? groupByDate(list, {noTec: true, addr: true}) : list.map(x => intCard(x, {noTec: true, addr: true, data: x.data !== t && !isCant(x), actions: ui.tecF === "inviati" ? "" : act(x)})).join("")) : empty("Niente qui.")}`;
+    return `<div class="tecpage"><div class="tec-top"><button class="btn sm" data-tecf="oggi">← I lavori del giorno</button><button class="btn sm" data-a="tecmenu" aria-label="Menu">☰</button></div><h2 style="margin:4px 0 10px">${v[1]} ${esc(v[2])}</h2>${corpo}</div>`;
+  }
+  const giornoTxt = gSel ? new Date(gSel + "T12:00:00").toLocaleDateString("it-IT", {weekday: "long", day: "numeric", month: "long"}) : "Oggi";
+  const daFare = F.oggi.filter(x => x.stato !== "Completato").length;
   return `<div class="tecpage">${boxApertura(me)}
   ${settimanaTec(me, mine)}
   ${boxNotifiche()}
-  <div class="seg segtec">${[["oggi", (gSel ? esc(new Date(gSel + "T12:00:00").toLocaleDateString("it-IT", {weekday: "short", day: "numeric"})) : "Oggi") + ` (${F.oggi.filter(x => x.stato !== "Completato").length})`], ["prossimi", `Prossimi (${F.prossimi.length})`], ["cal", "📅 Mese"], ["cli", "👥 Clienti"], ["inviati", "📨 Inviati"], ["furgone", "🚐 Furgone"], ["ore", "⏱ Ore"]].map(([k, l]) => `<button class="${ui.tecF === k ? "on" : ""}" data-tecf="${k}">${l}</button>`).join("")}</div>
-  ${ui.tecF === "cal" ? vCalendario(me) : ui.tecF === "cli" ? vTecClienti() : ui.tecF === "furgone" ? vTecFurgone() : ui.tecF === "ore" ? bottoneSveglia() + vMieOre(me) : `
-  ${ui.tecF === "prossimi" && list.length ? `<button class="btn" style="width:100%;margin-bottom:10px" data-ics="all">📅 Metti tutti i miei appuntamenti nel calendario del telefono</button>` : ""}
-  ${list.length ? (ui.tecF === "prossimi" ? groupByDate(list, {noTec: true, addr: true}) : list.map(x => ui.tecF === "oggi" ? intCard(x, {noTec: true, esteso: true, data: x.data !== (gSel || t) && !isCant(x), giorno: gSel || t, actions: dettaglioTec(x, gSel || t, me) + (gSel && gSel > t ? "" : act(x))}) : intCard(x, {noTec: true, addr: true, data: x.data !== t && !isCant(x), actions: ui.tecF === "inviati" ? "" : act(x)})).join("")) : empty(ui.tecF === "oggi" ? (gSel ? (assenzaDi(me, gSel) ? tipoOre(assenzaDi(me, gSel).tipo)[1] + " " + assenzaDi(me, gSel).tipo + ": nessun lavoro." : "Nessun lavoro per questo giorno.") : "Nessun lavoro assegnato per oggi.") : "Niente qui.")}
-  ${ui.tecF === "oggi" && !gSel && free.length ? `<h3>Da assegnare</h3>${free.map(x => intCard(x, {noTec: true, data: true, addr: true, actions: `<div style="margin-top:8px"><button class="btn sm" data-take="${x.id}">Prendo io</button></div>`})).join("")}` : ""}
-  `}
-  <div style="margin-top:14px"><button class="btn" style="width:100%" data-a="tecnew">+ Lavoro non programmato</button></div></div>`;
+  <div class="row" style="margin:4px 0 8px"><b style="flex:1;font-size:17px">${esc(giornoTxt.charAt(0).toUpperCase() + giornoTxt.slice(1))}</b><span class="m">${F.oggi.length ? (daFare ? daFare + " da fare" : "tutto fatto ✔") : ""}</span></div>
+  ${list.length ? list.map(x => intCard(x, {noTec: true, esteso: true, data: x.data !== (gSel || t) && !isCant(x), giorno: gSel || t, actions: dettaglioTec(x, gSel || t, me) + (gSel && gSel > t ? "" : act(x))})).join("")
+    : empty(gSel ? (assenzaDi(me, gSel) ? tipoOre(assenzaDi(me, gSel).tipo)[1] + " " + assenzaDi(me, gSel).tipo + ": nessun lavoro." : "Nessun lavoro per questo giorno.") : "Nessun lavoro assegnato per oggi.")}
+  </div>`;
+}
+function menuTecnico(){
+  const t = today(), me = ui.tecnico, free = S.interventi.filter(x => !x.tecnico && x.stato === "Programmato" && x.data >= addDays(t, -7));
+  const pross = S.interventi.filter(x => haTec(x, me) && x.stato !== "Annullato" && x.data > t && x.stato !== "In corso");
+  const voci = [["prossimi", "📋", `Prossimi lavori (${pross.length})`], ["cal", "📅", "Calendario del mese"], ["cli", "👥", "Clienti"], ["inviati", "📨", "Rapportini inviati"],
+    ["furgone", "🚐", "Furgone"], ["ore", "⏱", "Le mie ore, ferie e permessi"], ["liberi", "🙋", `Lavori da assegnare (${free.length})`]];
+  const ov = modal(`<h2>Menu</h2><button class="btn pri big" data-m="tecnew" style="margin-bottom:10px">+ Lavoro non programmato</button>
+    ${voci.map(([k, i, l]) => `<button class="btn" data-m="${k}" style="width:100%;justify-content:flex-start;text-align:left;margin-bottom:6px">${i} ${esc(l)}</button>`).join("")}
+    <div class="acts"><span class="sp"></span><button class="btn" data-m="x">Chiudi</button></div>`);
+  ov.addEventListener("click", e => { const k = e.target.closest("[data-m]")?.dataset.m; if (!k) return; ov.remove(); if (k === "x") return; if (k === "tecnew") return formTecNew(); ui.tecF = k; window.scrollTo(0, 0); render(); });
 }
 function vTecClienti(){
   const q = ui.q.toLowerCase();
@@ -5041,6 +5061,7 @@ document.addEventListener("click", async e => {
   if (a === "set") formImpostazioni();
   if (a === "tecnew") formTecNew();
   if (a === "apri") apriAttivita(ui.tecnico);
+  if (a === "tecmenu") menuTecnico();
   if (a === "sveglia") mettiSveglia();
   if (a === "limport") importListino();
   if (a === "lnew") formListinoItem();

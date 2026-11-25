@@ -99,7 +99,7 @@ const dettagli = async (p, chi, dove) => {
   for (const chi of ['andrea', 'alessandro']) {
     const p = await apri(b, chi, {width: 400, height: 860});
     await clic(p, chi, '[data-mode="tecnico"]', 'entra tecnico', {facoltativo: true});
-    for (const f of ['oggi', 'prossimi', 'inviati', 'cal', 'cli', 'furgone']) { await clic(p, chi, `[data-tecf="${f}"]`, 'tecnico ' + f, {facoltativo: f !== 'oggi'}); await dettagli(p, chi, 'tecnico ' + f); }
+    for (const f of ['prossimi', 'inviati', 'cal', 'cli', 'furgone', 'ore', 'liberi']) { await clic(p, chi, '[data-a="tecmenu"]', 'tecnico menu', {foto: false}); await clic(p, chi, `.ov [data-m="${f}"]`, 'tecnico ' + f); await dettagli(p, chi, 'tecnico ' + f); }
     await clic(p, chi, '[data-tecf="oggi"]', 'tecnico oggi', {foto: false});
     if (await clic(p, chi, '[data-int]', 'tecnico apre intervento', {facoltativo: true})) {
       await clic(p, chi, '.ov [data-start], .ov [data-a="start"]', 'tecnico inizia', {facoltativo: true}); await chiudi(p);
