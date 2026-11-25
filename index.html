@@ -235,6 +235,14 @@ nav.tabs button.on svg{background:var(--pri-2);border-radius:12px;padding:3px 10
 .xls td input,.xls td select{box-sizing:border-box;min-width:0;max-width:100%;border:0;background:transparent;font:inherit;width:100%;padding:6px 2px;margin:0;min-height:0;border-radius:4px;box-shadow:none}
 .xls td input:focus,.xls td select:focus{outline:2px solid #6c4cf1;background:#fff}.xls td input[type=checkbox]{width:18px;height:18px}
 .xls td input.salvata{background:#d6f5e8}.xls td input.vuota:not(:focus){color:transparent}.xls tfoot td{position:sticky;bottom:0;background:#f1edff;font-weight:800;border-top:2px solid #c9bdfb;padding:0 8px}
+.sett-wrap{margin-bottom:12px}.sett{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.sg{background:var(--card,#fff);border:1px solid var(--line);border-radius:10px;padding:4px 2px 6px;min-height:92px;cursor:pointer;overflow:hidden}
+.sg.we{background:#f6f4fb}.sg.oggi{border:2px solid var(--pri,#6c4cf1)}.sg.sel{background:#ece7ff;box-shadow:0 2px 8px rgba(108,76,241,.25)}
+.sgh{text-align:center;line-height:1.1;margin-bottom:4px}.sgh span{display:block;font-size:11px;color:var(--mute);text-transform:capitalize}.sgh b{font-size:17px}
+.sg.oggi .sgh b{color:var(--pri,#6c4cf1)}
+.sgi{font-size:10.5px;line-height:1.2;background:#f1edff;color:#3b2a8f;border-radius:6px;padding:2px 2px;margin-top:3px;overflow:hidden;text-align:center}.sgi b,.sgi span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sgi b{font-size:11px}
+.sgi.ok{background:#d6f5e8;color:#0b5a3c}.sgi.warn{background:#fff1cc;color:#7a5300}.sgi.ass{background:#ffe3da;color:#a8361a}.sgi.more{background:transparent;color:var(--mute);text-align:center}
+@media(min-width:700px){.sg{min-height:120px;padding:6px}.sgi{font-size:12.5px;padding:3px 5px}}
 </style>
 </head>
 <body>
@@ -1804,7 +1812,7 @@ function intCard(x, opts = {}){
     <div class="m">${esc(x.tipo || "")}${imp ? " · " + esc(impName(imp)) : ""}${opts.data ? " · " + esc(fd(x.data)) : ""}${!opts.noTec ? " · " + esc(tecTxt(x) || "da assegnare") : ""}</div>
     ${isCant(x) ? (() => { const g = giorniInt(x), i = g.indexOf(opts.giorno || today()); return `<div class="m" style="margin-top:2px">🏗️ <b>Cantiere</b> ${i >= 0 ? `giorno ${i + 1} di ${g.length} · ` : ""}dal ${esc(fd(x.data))} al ${esc(fd(x.dataFine))} · ${esc(x.oraDa || "08:00")}–${esc(x.oraFine || "17:00")}</div>`; })() : ""}
     ${c && addr(c) && opts.addr ? `<div class="m">${esc(addr(c))}</div>` : ""}
-    ${x.rapportino ? `<div class="m" style="margin-top:4px">⏱ ${hm(x.rapportino.minutiLavoro)} · ${esc((x.rapportino.lavori || []).length)} lavori · ${esc((x.rapportino.materiali || []).length)} materiali${(x.media || []).length ? ` · 📷 ${x.media.length}` : ""}</div>` : (x.descrizione ? `<div class="m" style="margin-top:4px">${esc(x.descrizione.slice(0, 110))}</div>` : "")}
+    ${x.rapportino ? `<div class="m" style="margin-top:4px">⏱ ${hm(x.rapportino.minutiLavoro)} · ${esc((x.rapportino.lavori || []).length)} lavori · ${esc((x.rapportino.materiali || []).length)} materiali${(x.media || []).length ? ` · 📷 ${x.media.length}` : ""}</div>` : (x.descrizione && !opts.esteso ? `<div class="m" style="margin-top:4px">${esc(x.descrizione.slice(0, 110))}</div>` : "")}
     ${opts.actions || ""}
   </div>`;
 }
@@ -3177,6 +3185,46 @@ async function vBiglietto(){
 }
 
 // ---------- vista tecnico ----------
+// ---- 📅 Settimana del tecnico (in alto nella sua pagina): lun–dom con i suoi appuntamenti; toccando un giorno sotto ci sono gli interventi per esteso ----
+// ui.tecG = giorno scelto (vuoto = oggi), ui.tecW = settimane avanti/indietro rispetto a oggi.
+const lunediDi = d => { const x = new Date(d + "T12:00:00"), g = (x.getDay() + 6) % 7; return addDays(d, -g); };
+const assenzaDi = (tec, d) => (S.oreLibere || []).find(e => ASSENZE.includes(e.tipo) && e.data <= d && (e.dataFine || e.data) >= d && sameTec(e.tecnico, tec) && giorniTra(e.data, e.dataFine).includes(d));
+function settimanaTec(me, mine){
+  const t = today(), sel = ui.tecG || t, lun = addDays(lunediDi(t), 7 * (ui.tecW || 0));
+  const giorni = Array.from({length: 7}, (_, i) => addDays(lun, i));
+  const fine = giorni[6], stesso = lun.slice(5, 7) === fine.slice(5, 7);
+  const tit = stesso ? `${+lun.slice(8)}–${+fine.slice(8)} ${MESI_LUNGHI[+fine.slice(5, 7) - 1]}` : `${+lun.slice(8)} ${MESI_IT[+lun.slice(5, 7) - 1]} – ${+fine.slice(8)} ${MESI_IT[+fine.slice(5, 7) - 1]}`;
+  const col = d => {
+    const l = mine.filter(x => inGiorno(x, d)).sort((a, b) => oraDelGiorno(a, d).padStart(5, "0").localeCompare(oraDelGiorno(b, d).padStart(5, "0")));
+    const ass = assenzaDi(me, d), dt = new Date(d + "T12:00:00"), we = dt.getDay() === 0 || dt.getDay() === 6;
+    return `<div class="sg ${d === t ? "oggi" : ""} ${d === sel ? "sel" : ""} ${we ? "we" : ""}" data-tecg="${d}">
+      <div class="sgh"><span>${dt.toLocaleDateString("it-IT", {weekday: "short"}).replace(".", "")}</span><b>${dt.getDate()}</b></div>
+      ${ass ? `<div class="sgi ass">${tipoOre(ass.tipo)[1]} ${esc(ass.tipo)}</div>` : ""}
+      ${l.slice(0, 4).map(x => { const c = byId("clienti", x.clienteId), fatto = x.stato === "Completato" || (x.rapportino && x.rapportino.inviatoIl);
+        return `<div class="sgi ${fatto ? "ok" : x.stato === "In corso" ? "warn" : ""}">${oraDelGiorno(x, d) ? `<b>${esc(oraDelGiorno(x, d))}</b>` : ""}<span>${isCant(x) ? "🏗️ " : ""}${esc(((c && c.nome) || "Cliente").split(/\s+/)[0])}</span></div>`; }).join("")}
+      ${l.length > 4 ? `<div class="sgi more">+${l.length - 4}</div>` : ""}</div>`;
+  };
+  return `<div class="sett-wrap"><div class="row" style="margin-bottom:6px"><button class="btn sm" data-tecw="-1">‹</button><b style="flex:1;text-align:center">${esc(tit)}</b>${ui.tecW || (ui.tecG && ui.tecG !== t) ? `<button class="btn sm" data-tecw="0" style="margin-right:6px">Oggi</button>` : ""}<button class="btn sm" data-tecw="1">›</button></div>
+  <div class="sett">${giorni.map(col).join("")}</div></div>`;
+}
+// scheda per esteso per la pagina del tecnico: orario, cliente, indirizzo (mappe), telefono, impianto, descrizione intera, collega
+function dettaglioTec(x, giorno, me){
+  const c = byId("clienti", x.clienteId), imp = byId("impianti", x.impiantoId), ind = addr(c), tel = c && (c.cellulare || c.telefono);
+  const coll = tecDi(x).filter(n => !sameTec(n, me));
+  return [
+    ind ? `<div class="row" style="gap:8px;margin-top:6px"><span>📍</span><a href="https://maps.google.com/?q=${encodeURIComponent(ind)}" target="_blank" rel="noopener" style="flex:1">${esc(ind)}</a></div>` : "",
+    tel ? `<div class="row" style="gap:8px;margin-top:4px"><span>📞</span><a href="tel:${esc(String(tel).replace(/\s+/g, ""))}">${esc(tel)}</a></div>` : "",
+    imp ? `<div class="m" style="margin-top:4px">❄️ ${esc(impName(imp))}</div>` : "",
+    coll.length ? `<div class="m" style="margin-top:4px">👷 Con ${esc(coll.join(", "))}</div>` : "",
+    x.descrizione ? `<div style="margin-top:6px;white-space:pre-wrap">${esc(x.descrizione)}</div>` : ""
+  ].join("");
+}
+document.addEventListener("click", e => {
+  if (e.target.closest(".ov")) return;
+  const el = e.target.closest("[data-tecg],[data-tecw]"); if (!el) return;
+  if (el.dataset.tecw !== undefined) { const w = +el.dataset.tecw; if (!w) { ui.tecW = 0; ui.tecG = ""; } else { ui.tecW = (ui.tecW || 0) + w; ui.tecG = addDays(lunediDi(today()), 7 * ui.tecW + (ui.tecW ? 0 : (new Date().getDay() + 6) % 7)); } ui.tecF = "oggi"; return render(); }
+  ui.tecG = el.dataset.tecg === today() ? "" : el.dataset.tecg; ui.tecF = "oggi"; render();
+});
 function vTecnico(){
   const t = today(), me = ui.tecnico;
   try { window.ITEAM && window.ITEAM.notifiche && window.ITEAM.notifiche.collega(me); } catch(e){}
@@ -3187,6 +3235,8 @@ function vTecnico(){
     prossimi: mine.filter(x => x.data > t && x.stato !== "In corso").sort(sortInt),
     inviati: mine.filter(x => x.rapportino).sort((a,b) => (b.rapportino.inviatoIl || "").localeCompare(a.rapportino.inviatoIl || "")).slice(0, 30)
   };
+  const gSel = ui.tecG && ui.tecG !== t ? ui.tecG : "";
+  if (gSel) F.oggi = mine.filter(x => inGiorno(x, gSel)).sort((a, b) => oraDelGiorno(a, gSel).padStart(5, "0").localeCompare(oraDelGiorno(b, gSel).padStart(5, "0")));
   const list = F[ui.tecF] || [];
   const act = x => {
     if (x.stato === "Completato") return `<div class="m" style="margin-top:6px">${x.verificato ? "✔ Verificato dall'ufficio" : "📨 Inviato all'ufficio"}</div>`;
@@ -3194,12 +3244,13 @@ function vTecnico(){
   };
   return `<h2>Ciao ${esc(me)}</h2>
   ${boxApertura(me)}
+  ${settimanaTec(me, mine)}
   ${boxNotifiche()}
-  <div class="seg segwrap"><button class="${ui.tecF === "oggi" ? "on" : ""}" data-tecf="oggi">Da fare oggi (${F.oggi.filter(x => x.stato !== "Completato").length})</button><button class="${ui.tecF === "prossimi" ? "on" : ""}" data-tecf="prossimi">Prossimi (${F.prossimi.length})</button><button class="${ui.tecF === "cal" ? "on" : ""}" data-tecf="cal">Calendario</button><button class="${ui.tecF === "cli" ? "on" : ""}" data-tecf="cli">Clienti</button><button class="${ui.tecF === "inviati" ? "on" : ""}" data-tecf="inviati">Inviati</button><button class="${ui.tecF === "furgone" ? "on" : ""}" data-tecf="furgone">🚐 Furgone</button><button class="${ui.tecF === "ore" ? "on" : ""}" data-tecf="ore">⏱ Le mie ore</button></div>
+  <div class="seg segwrap"><button class="${ui.tecF === "oggi" ? "on" : ""}" data-tecf="oggi">${gSel ? esc(new Date(gSel + "T12:00:00").toLocaleDateString("it-IT", {weekday: "long", day: "numeric", month: "short"})) : "Da fare oggi"} (${F.oggi.filter(x => x.stato !== "Completato").length})</button><button class="${ui.tecF === "prossimi" ? "on" : ""}" data-tecf="prossimi">Prossimi (${F.prossimi.length})</button><button class="${ui.tecF === "cal" ? "on" : ""}" data-tecf="cal">Calendario</button><button class="${ui.tecF === "cli" ? "on" : ""}" data-tecf="cli">Clienti</button><button class="${ui.tecF === "inviati" ? "on" : ""}" data-tecf="inviati">Inviati</button><button class="${ui.tecF === "furgone" ? "on" : ""}" data-tecf="furgone">🚐 Furgone</button><button class="${ui.tecF === "ore" ? "on" : ""}" data-tecf="ore">⏱ Le mie ore</button></div>
   ${ui.tecF === "cal" ? vCalendario(me) : ui.tecF === "cli" ? vTecClienti() : ui.tecF === "furgone" ? vTecFurgone() : ui.tecF === "ore" ? vMieOre(me) : `
   ${ui.tecF === "prossimi" && list.length ? `<button class="btn" style="width:100%;margin-bottom:10px" data-ics="all">📅 Metti tutti i miei appuntamenti nel calendario del telefono</button>` : ""}
-  ${list.length ? (ui.tecF === "prossimi" ? groupByDate(list, {noTec: true, addr: true}) : list.map(x => intCard(x, {noTec: true, addr: true, data: x.data !== t && !isCant(x), giorno: ui.tecF === "oggi" ? t : undefined, actions: ui.tecF === "inviati" ? "" : act(x)})).join("")) : empty(ui.tecF === "oggi" ? "Nessun lavoro assegnato per oggi." : "Niente qui.")}
-  ${ui.tecF === "oggi" && free.length ? `<h3>Da assegnare</h3>${free.map(x => intCard(x, {noTec: true, data: true, addr: true, actions: `<div style="margin-top:8px"><button class="btn sm" data-take="${x.id}">Prendo io</button></div>`})).join("")}` : ""}
+  ${list.length ? (ui.tecF === "prossimi" ? groupByDate(list, {noTec: true, addr: true}) : list.map(x => ui.tecF === "oggi" ? intCard(x, {noTec: true, esteso: true, data: x.data !== (gSel || t) && !isCant(x), giorno: gSel || t, actions: dettaglioTec(x, gSel || t, me) + (gSel && gSel > t ? "" : act(x))}) : intCard(x, {noTec: true, addr: true, data: x.data !== t && !isCant(x), actions: ui.tecF === "inviati" ? "" : act(x)})).join("")) : empty(ui.tecF === "oggi" ? (gSel ? (assenzaDi(me, gSel) ? tipoOre(assenzaDi(me, gSel).tipo)[1] + " " + assenzaDi(me, gSel).tipo + ": nessun lavoro." : "Nessun lavoro per questo giorno.") : "Nessun lavoro assegnato per oggi.") : "Niente qui.")}
+  ${ui.tecF === "oggi" && !gSel && free.length ? `<h3>Da assegnare</h3>${free.map(x => intCard(x, {noTec: true, data: true, addr: true, actions: `<div style="margin-top:8px"><button class="btn sm" data-take="${x.id}">Prendo io</button></div>`})).join("")}` : ""}
   `}
   <div style="margin-top:18px"><button class="btn big" data-a="tecnew">+ Lavoro non programmato</button></div>`;
 }
