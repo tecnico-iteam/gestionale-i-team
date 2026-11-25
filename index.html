@@ -288,7 +288,7 @@ const NAV = [
 ];
 
 // ---------- stato ----------
-const S = Object.fromEntries(COLS.map(c => [c, []])); S.contabilita = []; S.fgasOps = []; S.detrazioni = []; S.oreLibere = []; S.spese = []; S.mezzi = []; S.attrezzature = []; S.crediti = []; S.eventiCal = []; S.calCfg = {};
+const S = Object.fromEntries(COLS.map(c => [c, []])); S.contabilita = []; S.fgasOps = []; S.detrazioni = []; S.oreLibere = []; S.giornate = []; S.spese = []; S.mezzi = []; S.attrezzature = []; S.crediti = []; S.eventiCal = []; S.calCfg = {};
 if (window.__store) window.__S = S;   // solo nei test (finto database)
 const DEFAULT_MANODOPERA = ["Installazione monosplit (fino a 3 m di linee)","Installazione dual split","Installazione trial split","Metro aggiuntivo linee frigorifere","Staffa per unità esterna","Pompa scarico condensa","Canalina (al metro)","Carotaggio muro","Linea elettrica dedicata","Smontaggio e smaltimento vecchio impianto","Dichiarazione di conformità e pratiche F-gas"].map(d => ({descrizione: d, prezzo: 0}));
 let CFG = {postazioni: ["Tommy", "Irene", "Alessandro"], titolare: "Carone Tommaso", respAB: "Carone Tommaso", respCE: "Sasso Francesco", fgas: "FGAS-A18879", cciaa: "Torino", rea: "TO-1331174", alboArt: "", abilitazioni: ["a) elettrici", "b) radiotelevisivi ed elettronici", "c) riscaldamento e climatizzazione", "e) gas"], tecnici: [], lavori: DEFAULT_LAVORI.slice(), scontoAcquisto: 0, scontoCliente: 0, costoOra: 45, costoGiornata: 300, manodopera: DEFAULT_MANODOPERA.map(x => ({...x}))};
@@ -462,7 +462,7 @@ async function initDb(){
   if (puoContab()) db.collection("spese").onSnapshot(snap => { S.spese = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
   if (puoContab()) db.collection("crediti").onSnapshot(snap => { S.crediti = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
   if (sonoTitolare()) { db.collection("eventiCal").onSnapshot(snap => { S.eventiCal = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}); db.collection("calendariFeed").doc("impostazioni").onSnapshot(sn => { S.calCfg = sn.exists ? sn.data() : {}; render(); }, () => {}); }
-  caricaOreLibere();
+  caricaOreLibere().then(caricaGiornate);
   if (uffVero()) ["fgasOps", "detrazioni", "mezzi", "attrezzature"].forEach(c => db.collection(c).onSnapshot(snap => { S[c] = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}));
   Object.keys(RISERVATI).filter(c => MIE.includes(c) && vedeRis(c)).forEach(c => db.collection(RISERVATI[c].col).onSnapshot(snap => { RIS[c] = Object.fromEntries(snap.docs.map(d => [d.id, d.data()])); unisci(c); render(); }, () => {}));
   MIE.forEach(c => {
@@ -1751,6 +1751,7 @@ async function startJob(x){
   const r = Object.assign({}, x.rapportino || {}, {inizio: nowTime()});
   await patch("interventi", x.id, {stato: "In corso", rapportino: r.inviatoIl ? r : undefined, inizioReale: nowTime(), tecnico: x.tecnico || ui.tecnico});
   toast("Lavoro iniziato alle " + nowTime());
+  apriAttivita(ui.tecnico || x.tecnico, true);
   posizione().then(pos => { if (pos) patch("interventi", x.id, {inizioPos: pos}).catch(() => {}); });
 }
 
@@ -1869,6 +1870,61 @@ function vOggi(){
   <p class="m" style="margin-top:28px;text-align:center">${esc(AZIENDA.nome)} · P.IVA ${esc(AZIENDA.piva)} · SDI ${esc(AZIENDA.sdi)}<br>Sede legale: ${esc(AZIENDA.legale)}<br>Sede operativa: ${esc(AZIENDA.operativa)}<br>Tel. ${esc(AZIENDA.tel)} · ${esc(AZIENDA.email)}</p>`;
 }
 
+// ---- 🟢 Apertura dell'attività e allarmi del tecnico (8:00 "hai aperto l'attività?", 17:30 "hai compilato il rapportino?") ----
+// giornate/{data}_{tecnico} = {tecnico, data, alle, uid, il, pos}: creato dal pulsante "Apri l'attività" o da ▶ Inizia.
+// Gli allarmi li manda scripts/allarmi.js (GitHub); qui in più il tecnico può mettere due allarmi fissi nel calendario del telefono.
+const slugTec = s => String(s || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const giornataId = (tec, data) => data + "_" + slugTec(tec);
+const giornataAperta = tec => (S.giornate || []).find(g => g.data === today() && sameTec(g.tecnico, tec));
+function caricaGiornate(){
+  S.giornate = []; if (!db) return;
+  if (puoEliminare()) { db.collection("giornate").where("data", "==", today()).onSnapshot(sn => { S.giornate = sn.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}); return; }
+  const t = mioTecnico(); if (t) db.collection("giornate").doc(giornataId(t, today())).onSnapshot(d => { S.giornate = d.exists ? [{id: d.id, ...d.data()}] : []; render(); }, () => {});
+}
+async function apriAttivita(tec, silenzioso){
+  if (!tec || !db || giornataAperta(tec)) return;
+  const id = giornataId(tec, today()), body = {tecnico: tec, data: today(), alle: nowTime(), uid: MIO_UID || "", il: new Date().toISOString()};
+  try {
+    await db.collection("giornate").doc(id).set(body);
+    if (!giornataAperta(tec)) S.giornate = [...(S.giornate || []), {id, ...body}];
+    if (!silenzioso) toast("🟢 Attività aperta alle " + body.alle, 3000);
+    render();
+    posizione().then(pos => { if (pos) db.collection("giornate").doc(id).set({pos}, {merge: true}).catch(() => {}); });
+  } catch(e) { if (!silenzioso) toast("Non riesco a salvare: controlla la connessione e riprova", 4000); }
+}
+const svegliaMessa = () => { try { return localStorage.getItem("iteam-sveglia") === "1"; } catch(e) { return false; } };
+function mettiSveglia(){
+  const d = new Date(), ymd = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`, stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+  const ev = (uid, hh, mm, titolo, testo) => ["BEGIN:VEVENT", `UID:${uid}@iteamservice.it`, `DTSTAMP:${stamp}`, `DTSTART;TZID=Europe/Rome:${ymd}T${hh}${mm}00`, `DTEND;TZID=Europe/Rome:${ymd}T${hh}${pad(+mm + 5)}00`,
+    "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", `SUMMARY:${titolo}`, `DESCRIPTION:${testo}`, "BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${titolo}`, "TRIGGER:PT0S", "END:VALARM", "END:VEVENT"];
+  const txt = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//iTeam//Gestionale//IT", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+    "BEGIN:VTIMEZONE", "TZID:Europe/Rome", "BEGIN:DAYLIGHT", "TZOFFSETFROM:+0100", "TZOFFSETTO:+0200", "TZNAME:CEST", "DTSTART:19700329T020000", "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU", "END:DAYLIGHT",
+    "BEGIN:STANDARD", "TZOFFSETFROM:+0200", "TZOFFSETTO:+0100", "TZNAME:CET", "DTSTART:19701025T030000", "RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU", "END:STANDARD", "END:VTIMEZONE",
+    ...ev("iteam-allarme-8", "08", "00", "⏰ Apri l'attività (gestionale iTeam)", "Apri il gestionale e tocca 🟢 Apri l'attività."),
+    ...ev("iteam-allarme-1730", "17", "30", "📝 Compila il rapportino (gestionale iTeam)", "Prima di staccare invia i rapportini dei lavori di oggi."), "END:VCALENDAR"].join("\r\n");
+  const blob = new Blob([txt], {type: "text/calendar;charset=utf-8"}), url = URL.createObjectURL(blob);
+  const iOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const a = document.createElement("a"); a.href = url; if (!iOS) a.download = "Allarmi iTeam.ics";
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 60000);
+  try { localStorage.setItem("iteam-sveglia", "1"); } catch(e){}
+  toast(iOS ? "Tocca «Aggiungi tutto»: gli allarmi delle 8 e delle 17:30 suoneranno dal lunedì al venerdì" : "Apri il file e aggiungilo al calendario: gli allarmi suoneranno dal lunedì al venerdì", 6000);
+  render();
+}
+function boxApertura(me){
+  const g = giornataAperta(me), dow = new Date().getDay();
+  const sv = svegliaMessa() ? "" : `<button class="btn sm" data-a="sveglia">⏰ Metti sul telefono gli allarmi delle 8 e delle 17:30</button>`;
+  if (g) return `<div class="row wrap" style="gap:8px;margin-bottom:10px"><span class="chip ok">🟢 Attività aperta alle ${esc(g.alle)}</span>${sv}</div>`;
+  if (dow === 0 || dow === 6) return sv ? `<div style="margin-bottom:10px">${sv}</div>` : "";
+  return `<div class="card" style="border-color:var(--ok);background:var(--menta-2,#d6f5e8)"><b>☀️ Buongiorno! Apri la giornata</b><p class="m" style="margin:4px 0 10px">Tocca quando inizi a lavorare, anche se passi prima dal magazzino o dai fornitori. Alle 8 suona un allarme a chi non l'ha ancora fatto.</p><button class="btn pri big" data-a="apri">🟢 Apri l'attività</button>${sv ? `<div style="margin-top:8px">${sv}</div>` : ""}</div>`;
+}
+// per l'ufficio (pagina Oggi): chi ha aperto l'attività e chi no
+function boxAperture(){
+  const dow = new Date().getDay(); if (dow === 0 || dow === 6) return "";
+  const t = today(), assente = tec => (S.oreLibere || []).some(e => ASSENZE.includes(e.tipo) && num(e.minuti) >= ORE_GIORNO && e.data <= t && (e.dataFine || e.data) >= t && sameTec(e.tecnico, tec));
+  const l = TEC().map(x => x.nome).filter(Boolean); if (!l.length) return "";
+  const pezzi = l.map(n => { const g = giornataAperta(n); return g ? `<span class="chip ok">${esc(n.split(/\s+/)[0])} ${esc(g.alle)}</span>` : assente(n) ? `<span class="chip">${esc(n.split(/\s+/)[0])} assente</span>` : `<span class="chip ${nowTime() >= "08:00" ? "warn" : ""}">${esc(n.split(/\s+/)[0])} ⏳</span>`; });
+  return `<div class="card"><b>🟢 Attività aperte oggi</b><div class="row wrap" style="gap:6px;margin-top:6px">${pezzi.join("")}</div></div>`;
+}
 // ---- ⏱ Ore dei tecnici: dai rapportini + ore libere (altri lavori, ferie, permessi, malattia), per tecnico e per giorno, totale del mese ----
 // rapportino.minutiLavoro = ore di tutti; rapportino.minutiTec = {nome: minuti} quando i tecnici hanno fatto orari diversi
 // oreLibere/{id} = {tecnico, uid, tipo, data, dataFine (ferie/malattia su più giorni, sabato e domenica esclusi), minuti (al giorno), descrizione, da}
@@ -3137,6 +3193,7 @@ function vTecnico(){
     return `<div class="row" style="margin-top:10px;gap:8px">${x.stato === "Programmato" ? `<button class="btn" style="flex:1" data-start="${x.id}">▶ Inizia</button>` : `<span class="chip warn">Iniziato ${esc(x.inizioReale || x.rapportino?.inizio || "")}</span>`}${commVisibili(x.clienteId).length ? `<button class="btn" style="flex:none" data-commcli="${x.clienteId}" title="Documenti della commessa" aria-label="Documenti della commessa">📁 ${commVisibili(x.clienteId).reduce((n, c) => n + docVisibili(c).length, 0)}</button>` : ""}${assetsNS ? `<button class="btn" style="flex:none" data-media="${x.id}" title="Foto e video">📷${(x.media || []).length ? " " + x.media.length : ""}</button>` : ""}<button class="btn pri" style="flex:2" data-rap="${x.id}">Compila rapportino</button></div>` + (x.stato !== "Programmato" ? waTecnico(x) : "");
   };
   return `<h2>Ciao ${esc(me)}</h2>
+  ${boxApertura(me)}
   ${boxNotifiche()}
   <div class="seg segwrap"><button class="${ui.tecF === "oggi" ? "on" : ""}" data-tecf="oggi">Da fare oggi (${F.oggi.filter(x => x.stato !== "Completato").length})</button><button class="${ui.tecF === "prossimi" ? "on" : ""}" data-tecf="prossimi">Prossimi (${F.prossimi.length})</button><button class="${ui.tecF === "cal" ? "on" : ""}" data-tecf="cal">Calendario</button><button class="${ui.tecF === "cli" ? "on" : ""}" data-tecf="cli">Clienti</button><button class="${ui.tecF === "inviati" ? "on" : ""}" data-tecf="inviati">Inviati</button><button class="${ui.tecF === "furgone" ? "on" : ""}" data-tecf="furgone">🚐 Furgone</button><button class="${ui.tecF === "ore" ? "on" : ""}" data-tecf="ore">⏱ Le mie ore</button></div>
   ${ui.tecF === "cal" ? vCalendario(me) : ui.tecF === "cli" ? vTecClienti() : ui.tecF === "furgone" ? vTecFurgone() : ui.tecF === "ore" ? vMieOre(me) : `
@@ -4585,7 +4642,7 @@ function extraOggiUff(){
   const en = (S.detrazioni || []).filter(d => statoDetr(d) !== "Chiusa" && detrServeEnea(d) && !d.eneaInviata && d.fineLavori && eneaScad(d) <= in15).length;
   const ree = impUff().filter(i => serveREE(i) && (reeProssimo(i) <= in60 || (i.ultimoREE && !i.reeInviato))).length;
   const mz = scadenzeVicine();
-  return `${bdf ? `<div class="card tap" data-altro="fgas"><b>🧊 ${bdf} intervent${bdf === 1 ? "o" : "i"} F-gas</b> da comunicare alla Banca Dati entro 7 giorni</div>` : ""}
+  return `${boxAperture()}${bdf ? `<div class="card tap" data-altro="fgas"><b>🧊 ${bdf} intervent${bdf === 1 ? "o" : "i"} F-gas</b> da comunicare alla Banca Dati entro 7 giorni</div>` : ""}
   ${en ? `<div class="card tap" data-altro="detr"><b>🧾 ${en} comunicazion${en === 1 ? "e" : "i"} ENEA</b> da fare entro 15 giorni</div>` : ""}
   ${ree ? `<div class="card tap" data-altro="libretti"><b>📘 ${ree} rapport${ree === 1 ? "o" : "i"} di efficienza</b> da fare o da inviare al catasto</div>` : ""}
   ${mz ? `<div class="card tap" data-altro="mezzi"><b>🚚 ${mz} scadenz${mz === 1 ? "a" : "e"}</b> di furgoni, attrezzature o patentini nel prossimo mese</div>` : ""}`;
@@ -4700,7 +4757,7 @@ const ALTRO = () => [
   ...(puoEliminare() ? [["cestino", "🗑️", "Cestino e registro", "Ripristina ciò che è stato eliminato, chi ha cambiato cosa"]] : [])
 ];
 // ---- 🗑️ Cestino e registro delle modifiche (solo ufficio e amministratore) ----
-const NOMI_COL = {clienti: "Cliente", impianti: "Impianto", interventi: "Intervento", preventivi: "Preventivo", fatture: "Fattura", magazzino: "Articolo", dico: "DiCo", commesse: "Commessa", contratti: "Contratto", ordini: "Ordine", contabilita: "Fattura fornitore", crediti: "Da incassare", fgasOps: "Intervento F-gas", detrazioni: "Pratica detrazione", mezzi: "Mezzo", attrezzature: "Attrezzatura", oreLibere: "Ore / ferie / permesso", spese: "Altra spesa", impostazioni: "Impostazioni", config: "Impostazioni"};
+const NOMI_COL = {clienti: "Cliente", impianti: "Impianto", interventi: "Intervento", preventivi: "Preventivo", fatture: "Fattura", magazzino: "Articolo", dico: "DiCo", commesse: "Commessa", contratti: "Contratto", ordini: "Ordine", contabilita: "Fattura fornitore", crediti: "Da incassare", fgasOps: "Intervento F-gas", detrazioni: "Pratica detrazione", mezzi: "Mezzo", attrezzature: "Attrezzatura", oreLibere: "Ore / ferie / permesso", spese: "Altra spesa", giornate: "Apertura attività", impostazioni: "Impostazioni", config: "Impostazioni"};
 const AZ = {crea: ["➕", "ha creato", "ok"], modifica: ["✏️", "ha modificato", ""], elimina: ["🗑️", "ha eliminato", "bad"], ripristina: ["♻️", "ha ripristinato", "ok"]};
 let CEST = {cestino: null, registro: null, carica: false};
 async function caricaCestino(){
@@ -4928,6 +4985,8 @@ document.addEventListener("click", async e => {
   if (a === "low") { ui.magLow = !ui.magLow; ui.magCat = ""; render(); }
   if (a === "set") formImpostazioni();
   if (a === "tecnew") formTecNew();
+  if (a === "apri") apriAttivita(ui.tecnico);
+  if (a === "sveglia") mettiSveglia();
   if (a === "limport") importListino();
   if (a === "lnew") formListinoItem();
   if (a === "magimp") formImportMag();

@@ -68,6 +68,12 @@ in italiano semplice, senza gergo tecnico.
   Ore libere `oreLibere/{id}` = {tecnico, uid, tipo (`TIPI_ORE`: Altro lavoro = ora lavorata; Ferie/Permesso/Malattia = assenze), data, dataFine
   (più giorni, `giorniTra()` salta sabato e domenica), minuti al giorno, descrizione, da}: `formOreLibere()`, `caricaOreLibere()` (ufficio tutte; tecnico solo
   `where uid` + `where tecnico` = `mioTecnico()`, le regole `mieOre()` lo impongono; cancella solo l'ufficio).
+- ⏰ Allarmi ai tecnici (lun–ven): `scripts/allarmi.js` (workflow `allarmi.yml` poco prima, `--aspetta` l'ora esatta; riserva nel workflow avvisi):
+  8:00 "hai aperto l'attività?" a chi non ha `giornate/{data}_{slug tecnico}` (= {tecnico, data, alle, uid, pos}: pulsante 🟢 Apri l'attività in `boxApertura()`
+  o da ▶ Inizia in `startJob`) e non è assente tutto il giorno (oreLibere); 17:30 "hai compilato il rapportino?" a chi ha lavori di oggi o in corso
+  senza rapportino. Una volta sola: `allarmi/{turno}-{data}_{tecnico}` con create(). Notifica "forte" (`data.forte` → `sw.js`: requireInteraction, vibrazione).
+  ⏰ `mettiSveglia()` scarica un .ics con i due allarmi ricorrenti nel calendario del telefono. Ufficio: `boxAperture()` in `extraOggiUff()`.
+  Prove: `test/prova-allarmi.js` (script, finto Firestore), `test/prova-apertura.js` (pagine).
 - Calendario: toccando un giorno (vista Mese) si apre `giornoPopup(g)` con gli appuntamenti; i tocchi dentro passano alla pagina.
 - Trasferimento dal calendario iPhone (solo titolare, `vTrasfCal()` dal Calendario): il titolare incolla il link del
   "Calendario pubblico" iCloud in `calendariFeed/impostazioni.icloudUrl`; `scripts/calendari.js` (workflow avvisi, ogni 10 min)

@@ -1,6 +1,6 @@
 // Service worker: l'app si apre anche senza connessione e si aggiorna da sola.
 // Cambiare VERSIONE quando si vuole svuotare la cache sui dispositivi.
-const VERSIONE = "iteam-v7";
+const VERSIONE = "iteam-v8";
 const CONDIVISI = "iteam-condivisi"; // foto/video arrivati da "Condividi" (es. WhatsApp), in attesa di essere salvati
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", e => e.waitUntil(
@@ -41,7 +41,9 @@ self.addEventListener("push", e => {
   let d = {}; try { d = e.data ? e.data.json() : {}; } catch(err) { d = {body: e.data && e.data.text()}; }
   const m = Object.assign({}, d.notification || {}, d.data || {}, d.title ? {title: d.title, body: d.body} : {});
   e.waitUntil(self.registration.showNotification(m.title || "iTeam", {
-    body: m.body || "", icon: "icons/icon-192.png", badge: "icons/icon-192.png", tag: m.tag || undefined, data: {url: m.url || "./"}
+    body: m.body || "", icon: "icons/icon-192.png", badge: "icons/icon-192.png", tag: m.tag || undefined, data: {url: m.url || "./"},
+    // allarme forte (es. le 8: "hai aperto l'attività?"): suono, vibrazione lunga, resta sullo schermo finché non si tocca
+    ...(m.forte ? {requireInteraction: true, renotify: true, silent: false, vibrate: [600, 200, 600, 200, 900]} : {})
   }));
 });
 self.addEventListener("notificationclick", e => {

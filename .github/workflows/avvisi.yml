@@ -25,6 +25,11 @@ jobs:
         run: node scripts/avvisi.js
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - name: Allarmi ai tecnici (riserva, se quelli delle 8 e 17:30 sono in ritardo)
+        if: always()
+        run: node scripts/allarmi.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
       - name: Cambio password decisi dal titolare
         if: always()
         run: node scripts/password.js

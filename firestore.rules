@@ -49,6 +49,15 @@ service cloud.firestore {
     // Ore libere (altri lavori senza cliente, ferie, permessi, malattia): l'ufficio vede e gestisce tutto;
     // il tecnico segna e modifica le sue (create da lui o a suo nome), non le cancella e non vede quelle degli altri
     function mieOre(d) { return d.uid == request.auth.uid || (hasProfile() && d.tecnico == prof().get('tecnico', '')); }
+    // Apertura dell'attività del tecnico (per l'allarme delle 8): il tecnico apre la sua giornata, l'ufficio vede tutte
+    match /giornate/{id} {
+      allow read: if office() || (active() && (resource == null || resource.data.uid == request.auth.uid || mieOre(resource.data)));
+      allow create: if office() || (active() && request.resource.data.uid == request.auth.uid);
+      allow update: if office() || (active() && resource.data.uid == request.auth.uid && request.resource.data.uid == resource.data.uid);
+      allow delete: if office();
+    }
+    // Allarmi già mandati (li scrive solo lo script su GitHub)
+    match /allarmi/{id} { allow read: if office(); allow write: if false; }
     match /oreLibere/{id} {
       allow read: if office() || (active() && mieOre(resource.data));
       allow create: if office() || (active() && request.resource.data.uid == request.auth.uid);
@@ -100,8 +109,8 @@ service cloud.firestore {
     // Tutti gli altri dati (clienti, impianti, interventi, magazzino, dico, commesse, …):
     // gli attivi leggono, creano e modificano; ELIMINA solo l'ufficio (va nel cestino)
     match /{col}/{id} {
-      allow read, create, update: if active() && !(col in ['utenti', 'config', 'contabilita', 'crediti', 'spese', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'mezzi', 'attrezzature', 'oreLibere', 'calendariFeed', 'eventiCal', 'registro', 'cestino', 'preventivi', 'listino', 'magazzinoPrezzi', 'commesseRiservate', 'clienti']);
-      allow delete: if office() && !(col in ['utenti', 'config', 'contabilita', 'crediti', 'spese', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'mezzi', 'attrezzature', 'oreLibere', 'calendariFeed', 'eventiCal', 'registro', 'cestino', 'preventivi', 'listino', 'magazzinoPrezzi', 'commesseRiservate', 'clienti']);
+      allow read, create, update: if active() && !(col in ['utenti', 'config', 'contabilita', 'crediti', 'spese', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'mezzi', 'attrezzature', 'oreLibere', 'giornate', 'allarmi', 'calendariFeed', 'eventiCal', 'registro', 'cestino', 'preventivi', 'listino', 'magazzinoPrezzi', 'commesseRiservate', 'clienti']);
+      allow delete: if office() && !(col in ['utenti', 'config', 'contabilita', 'crediti', 'spese', 'fatture', 'ordini', 'contratti', 'fgasOps', 'detrazioni', 'mezzi', 'attrezzature', 'oreLibere', 'giornate', 'allarmi', 'calendariFeed', 'eventiCal', 'registro', 'cestino', 'preventivi', 'listino', 'magazzinoPrezzi', 'commesseRiservate', 'clienti']);
     }
   }
 }
