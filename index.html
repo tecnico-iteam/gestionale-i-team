@@ -243,6 +243,11 @@ nav.tabs button.on svg{background:var(--pri-2);border-radius:12px;padding:3px 10
 .sgi{font-size:10.5px;line-height:1.2;background:#f1edff;color:#3b2a8f;border-radius:6px;padding:2px 2px;margin-top:3px;overflow:hidden;text-align:center}.sgi b,.sgi span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sgi b{font-size:11px}
 .sgi.ok{background:#d6f5e8;color:#0b5a3c}.sgi.warn{background:#fff1cc;color:#7a5300}.sgi.ass{background:#ffe3da;color:#a8361a}.sgi.more{background:transparent;color:var(--mute);text-align:center}
 @media(min-width:700px){.sg{min-height:120px;padding:6px}.sgi{font-size:12.5px;padding:3px 5px}}
+.tec-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0 10px;font-size:19px}.tec-top .chip{font-size:12.5px}
+.tec-apri{margin:-2px 0 12px}
+.seg.segtec{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}.seg.segtec::-webkit-scrollbar{display:none}.seg.segtec button{flex:0 0 auto;padding:7px 12px}
+@media(max-width:600px){.tecpage .card{padding:11px 12px;margin-bottom:8px}.tecpage .tec-act .btn{padding:9px 8px;font-size:14px}.tecpage .sg{min-height:76px}
+.tecpage .card .btn.big{padding:10px}.tecpage h3{margin:12px 0 6px}}
 </style>
 </head>
 <body>
@@ -1919,12 +1924,12 @@ function mettiSveglia(){
   render();
 }
 function boxApertura(me){
-  const g = giornataAperta(me), dow = new Date().getDay();
-  const sv = svegliaMessa() ? "" : `<button class="btn sm" data-a="sveglia">⏰ Metti sul telefono gli allarmi delle 8 e delle 17:30</button>`;
-  if (g) return `<div class="row wrap" style="gap:8px;margin-bottom:10px"><span class="chip ok">🟢 Attività aperta alle ${esc(g.alle)}</span>${sv}</div>`;
-  if (dow === 0 || dow === 6) return sv ? `<div style="margin-bottom:10px">${sv}</div>` : "";
-  return `<div class="card" style="border-color:var(--ok);background:var(--menta-2,#d6f5e8)"><b>☀️ Buongiorno! Apri la giornata</b><p class="m" style="margin:4px 0 10px">Tocca quando inizi a lavorare, anche se passi prima dal magazzino o dai fornitori. Alle 8 suona un allarme a chi non l'ha ancora fatto.</p><button class="btn pri big" data-a="apri">🟢 Apri l'attività</button>${sv ? `<div style="margin-top:8px">${sv}</div>` : ""}</div>`;
+  const g = giornataAperta(me), dow = new Date().getDay(), nome = esc(String(me || "").split(/\s+/)[0]);
+  if (g) return `<div class="tec-top"><b>Ciao ${nome}</b><span class="chip ok">🟢 aperta alle ${esc(g.alle)}</span></div>`;
+  if (dow === 0 || dow === 6) return `<div class="tec-top"><b>Ciao ${nome}</b></div>`;
+  return `<div class="tec-top"><b>Ciao ${nome}</b></div><button class="btn pri big tec-apri" data-a="apri">🟢 Apri l'attività</button>`;
 }
+const bottoneSveglia = () => svegliaMessa() ? "" : `<button class="btn sm" data-a="sveglia" style="width:100%;margin-bottom:10px">⏰ Metti sul telefono gli allarmi delle 8 e delle 17:30</button>`;
 // per l'ufficio (pagina Oggi): chi ha aperto l'attività e chi no
 function boxAperture(){
   const dow = new Date().getDay(); if (dow === 0 || dow === 6) return "";
@@ -3240,19 +3245,18 @@ function vTecnico(){
   const list = F[ui.tecF] || [];
   const act = x => {
     if (x.stato === "Completato") return `<div class="m" style="margin-top:6px">${x.verificato ? "✔ Verificato dall'ufficio" : "📨 Inviato all'ufficio"}</div>`;
-    return `<div class="row" style="margin-top:10px;gap:8px">${x.stato === "Programmato" ? `<button class="btn" style="flex:1" data-start="${x.id}">▶ Inizia</button>` : `<span class="chip warn">Iniziato ${esc(x.inizioReale || x.rapportino?.inizio || "")}</span>`}${commVisibili(x.clienteId).length ? `<button class="btn" style="flex:none" data-commcli="${x.clienteId}" title="Documenti della commessa" aria-label="Documenti della commessa">📁 ${commVisibili(x.clienteId).reduce((n, c) => n + docVisibili(c).length, 0)}</button>` : ""}${assetsNS ? `<button class="btn" style="flex:none" data-media="${x.id}" title="Foto e video">📷${(x.media || []).length ? " " + x.media.length : ""}</button>` : ""}<button class="btn pri" style="flex:2" data-rap="${x.id}">Compila rapportino</button></div>` + (x.stato !== "Programmato" ? waTecnico(x) : "");
+    return `<div class="row tec-act" style="margin-top:10px;gap:6px">${x.stato === "Programmato" ? `<button class="btn" style="flex:1" data-start="${x.id}">▶ Inizia</button>` : `<span class="chip warn">Iniziato ${esc(x.inizioReale || x.rapportino?.inizio || "")}</span>`}${commVisibili(x.clienteId).length ? `<button class="btn" style="flex:none" data-commcli="${x.clienteId}" title="Documenti della commessa" aria-label="Documenti della commessa">📁 ${commVisibili(x.clienteId).reduce((n, c) => n + docVisibili(c).length, 0)}</button>` : ""}${assetsNS ? `<button class="btn" style="flex:none" data-media="${x.id}" title="Foto e video">📷${(x.media || []).length ? " " + x.media.length : ""}</button>` : ""}<button class="btn pri" style="flex:2" data-rap="${x.id}">📝 Rapportino</button></div>` + (x.stato !== "Programmato" ? waTecnico(x) : "");
   };
-  return `<h2>Ciao ${esc(me)}</h2>
-  ${boxApertura(me)}
+  return `<div class="tecpage">${boxApertura(me)}
   ${settimanaTec(me, mine)}
   ${boxNotifiche()}
-  <div class="seg segwrap"><button class="${ui.tecF === "oggi" ? "on" : ""}" data-tecf="oggi">${gSel ? esc(new Date(gSel + "T12:00:00").toLocaleDateString("it-IT", {weekday: "long", day: "numeric", month: "short"})) : "Da fare oggi"} (${F.oggi.filter(x => x.stato !== "Completato").length})</button><button class="${ui.tecF === "prossimi" ? "on" : ""}" data-tecf="prossimi">Prossimi (${F.prossimi.length})</button><button class="${ui.tecF === "cal" ? "on" : ""}" data-tecf="cal">Calendario</button><button class="${ui.tecF === "cli" ? "on" : ""}" data-tecf="cli">Clienti</button><button class="${ui.tecF === "inviati" ? "on" : ""}" data-tecf="inviati">Inviati</button><button class="${ui.tecF === "furgone" ? "on" : ""}" data-tecf="furgone">🚐 Furgone</button><button class="${ui.tecF === "ore" ? "on" : ""}" data-tecf="ore">⏱ Le mie ore</button></div>
-  ${ui.tecF === "cal" ? vCalendario(me) : ui.tecF === "cli" ? vTecClienti() : ui.tecF === "furgone" ? vTecFurgone() : ui.tecF === "ore" ? vMieOre(me) : `
+  <div class="seg segtec">${[["oggi", (gSel ? esc(new Date(gSel + "T12:00:00").toLocaleDateString("it-IT", {weekday: "short", day: "numeric"})) : "Oggi") + ` (${F.oggi.filter(x => x.stato !== "Completato").length})`], ["prossimi", `Prossimi (${F.prossimi.length})`], ["cal", "📅 Mese"], ["cli", "👥 Clienti"], ["inviati", "📨 Inviati"], ["furgone", "🚐 Furgone"], ["ore", "⏱ Ore"]].map(([k, l]) => `<button class="${ui.tecF === k ? "on" : ""}" data-tecf="${k}">${l}</button>`).join("")}</div>
+  ${ui.tecF === "cal" ? vCalendario(me) : ui.tecF === "cli" ? vTecClienti() : ui.tecF === "furgone" ? vTecFurgone() : ui.tecF === "ore" ? bottoneSveglia() + vMieOre(me) : `
   ${ui.tecF === "prossimi" && list.length ? `<button class="btn" style="width:100%;margin-bottom:10px" data-ics="all">📅 Metti tutti i miei appuntamenti nel calendario del telefono</button>` : ""}
   ${list.length ? (ui.tecF === "prossimi" ? groupByDate(list, {noTec: true, addr: true}) : list.map(x => ui.tecF === "oggi" ? intCard(x, {noTec: true, esteso: true, data: x.data !== (gSel || t) && !isCant(x), giorno: gSel || t, actions: dettaglioTec(x, gSel || t, me) + (gSel && gSel > t ? "" : act(x))}) : intCard(x, {noTec: true, addr: true, data: x.data !== t && !isCant(x), actions: ui.tecF === "inviati" ? "" : act(x)})).join("")) : empty(ui.tecF === "oggi" ? (gSel ? (assenzaDi(me, gSel) ? tipoOre(assenzaDi(me, gSel).tipo)[1] + " " + assenzaDi(me, gSel).tipo + ": nessun lavoro." : "Nessun lavoro per questo giorno.") : "Nessun lavoro assegnato per oggi.") : "Niente qui.")}
   ${ui.tecF === "oggi" && !gSel && free.length ? `<h3>Da assegnare</h3>${free.map(x => intCard(x, {noTec: true, data: true, addr: true, actions: `<div style="margin-top:8px"><button class="btn sm" data-take="${x.id}">Prendo io</button></div>`})).join("")}` : ""}
   `}
-  <div style="margin-top:18px"><button class="btn big" data-a="tecnew">+ Lavoro non programmato</button></div>`;
+  <div style="margin-top:14px"><button class="btn" style="width:100%" data-a="tecnew">+ Lavoro non programmato</button></div></div>`;
 }
 function vTecClienti(){
   const q = ui.q.toLowerCase();

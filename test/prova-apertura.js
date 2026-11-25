@@ -54,6 +54,7 @@ const {chromium} = require('playwright');
   await t.click('[data-a="apri"]'); await t.waitForTimeout(600);
   console.log('Giornata:', JSON.stringify(await t.evaluate(() => window.__store.giornate)));
   console.log('TEC dopo:', (await txt(t, '#app')).slice(0, 160));
+  await t.click('[data-tecf="ore"]'); await t.waitForTimeout(300);
   const [ics] = await Promise.all([t.waitForEvent('download', {timeout: 8000}).catch(() => null), t.click('[data-a="sveglia"]')]);
   if (ics) { const fs = require('fs'); await ics.saveAs('/home/claude/work/allarmi.ics'); console.log('ICS:', fs.readFileSync('/home/claude/work/allarmi.ics', 'utf8').split('\r\n').filter(l => /DTSTART;|RRULE:FREQ=WEEKLY|SUMMARY|TRIGGER/.test(l)).join(' | ')); }
   console.log('Pulsante sveglia ancora visibile:', await t.isVisible('[data-a="sveglia"]'));
