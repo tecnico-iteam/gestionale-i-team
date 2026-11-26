@@ -3863,13 +3863,14 @@ const MESI_LUNGHI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno
 function vContab(){
   if (!puoContab()) return empty("La contabilità è visibile solo al titolare e a chi è abilitato.");
   const sez = ui.conSez || "riepilogo";
-  const segSez = `<div class="seg" style="margin-bottom:12px;flex-wrap:wrap;gap:4px">${[["riepilogo", "📊 Analisi"], ["tabella", "📋 Tabella"], ["vendite", "🟢 Vendite"], ["acquisti", "🔴 Acquisti"], ["spese", "🟠 Altre spese"], ["crediti", "💰 Da incassare"], ["prev", "📝 Preventivi"]].map(([k, lb]) => `<button class="${sez === k ? "on" : ""}" data-consez="${k}" style="flex:1 1 30%;white-space:nowrap;padding-left:8px;padding-right:8px">${lb}</button>`).join("")}</div>`;
+  const segSez = `<div class="seg" style="margin-bottom:12px;flex-wrap:wrap;gap:4px">${[["riepilogo", "📊 Analisi"], ["tabella", "📋 Tabella"], ["vendite", "🟢 Vendite"], ["acquisti", "🔴 Acquisti"], ["spese", "🟠 Altre spese"], ["oredip", "⏱ Ore dipendenti"], ["crediti", "💰 Da incassare"], ["prev", "📝 Preventivi"]].map(([k, lb]) => `<button class="${sez === k ? "on" : ""}" data-consez="${k}" style="flex:1 1 30%;white-space:nowrap;padding-left:8px;padding-right:8px">${lb}</button>`).join("")}</div>`;
   const vuoto = !(S.fatture || []).length && !(S.contabilita || []).length;
   const pac = sonoTitolare() && vuoto ? `<button class="btn" data-contab="pacchetto" style="margin-bottom:10px;width:100%">📥 Importa pacchetto preparato da Claude (.json)</button>` : "";
   if (sez === "vendite") return segSez + pac + vContabVendite();
   if (sez === "crediti") return segSez + vContabCrediti();
   if (sez === "tabella") return segSez + pac + vContabTabella();
   if (sez === "spese") return segSez + vContabSpese();
+  if (sez === "oredip") return segSez + vContabOre();
   if (sez === "prev") return segSez + vContabPrev();
   if (sez === "riepilogo") return segSez + pac + vContabRiepilogo() + (sonoTitolare() && !vuoto ? `<button class="btn sm" data-contab="pacchetto" style="margin-top:6px">📥 Importa un altro pacchetto</button>` : "");
   return segSez + pac + vContabAcquisti();
@@ -4034,6 +4035,61 @@ document.addEventListener("click", async e => {
   if (d.spesecat !== undefined) { ui.speseCat = d.spesecat; return render(); }
   if (d.spesa) return detSpesa(d.spesa);
 });
+// ---- ⏱ Registro ore dipendenti (Contabilità): ore del mese per dipendente, assenze, straordinari, costo; dettaglio giorno per giorno; Excel per il consulente ----
+// Usa gli stessi dati della pagina Ore tecnici: rapportini (oreRap) + ore libere (oreLibere). Mese in ui.oreM.
+function registroOre(){
+  if (!ui.oreM) ui.oreM = today().slice(0, 7);
+  const righe = righeOre(ui.oreM), by = totaliOre(righe);
+  const nomi = [...new Set([...TEC().map(t => t.nome).filter(Boolean), ...Object.keys(by)])].sort((a, b) => a.localeCompare(b));
+  const rows = nomi.map(n => { const k = Object.keys(by).find(t => sameTec(t, n)), b = k ? by[k] : vuotoOre();
+    return {nome: n, giorni: Object.values(b.giorni).filter(Boolean).length, min: b.min, lib: b.lib, extra: b.extra, via: b.via, n: b.n,
+      ferie: b.ass.Ferie || 0, permesso: b.ass.Permesso || 0, malattia: b.ass.Malattia || 0}; });
+  return {righe, by, rows};
+}
+function vContabOre(){
+  const {righe, rows} = registroOre(), ci = num(CFG.costoInterno);
+  const S_ = k => rows.reduce((s, r) => s + r[k], 0);
+  const giorniAss = m => m ? (m % ORE_GIORNO === 0 ? m / ORE_GIORNO + " gg" : hmc(m)) : "–";
+  return `${navMese()}
+  <div class="tiles" style="margin-bottom:10px">
+    <div class="tile"><div class="n">${hm(S_("min"))}</div><div class="l">Ore lavorate (${rows.filter(r => r.min).length} dipendenti)</div></div>
+    <div class="tile"><div class="n" style="color:${S_("extra") ? "var(--warn)" : "inherit"}">${hm(S_("extra"))}</div><div class="l">Oltre 8 ore/giorno</div></div>
+    <div class="tile"><div class="n">${hm(S_("ferie") + S_("permesso") + S_("malattia"))}</div><div class="l">Ferie, permessi e malattia (ore)</div></div>
+    ${ci ? `<div class="tile"><div class="n money" style="font-size:19px">${eur(S_("min") / 60 * ci)}</div><div class="l">Costo ore (${eur(ci)}/ora)</div></div>` : ""}</div>
+  <div class="row wrap" style="gap:8px;margin-bottom:10px"><button class="btn" data-orelibnew="">+ Segna ore, ferie o permesso</button><button class="btn pri" data-a="orexls">⬇ Scarica Excel per il consulente</button></div>
+  <h3>Registro del mese</h3>
+  <div class="xls-wrap" style="max-height:none"><table class="xls"><thead><tr>${["Dipendente", "Giorni lav.", "Ore lavorate", "di cui senza cliente", "Oltre 8 h", "🏖️ Ferie", "🕐 Permessi", "🤒 Malattia", "Viaggio", ...(ci ? ["Costo ore"] : [])].map((h, i) => `<th class="${i ? "num" : ""}" style="width:${i ? 100 : 180}px">${h}</th>`).join("")}</tr></thead>
+  <tbody>${rows.map(r => `<tr><td class="apri" data-regtec="${esc(r.nome)}" title="Apri il dettaglio giorno per giorno">👷 ${esc(r.nome)}</td><td class="num">${r.giorni || "–"}</td><td class="num"><b>${r.min ? hmc(r.min) : "–"}</b></td><td class="num">${r.lib ? hmc(r.lib) : "–"}</td><td class="num" style="${r.extra ? "color:var(--bad);font-weight:800" : ""}">${r.extra ? hmc(r.extra) : "–"}</td><td class="num">${giorniAss(r.ferie)}</td><td class="num">${giorniAss(r.permesso)}</td><td class="num">${giorniAss(r.malattia)}</td><td class="num">${r.via ? hmc(r.via) : "–"}</td>${ci ? `<td class="num">${r.min ? eur(r.min / 60 * ci) : "–"}</td>` : ""}</tr>`).join("")}</tbody>
+  <tfoot><tr><td>Totale</td><td class="num">${S_("giorni")}</td><td class="num">${hmc(S_("min"))}</td><td class="num">${hmc(S_("lib"))}</td><td class="num">${hmc(S_("extra"))}</td><td class="num">${giorniAss(S_("ferie"))}</td><td class="num">${giorniAss(S_("permesso"))}</td><td class="num">${giorniAss(S_("malattia"))}</td><td class="num">${hmc(S_("via"))}</td>${ci ? `<td class="num">${eur(S_("min") / 60 * ci)}</td>` : ""}</tr></tfoot></table></div>
+  <p class="m">Ore = ore:minuti. Ferie e malattia a giornate intere sono in giorni (gg). Le ore arrivano dai rapportini e da quelle segnate a mano (magazzino, fornitori, corsi…).${ci ? "" : " Per vedere il costo delle ore scrivi il «costo interno di un'ora» in ⚙️ Impostazioni."}</p>
+  <h3>Giorno per giorno</h3>${righe.length ? tabellaOre(righe) : empty("Nessuna ora segnata in questo mese.")}`;
+}
+document.addEventListener("click", e => { const el = e.target.closest("[data-regtec]"); if (!el || e.target.closest(".ov")) return; ui.oreTec = el.dataset.regtec; ui.intF = "ore"; go("interventi"); });
+async function scaricaExcelOre(){
+  let X; try { X = await loadXLSX(); } catch(e) { toast("Non riesco a preparare il file Excel: controlla la connessione e riprova", 4500); return; }
+  let dl = null; try { dl = await claude.use("downloads"); } catch(e){}
+  if (!dl) { toast("Il salvataggio dei file non è disponibile qui", 4000); return; }
+  const {righe, rows} = registroOre(), ore = m => Math.round(num(m) / 60 * 100) / 100, mese = meseNome(ui.oreM);
+  const dataXls = s => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ""); return m ? new Date(+m[1], +m[2] - 1, +m[3], 12) : ""; };
+  const wb = X.utils.book_new();
+  const fmt = (ws, cols, nRighe, numCols, totRow) => {
+    for (let r = 2; r <= nRighe + 1; r++) numCols.forEach(c => { const cell = ws[X.utils.encode_col(c) + r]; if (cell && cell.t === "n") cell.z = "0.00"; });
+    if (totRow) { const rt = nRighe + 2; ws["A" + rt] = {t: "s", v: "TOTALE"}; numCols.forEach(c => { const L = X.utils.encode_col(c); ws[L + rt] = {t: "n", f: `SUBTOTAL(9,${L}2:${L}${nRighe + 1})`, z: "0.00"}; }); ws["!ref"] = `A1:${X.utils.encode_col(cols.length - 1)}${rt}`; }
+    ws["!cols"] = cols.map((c, i) => ({wch: i ? Math.max(11, c.length + 2) : 26})); ws["!autofilter"] = {ref: `A1:${X.utils.encode_col(cols.length - 1)}${nRighe + 1}`};
+  };
+  const h1 = ["Dipendente", "Giorni lavorati", "Ore lavorate", "di cui senza cliente", "Oltre 8 ore/giorno", "Ferie (ore)", "Permessi (ore)", "Malattia (ore)", "Viaggio (ore)"];
+  const ws1 = X.utils.aoa_to_sheet([h1, ...rows.map(r => [r.nome, r.giorni, ore(r.min), ore(r.lib), ore(r.extra), ore(r.ferie), ore(r.permesso), ore(r.malattia), ore(r.via)])]);
+  fmt(ws1, h1, rows.length, [1, 2, 3, 4, 5, 6, 7, 8], true); X.utils.book_append_sheet(wb, ws1, "Riepilogo");
+  const h2 = ["Data", "Dipendente", "Ore lavorate", "Ferie", "Permesso", "Malattia", "Viaggio", "Cliente / attività", "Orario", "Note"];
+  const det = righe.map(r => { const rp = r.x && r.x.rapportino; return [dataXls(r.data), r.tec, r.lavoro ? ore(r.min) : 0, r.tipo === "Ferie" ? ore(r.min) : 0, r.tipo === "Permesso" ? ore(r.min) : 0, r.tipo === "Malattia" ? ore(r.min) : 0, ore(r.via),
+    r.x ? cliName(r.x.clienteId) + (r.x.tipo ? " · " + r.x.tipo : "") : r.tipo, rp && rp.inizio ? rp.inizio + "–" + (rp.fine || "") : "", r.lib ? r.lib.descrizione || "" : (rp && num(rp.pausaMin) ? "pausa " + rp.pausaMin + " min" : "")]; });
+  const ws2 = X.utils.aoa_to_sheet([h2, ...det], {cellDates: true});
+  for (let r = 2; r <= det.length + 1; r++) { const c = ws2["A" + r]; if (c && c.t === "d") c.z = "dd/mm/yyyy"; }
+  fmt(ws2, h2, det.length, [2, 3, 4, 5, 6], true); X.utils.book_append_sheet(wb, ws2, "Giorno per giorno");
+  const out = X.write(wb, {bookType: "xlsx", type: "array"});
+  try { await dl.save({filename: `Registro ore iTeam ${mese}.xlsx`, data: new Blob([out], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})}); toast("File Excel pronto", 3000); }
+  catch(e) { if (e && e.code !== "declined") toast("Salvataggio non riuscito", 3500); }
+}
 // ---- 📋 Tabella in stile Excel (Contabilità): vendite e acquisti a righe e colonne, celle modificabili, ordinamento, totali, scarica .xlsx ----
 // Le celle salvano da sole quando si esce dalla casella (patch sul documento). ui.tabV = "vendite" | "acquisti", ui.tabOrd = {k, dir}.
 const TAB_COL = {
@@ -5067,6 +5123,7 @@ document.addEventListener("click", async e => {
   if (a === "lnew") formListinoItem();
   if (a === "magimp") formImportMag();
   if (a === "magsc") formScontoMassivo();
+  if (a === "orexls") return scaricaExcelOre();
   if (a === "orecsv") { const rs = righeOre(ui.oreM, ui.oreTec || ""); const h = o => String(r2(o.min / 60)).replace(".", ","); saveCsv(`Ore tecnici ${ui.oreM}${ui.oreTec ? " " + ui.oreTec : ""}.csv`, ["Data", "Tecnico", "Cliente", "Tipo", "Inizio", "Fine", "Pausa min", "Ore lavorate", "Viaggio min", "Ferie/permesso/malattia (ore)", "Lavori / descrizione", "Materiali", "Esito"], rs.map(o => { if (o.lib) return [o.data, o.tec, "", o.tipo, "", "", "", o.lavoro ? h(o) : "", 0, o.lavoro ? "" : h(o), o.lib.descrizione || "", "", ""]; const x = o.x, r = x.rapportino; return [x.data, o.tec, cliName(x.clienteId), x.tipo || "", r.inizio, r.fine, r.pausaMin || 0, h(o), r.viaggioMin || 0, "", [...(r.lavori || []), r.altro].filter(Boolean).join(", "), (r.materiali || []).map(m => m.qta + " " + m.descrizione).join(", "), r.esito || ""]; })); }
   if (a === "expcli") saveCsv("Clienti iTeam.csv", ["Nome", "Tipo", "Telefono", "Email", "Indirizzo", "CAP", "Città", "P.IVA/CF", "Referente", "Note"], clientiVisibili().map(c => [c.nome, c.tipo, c.telefono, c.email, c.indirizzo, c.cap, c.citta, c.piva, c.referente, c.note]));
   if (a === "expint") saveCsv("Interventi iTeam.csv", ["Data", "Ora", "Cliente", "Tipo", "Tecnico", "Stato", "Descrizione", "Ore lavorate", "Esito"], S.interventi.slice().sort(sortInt).map(x => [x.data, x.ora, cliName(x.clienteId), x.tipo, tecTxt(x), x.stato, x.descrizione, x.rapportino ? String(r2(num(x.rapportino.minutiLavoro) / 60)).replace(".", ",") : "", x.rapportino?.esito || ""]));
