@@ -301,7 +301,7 @@ const NAV = [
 ];
 
 // ---------- stato ----------
-const S = Object.fromEntries(COLS.map(c => [c, []])); S.contabilita = []; S.fgasOps = []; S.detrazioni = []; S.oreLibere = []; S.giornate = []; S.spese = []; S.mezzi = []; S.attrezzature = []; S.crediti = []; S.eventiCal = []; S.calCfg = {};
+const S = Object.fromEntries(COLS.map(c => [c, []])); S.contabilita = []; S.fgasOps = []; S.detrazioni = []; S.oreLibere = []; S.giornate = []; S.presenze = []; S.spese = []; S.mezzi = []; S.attrezzature = []; S.crediti = []; S.eventiCal = []; S.calCfg = {};
 if (window.__store) window.__S = S;   // solo nei test (finto database)
 const DEFAULT_MANODOPERA = ["Installazione monosplit (fino a 3 m di linee)","Installazione dual split","Installazione trial split","Metro aggiuntivo linee frigorifere","Staffa per unità esterna","Pompa scarico condensa","Canalina (al metro)","Carotaggio muro","Linea elettrica dedicata","Smontaggio e smaltimento vecchio impianto","Dichiarazione di conformità e pratiche F-gas"].map(d => ({descrizione: d, prezzo: 0}));
 let CFG = {postazioni: ["Tommy", "Irene", "Alessandro"], titolare: "Carone Tommaso", respAB: "Carone Tommaso", respCE: "Sasso Francesco", fgas: "FGAS-A18879", cciaa: "Torino", rea: "TO-1331174", alboArt: "", abilitazioni: ["a) elettrici", "b) radiotelevisivi ed elettronici", "c) riscaldamento e climatizzazione", "e) gas"], tecnici: [], lavori: DEFAULT_LAVORI.slice(), scontoAcquisto: 0, scontoCliente: 0, costoOra: 45, costoGiornata: 300, manodopera: DEFAULT_MANODOPERA.map(x => ({...x}))};
@@ -472,6 +472,7 @@ async function initDb(){
   const MIE = colsPerMe();
   const timer = setTimeout(() => { if (loaded.size < MIE.length) { ui.stale = true; render(); } }, 10000);
   if (puoContab()) db.collection("contabilita").onSnapshot(snap => { S.contabilita = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
+  if (puoContab()) db.collection("presenze").onSnapshot(snap => { S.presenze = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
   if (puoContab()) db.collection("spese").onSnapshot(snap => { S.spese = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
   if (puoContab()) db.collection("crediti").onSnapshot(snap => { S.crediti = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
   if (sonoTitolare()) { db.collection("eventiCal").onSnapshot(snap => { S.eventiCal = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}); db.collection("calendariFeed").doc("impostazioni").onSnapshot(sn => { S.calCfg = sn.exists ? sn.data() : {}; render(); }, () => {}); }
@@ -4035,6 +4036,70 @@ document.addEventListener("click", async e => {
   if (d.spesecat !== undefined) { ui.speseCat = d.spesecat; return render(); }
   if (d.spesa) return detSpesa(d.spesa);
 });
+// ---- 🕘 Presenze dei dipendenti (Contabilità → Ore dipendenti): inizio, fine e pausa pranzo di ogni giorno → totale del giorno ----
+// presenze/{data}_{slug dipendente} = {tecnico, data, inizio, fine, pausaMin, minuti, note, da}. Solo chi vede la contabilità (regole contab()).
+// "↧" propone l'orario dai dati del giorno: apertura dell'attività o primo rapportino, fine dell'ultimo rapportino, pausa 60.
+const presId = (tec, d) => d + "_" + slugTec(tec);
+const presDi = (tec, d) => (S.presenze || []).find(p => p.data === d && sameTec(p.tecnico, tec));
+const minPres = p => p && p.inizio && p.fine ? Math.max(0, minsBetween(p.inizio, p.fine) - num(p.pausaMin)) : 0;
+function propostaPres(tec, d){
+  const rap = S.interventi.filter(x => x.rapportino && haTec(x, tec) && inGiorno(x, d)).map(x => x.rapportino).filter(r => r.inizio || r.fine);
+  const g = (S.giornate || []).find(x => x.data === d && sameTec(x.tecnico, tec));
+  const ini = [g && g.alle, ...rap.map(r => r.inizio)].filter(Boolean).sort()[0] || "";
+  const fin = rap.map(r => r.fine).filter(Boolean).sort().pop() || "";
+  return {inizio: ini, fine: fin, pausaMin: ini && fin && minsBetween(ini, fin) > 6 * 60 ? 60 : 0};
+}
+function vPresenzeGiorno(){
+  const d = ui.presG || today(), nomi = [...new Set(TEC().map(t => t.nome).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const dt = new Date(d + "T12:00:00"), titolo = dt.toLocaleDateString("it-IT", {weekday: "long", day: "numeric", month: "long"});
+  let tot = 0;
+  const righe = nomi.map(n => { const p = presDi(n, d) || {}, m = minPres(p), ass = assenzaDi(n, d), pr = propostaPres(n, d); tot += m;
+    const inp = (k, type, ph) => `<input data-pres="${esc(n)}|${k}" type="${type}" value="${esc(p[k] ?? "")}" ${ph ? `placeholder="${esc(ph)}"` : ""} ${type === "number" ? 'min="0" step="5" inputmode="numeric" style="text-align:right"' : ""}>`;
+    return `<tr><td><b>👷 ${esc(n)}</b>${ass ? ` <span class="chip" style="font-size:11px">${tipoOre(ass.tipo)[1]} ${esc(ass.tipo)}</span>` : ""}</td>
+      <td>${inp("inizio", "time")}</td><td>${inp("fine", "time")}</td><td>${inp("pausaMin", "number", "60")}</td>
+      <td class="num" style="${m > ORE_GIORNO ? "color:var(--bad);font-weight:800" : "font-weight:800"}">${m ? hmc(m) : "–"}</td>
+      <td>${inp("note", "text", "")}</td>
+      <td style="text-align:center">${(pr.inizio || pr.fine) && !(p.inizio && p.fine) ? `<button class="btn sm" data-pressug="${esc(n)}" title="Proponi l'orario dai rapportini: ${esc((pr.inizio || "?") + "–" + (pr.fine || "?"))}">↧ ${esc((pr.inizio || "?") + "–" + (pr.fine || "?"))}</button>` : ""}</td></tr>`; }).join("");
+  return `<h3>🕘 Presenze del giorno</h3>
+  <div class="row wrap" style="gap:6px;margin-bottom:8px"><button class="btn sm" data-presnav="-1">‹</button><input type="date" data-presg value="${d}" style="width:auto"><button class="btn sm" data-presnav="1">›</button>${d !== today() ? `<button class="btn sm" data-presnav="0">Oggi</button>` : ""}<b style="margin-left:6px">${esc(titolo.charAt(0).toUpperCase() + titolo.slice(1))}</b></div>
+  ${nomi.length ? `<div class="xls-wrap" style="max-height:none"><table class="xls"><thead><tr><th style="width:200px">Dipendente</th><th style="width:110px">Inizio</th><th style="width:110px">Fine</th><th style="width:120px" class="num">Pausa pranzo (min)</th><th style="width:90px" class="num">Totale</th><th style="width:200px">Note</th><th style="width:130px">Dai rapportini</th></tr></thead>
+  <tbody>${righe}</tbody><tfoot><tr><td>Totale del giorno</td><td></td><td></td><td></td><td class="num">${hmc(tot)}</td><td></td><td></td></tr></tfoot></table></div>
+  <p class="m">Scrivi inizio, fine e minuti di pausa: il totale si calcola e si salva da solo. "↧" propone l'orario dall'apertura dell'attività e dai rapportini del giorno.</p>` : empty("Aggiungi i tecnici dal pulsante 👷 in alto.")}`;
+}
+// presenze del mese: giorni × dipendenti, con totale
+function presenzeMese(mese){
+  const l = (S.presenze || []).filter(p => (p.data || "").startsWith(mese) && minPres(p));
+  const by = {}; l.forEach(p => { const k = Object.keys(by).find(t => sameTec(t, p.tecnico)) || p.tecnico; (by[k] = by[k] || {}); by[k][p.data] = (by[k][p.data] || 0) + minPres(p); });
+  return {l, by, tot: n => { const k = Object.keys(by).find(t => sameTec(t, n)); return k ? Object.values(by[k]).reduce((s, m) => s + m, 0) : 0; }, giorni: n => { const k = Object.keys(by).find(t => sameTec(t, n)); return k ? Object.keys(by[k]).length : 0; }};
+}
+function vPresenzeMese(){
+  const P = presenzeMese(ui.oreM), tecs = Object.keys(P.by).sort((a, b) => a.localeCompare(b)), giorni = [...new Set(P.l.map(p => p.data))].sort();
+  if (!tecs.length) return `<h3>🕘 Presenze del mese</h3>${empty("Nessuna presenza segnata in questo mese.")}`;
+  return `<h3>🕘 Presenze del mese</h3><div style="overflow-x:auto;margin-bottom:12px"><table class="oretab"><thead><tr><th>Giorno</th>${tecs.map(t => `<th>${esc(t.split(/\s+/)[0])}</th>`).join("")}<th>Totale</th></tr></thead><tbody>
+  ${giorni.map(g => { const t = tecs.reduce((s, k) => s + (P.by[k][g] || 0), 0); return `<tr class="tap" data-presday="${g}"><td>${esc(giornoCorto(g))}</td>${tecs.map(k => `<td class="${(P.by[k][g] || 0) > ORE_GIORNO ? "over" : ""}">${P.by[k][g] ? hmc(P.by[k][g]) : `<span class="m">–</span>`}</td>`).join("")}<td><b>${hmc(t)}</b></td></tr>`; }).join("")}
+  </tbody><tfoot><tr><td>Totale mese</td>${tecs.map(k => `<td>${hmc(P.tot(k))}</td>`).join("")}<td>${hmc(tecs.reduce((s, k) => s + P.tot(k), 0))}</td></tr>
+  <tr class="m"><td>Giorni di presenza</td>${tecs.map(k => `<td>${P.giorni(k)}</td>`).join("")}<td></td></tr></tfoot></table></div>
+  <p class="m" style="margin-top:-4px">Tocca un giorno per aprirlo nelle presenze. In rosso le giornate oltre le 8 ore.</p>`;
+}
+async function salvaPresenza(tec, campo, valore){
+  const d = ui.presG || today(), id = presId(tec, d), p = {...(presDi(tec, d) || {tecnico: tec, data: d, pausaMin: 60})};
+  delete p.id; p[campo] = campo === "pausaMin" ? num(valore) : String(valore || "").trim(); p.minuti = minPres(p); p.da = ui.uff || "Ufficio";
+  try { await save("presenze", id, p); } catch(e) {}
+}
+document.addEventListener("change", e => {
+  if (e.target.closest(".ov") || !puoContab()) return;
+  const el = e.target.closest("[data-pres]"); if (el) { const [tec, campo] = el.dataset.pres.split("|"); salvaPresenza(tec, campo, el.value); return; }
+  const g = e.target.closest("[data-presg]"); if (g && g.value) { ui.presG = g.value; ui.oreM = g.value.slice(0, 7); render(); }
+});
+document.addEventListener("click", async e => {
+  if (e.target.closest(".ov") || !puoContab()) return;
+  const el = e.target.closest("[data-presnav],[data-pressug],[data-presday]"); if (!el) return; const d = el.dataset;
+  if (d.presnav !== undefined) { const k = +d.presnav; ui.presG = k ? addDays(ui.presG || today(), k) : today(); ui.oreM = ui.presG.slice(0, 7); return render(); }
+  if (d.presday) { ui.presG = d.presday; render(); document.querySelector("[data-presg]")?.scrollIntoView({block: "center"}); return; }
+  if (d.pressug) { const tec = d.pressug, dd = ui.presG || today(), pr = propostaPres(tec, dd), p = {...(presDi(tec, dd) || {tecnico: tec, data: dd})}; delete p.id;
+    Object.assign(p, {inizio: p.inizio || pr.inizio, fine: p.fine || pr.fine, pausaMin: p.pausaMin ?? pr.pausaMin}); p.minuti = minPres(p); p.da = ui.uff || "Ufficio";
+    await save("presenze", presId(tec, dd), p); toast("Orario proposto: controlla e correggi se serve"); }
+});
 // ---- ⏱ Registro ore dipendenti (Contabilità): ore del mese per dipendente, assenze, straordinari, costo; dettaglio giorno per giorno; Excel per il consulente ----
 // Usa gli stessi dati della pagina Ore tecnici: rapportini (oreRap) + ore libere (oreLibere). Mese in ui.oreM.
 function registroOre(){
@@ -4042,7 +4107,8 @@ function registroOre(){
   const righe = righeOre(ui.oreM), by = totaliOre(righe);
   const nomi = [...new Set([...TEC().map(t => t.nome).filter(Boolean), ...Object.keys(by)])].sort((a, b) => a.localeCompare(b));
   const rows = nomi.map(n => { const k = Object.keys(by).find(t => sameTec(t, n)), b = k ? by[k] : vuotoOre();
-    return {nome: n, giorni: Object.values(b.giorni).filter(Boolean).length, min: b.min, lib: b.lib, extra: b.extra, via: b.via, n: b.n,
+    const PM = presenzeMese(ui.oreM);
+    return {nome: n, pres: PM.tot(n), gPres: PM.giorni(n), giorni: Object.values(b.giorni).filter(Boolean).length, min: b.min, lib: b.lib, extra: b.extra, via: b.via, n: b.n,
       ferie: b.ass.Ferie || 0, permesso: b.ass.Permesso || 0, malattia: b.ass.Malattia || 0}; });
   return {righe, by, rows};
 }
@@ -4057,12 +4123,14 @@ function vContabOre(){
     <div class="tile"><div class="n">${hm(S_("ferie") + S_("permesso") + S_("malattia"))}</div><div class="l">Ferie, permessi e malattia (ore)</div></div>
     ${ci ? `<div class="tile"><div class="n money" style="font-size:19px">${eur(S_("min") / 60 * ci)}</div><div class="l">Costo ore (${eur(ci)}/ora)</div></div>` : ""}</div>
   <div class="row wrap" style="gap:8px;margin-bottom:10px"><button class="btn" data-orelibnew="">+ Segna ore, ferie o permesso</button><button class="btn pri" data-a="orexls">⬇ Scarica Excel per il consulente</button></div>
+  ${vPresenzeGiorno()}
   <h3>Registro del mese</h3>
-  <div class="xls-wrap" style="max-height:none"><table class="xls"><thead><tr>${["Dipendente", "Giorni lav.", "Ore lavorate", "di cui senza cliente", "Oltre 8 h", "🏖️ Ferie", "🕐 Permessi", "🤒 Malattia", "Viaggio", ...(ci ? ["Costo ore"] : [])].map((h, i) => `<th class="${i ? "num" : ""}" style="width:${i ? 100 : 180}px">${h}</th>`).join("")}</tr></thead>
-  <tbody>${rows.map(r => `<tr><td class="apri" data-regtec="${esc(r.nome)}" title="Apri il dettaglio giorno per giorno">👷 ${esc(r.nome)}</td><td class="num">${r.giorni || "–"}</td><td class="num"><b>${r.min ? hmc(r.min) : "–"}</b></td><td class="num">${r.lib ? hmc(r.lib) : "–"}</td><td class="num" style="${r.extra ? "color:var(--bad);font-weight:800" : ""}">${r.extra ? hmc(r.extra) : "–"}</td><td class="num">${giorniAss(r.ferie)}</td><td class="num">${giorniAss(r.permesso)}</td><td class="num">${giorniAss(r.malattia)}</td><td class="num">${r.via ? hmc(r.via) : "–"}</td>${ci ? `<td class="num">${r.min ? eur(r.min / 60 * ci) : "–"}</td>` : ""}</tr>`).join("")}</tbody>
-  <tfoot><tr><td>Totale</td><td class="num">${S_("giorni")}</td><td class="num">${hmc(S_("min"))}</td><td class="num">${hmc(S_("lib"))}</td><td class="num">${hmc(S_("extra"))}</td><td class="num">${giorniAss(S_("ferie"))}</td><td class="num">${giorniAss(S_("permesso"))}</td><td class="num">${giorniAss(S_("malattia"))}</td><td class="num">${hmc(S_("via"))}</td>${ci ? `<td class="num">${eur(S_("min") / 60 * ci)}</td>` : ""}</tr></tfoot></table></div>
-  <p class="m">Ore = ore:minuti. Ferie e malattia a giornate intere sono in giorni (gg). Le ore arrivano dai rapportini e da quelle segnate a mano (magazzino, fornitori, corsi…).${ci ? "" : " Per vedere il costo delle ore scrivi il «costo interno di un'ora» in ⚙️ Impostazioni."}</p>
-  <h3>Giorno per giorno</h3>${righe.length ? tabellaOre(righe) : empty("Nessuna ora segnata in questo mese.")}`;
+  <div class="xls-wrap" style="max-height:none"><table class="xls"><thead><tr>${["Dipendente", "🕘 Ore presenza", "Giorni lav.", "Ore lavorate", "di cui senza cliente", "Oltre 8 h", "🏖️ Ferie", "🕐 Permessi", "🤒 Malattia", "Viaggio", ...(ci ? ["Costo ore"] : [])].map((h, i) => `<th class="${i ? "num" : ""}" style="width:${i ? 100 : 180}px">${h}</th>`).join("")}</tr></thead>
+  <tbody>${rows.map(r => `<tr><td class="apri" data-regtec="${esc(r.nome)}" title="Apri il dettaglio giorno per giorno">👷 ${esc(r.nome)}</td><td class="num"><b>${r.pres ? hmc(r.pres) : "–"}</b></td><td class="num">${r.giorni || "–"}</td><td class="num">${r.min ? hmc(r.min) : "–"}</td><td class="num">${r.lib ? hmc(r.lib) : "–"}</td><td class="num" style="${r.extra ? "color:var(--bad);font-weight:800" : ""}">${r.extra ? hmc(r.extra) : "–"}</td><td class="num">${giorniAss(r.ferie)}</td><td class="num">${giorniAss(r.permesso)}</td><td class="num">${giorniAss(r.malattia)}</td><td class="num">${r.via ? hmc(r.via) : "–"}</td>${ci ? `<td class="num">${r.min ? eur(r.min / 60 * ci) : "–"}</td>` : ""}</tr>`).join("")}</tbody>
+  <tfoot><tr><td>Totale</td><td class="num">${hmc(S_("pres"))}</td><td class="num">${S_("giorni")}</td><td class="num">${hmc(S_("min"))}</td><td class="num">${hmc(S_("lib"))}</td><td class="num">${hmc(S_("extra"))}</td><td class="num">${giorniAss(S_("ferie"))}</td><td class="num">${giorniAss(S_("permesso"))}</td><td class="num">${giorniAss(S_("malattia"))}</td><td class="num">${hmc(S_("via"))}</td>${ci ? `<td class="num">${eur(S_("min") / 60 * ci)}</td>` : ""}</tr></tfoot></table></div>
+  <p class="m">🕘 Ore presenza = dal foglio presenze (inizio, fine, pausa). Ore lavorate = dai rapportini e dalle ore segnate a mano. Ore = ore:minuti. Ferie e malattia a giornate intere sono in giorni (gg). Le ore arrivano dai rapportini e da quelle segnate a mano (magazzino, fornitori, corsi…).${ci ? "" : " Per vedere il costo delle ore scrivi il «costo interno di un'ora» in ⚙️ Impostazioni."}</p>
+  ${vPresenzeMese()}
+  <h3>Ore dai rapportini, giorno per giorno</h3>${righe.length ? tabellaOre(righe) : empty("Nessuna ora segnata in questo mese.")}`;
 }
 document.addEventListener("click", e => { const el = e.target.closest("[data-regtec]"); if (!el || e.target.closest(".ov")) return; ui.oreTec = el.dataset.regtec; ui.intF = "ore"; go("interventi"); });
 async function scaricaExcelOre(){
@@ -4077,15 +4145,21 @@ async function scaricaExcelOre(){
     if (totRow) { const rt = nRighe + 2; ws["A" + rt] = {t: "s", v: "TOTALE"}; numCols.forEach(c => { const L = X.utils.encode_col(c); ws[L + rt] = {t: "n", f: `SUBTOTAL(9,${L}2:${L}${nRighe + 1})`, z: "0.00"}; }); ws["!ref"] = `A1:${X.utils.encode_col(cols.length - 1)}${rt}`; }
     ws["!cols"] = cols.map((c, i) => ({wch: i ? Math.max(11, c.length + 2) : 26})); ws["!autofilter"] = {ref: `A1:${X.utils.encode_col(cols.length - 1)}${nRighe + 1}`};
   };
-  const h1 = ["Dipendente", "Giorni lavorati", "Ore lavorate", "di cui senza cliente", "Oltre 8 ore/giorno", "Ferie (ore)", "Permessi (ore)", "Malattia (ore)", "Viaggio (ore)"];
-  const ws1 = X.utils.aoa_to_sheet([h1, ...rows.map(r => [r.nome, r.giorni, ore(r.min), ore(r.lib), ore(r.extra), ore(r.ferie), ore(r.permesso), ore(r.malattia), ore(r.via)])]);
-  fmt(ws1, h1, rows.length, [1, 2, 3, 4, 5, 6, 7, 8], true); X.utils.book_append_sheet(wb, ws1, "Riepilogo");
+  const h1 = ["Dipendente", "Ore di presenza", "Giorni di presenza", "Giorni lavorati", "Ore lavorate", "di cui senza cliente", "Oltre 8 ore/giorno", "Ferie (ore)", "Permessi (ore)", "Malattia (ore)", "Viaggio (ore)"];
+  const ws1 = X.utils.aoa_to_sheet([h1, ...rows.map(r => [r.nome, ore(r.pres), r.gPres, r.giorni, ore(r.min), ore(r.lib), ore(r.extra), ore(r.ferie), ore(r.permesso), ore(r.malattia), ore(r.via)])]);
+  fmt(ws1, h1, rows.length, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], true);
+  const hp = ["Data", "Dipendente", "Inizio", "Fine", "Pausa pranzo (min)", "Ore del giorno", "Note"], PM = presenzeMese(ui.oreM);
+  const pres = PM.l.slice().sort((a, b) => (a.data + a.tecnico).localeCompare(b.data + b.tecnico)).map(p => [dataXls(p.data), p.tecnico, p.inizio || "", p.fine || "", num(p.pausaMin), ore(minPres(p)), p.note || ""]);
+  const wsP = X.utils.aoa_to_sheet([hp, ...pres], {cellDates: true});
+  for (let r = 2; r <= pres.length + 1; r++) { const c = wsP["A" + r]; if (c && c.t === "d") c.z = "dd/mm/yyyy"; }
+  fmt(wsP, hp, pres.length, [5], true); X.utils.book_append_sheet(wb, wsP, "Presenze"); X.utils.book_append_sheet(wb, ws1, "Riepilogo");
   const h2 = ["Data", "Dipendente", "Ore lavorate", "Ferie", "Permesso", "Malattia", "Viaggio", "Cliente / attività", "Orario", "Note"];
   const det = righe.map(r => { const rp = r.x && r.x.rapportino; return [dataXls(r.data), r.tec, r.lavoro ? ore(r.min) : 0, r.tipo === "Ferie" ? ore(r.min) : 0, r.tipo === "Permesso" ? ore(r.min) : 0, r.tipo === "Malattia" ? ore(r.min) : 0, ore(r.via),
     r.x ? cliName(r.x.clienteId) + (r.x.tipo ? " · " + r.x.tipo : "") : r.tipo, rp && rp.inizio ? rp.inizio + "–" + (rp.fine || "") : "", r.lib ? r.lib.descrizione || "" : (rp && num(rp.pausaMin) ? "pausa " + rp.pausaMin + " min" : "")]; });
   const ws2 = X.utils.aoa_to_sheet([h2, ...det], {cellDates: true});
   for (let r = 2; r <= det.length + 1; r++) { const c = ws2["A" + r]; if (c && c.t === "d") c.z = "dd/mm/yyyy"; }
   fmt(ws2, h2, det.length, [2, 3, 4, 5, 6], true); X.utils.book_append_sheet(wb, ws2, "Giorno per giorno");
+  wb.SheetNames = ["Riepilogo", "Presenze", "Giorno per giorno"].filter(n => wb.Sheets[n]);
   const out = X.write(wb, {bookType: "xlsx", type: "array"});
   try { await dl.save({filename: `Registro ore iTeam ${mese}.xlsx`, data: new Blob([out], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})}); toast("File Excel pronto", 3000); }
   catch(e) { if (e && e.code !== "declined") toast("Salvataggio non riuscito", 3500); }
@@ -4888,7 +4962,7 @@ const ALTRO = () => [
   ...(puoEliminare() ? [["cestino", "🗑️", "Cestino e registro", "Ripristina ciò che è stato eliminato, chi ha cambiato cosa"]] : [])
 ];
 // ---- 🗑️ Cestino e registro delle modifiche (solo ufficio e amministratore) ----
-const NOMI_COL = {clienti: "Cliente", impianti: "Impianto", interventi: "Intervento", preventivi: "Preventivo", fatture: "Fattura", magazzino: "Articolo", dico: "DiCo", commesse: "Commessa", contratti: "Contratto", ordini: "Ordine", contabilita: "Fattura fornitore", crediti: "Da incassare", fgasOps: "Intervento F-gas", detrazioni: "Pratica detrazione", mezzi: "Mezzo", attrezzature: "Attrezzatura", oreLibere: "Ore / ferie / permesso", spese: "Altra spesa", giornate: "Apertura attività", impostazioni: "Impostazioni", config: "Impostazioni"};
+const NOMI_COL = {clienti: "Cliente", impianti: "Impianto", interventi: "Intervento", preventivi: "Preventivo", fatture: "Fattura", magazzino: "Articolo", dico: "DiCo", commesse: "Commessa", contratti: "Contratto", ordini: "Ordine", contabilita: "Fattura fornitore", crediti: "Da incassare", fgasOps: "Intervento F-gas", detrazioni: "Pratica detrazione", mezzi: "Mezzo", attrezzature: "Attrezzatura", oreLibere: "Ore / ferie / permesso", spese: "Altra spesa", giornate: "Apertura attività", presenze: "Presenza", impostazioni: "Impostazioni", config: "Impostazioni"};
 const AZ = {crea: ["➕", "ha creato", "ok"], modifica: ["✏️", "ha modificato", ""], elimina: ["🗑️", "ha eliminato", "bad"], ripristina: ["♻️", "ha ripristinato", "ok"]};
 let CEST = {cestino: null, registro: null, carica: false};
 async function caricaCestino(){
@@ -5004,7 +5078,7 @@ function render(){
   if (ui.modo === "tecnico" && TEC().length && !TEC().some(t => sameTec(t.nome, ui.tecnico))) { ui.modo = ""; ls.set("modo", ""); toast("Il tuo profilo tecnico è cambiato: rientra con il tuo codice", 4000); }
   const app = $("#app"), nav = $("#nav"), fab = $("#fabwrap");
   const focusQ = document.activeElement && document.activeElement.hasAttribute("data-q");
-  const ae = document.activeElement, focusT = ae && ae.dataset && ae.dataset.tcell && ae.type !== "checkbox" ? {k: ae.dataset.tcell, v: ae.value} : null;
+  const ae = document.activeElement, focusT = ae && ae.dataset && (ae.dataset.tcell || ae.dataset.pres) && ae.type !== "checkbox" ? {a: ae.dataset.tcell ? "data-tcell" : "data-pres", k: ae.dataset.tcell || ae.dataset.pres, v: ae.value} : null;
   const caret = focusQ ? document.activeElement.selectionStart : 0;
   let banner = "";
   if (ui.stale === "nodb") banner = `<div class="banner warn">I dati non sono raggiungibili. Controlla la connessione a internet e riapri l’app.</div>`;
@@ -5027,7 +5101,7 @@ function render(){
   const fabs = {oggi: ["newint", "+ Intervento"], calendario: ["calnewsel", "+ Intervento"], interventi: ["newint", "+ Intervento"], clienti: ui.cliente ? ["cliint", "+ Intervento"] : ["newcli", "+ Cliente"], documenti: ui.docTab === "dico" ? ["newdico", "+ DiCo"] : ui.docTab === "preventivi" ? ["newprev", "+ Preventivo"] : ui.docTab === "fatture" ? ["newfat", "+ Fattura"] : null, magazzino: ["newart", "+ Articolo"]};
   const fb = fabs[ui.tab]; fab.innerHTML = fb ? `<button class="fab" data-a="${fb[0]}">${fb[1]}</button>` : "";
   if (focusQ) { const el = app.querySelector("[data-q]"); if (el) { el.focus(); try { el.setSelectionRange(caret, caret); } catch(e){} } }
-  if (focusT) { const el = app.querySelector(`[data-tcell="${CSS.escape(focusT.k)}"]`); if (el) { el.value = focusT.v; el.focus(); } }
+  if (focusT) { const el = app.querySelector(`[${focusT.a}="${CSS.escape(focusT.k)}"]`); if (el) { el.value = focusT.v; el.focus(); } }
 }
 
 // ---------- eventi ----------

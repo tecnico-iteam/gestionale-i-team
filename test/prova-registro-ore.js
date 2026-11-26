@@ -1,4 +1,4 @@
-// Prova: ⏱ Registro ore dipendenti nella Contabilità e file Excel per il consulente. Dati finti.
+// Prova: ⏱ Registro ore dipendenti nella Contabilità (presenze: inizio, fine, pausa → totale), file Excel per il consulente. Dati finti.
 const {chromium} = require('playwright');
 (async () => {
   const b = await chromium.launch(); const errs = [];
@@ -54,6 +54,16 @@ const {chromium} = require('playwright');
   await p.click('[data-consez="oredip"]'); await p.waitForTimeout(400);
   console.log('REGISTRO:', (await txt(p, '#app')).match(/Ore lavorate \(.{0,900}/)?.[0]);
   await p.screenshot({path: '/home/claude/work/registro.png', fullPage: true});
+  // presenze di oggi: Mario a mano, Luca con la proposta dai rapportini
+  await p.fill('[data-pres="Mario Rossi|inizio"]', '07:30'); await p.press('[data-pres="Mario Rossi|inizio"]', 'Tab'); await p.waitForTimeout(400);
+  await p.fill('[data-pres="Mario Rossi|fine"]', '17:15'); await p.press('[data-pres="Mario Rossi|fine"]', 'Tab'); await p.waitForTimeout(400);
+  await p.fill('[data-pres="Mario Rossi|pausaMin"]', '45'); await p.press('[data-pres="Mario Rossi|pausaMin"]', 'Tab'); await p.waitForTimeout(500);
+  const sug = await p.$('[data-pressug="Luca Bianchi"]'); console.log('Proposta Luca:', sug ? await sug.innerText() : 'nessuna'); if (sug) { await sug.click(); await p.waitForTimeout(500); }
+  console.log('PRESENZE:', JSON.stringify(Object.values(await p.evaluate(() => window.__store.presenze || {})).map(x => [x.tecnico, x.inizio, x.fine, x.pausaMin, x.minuti])));
+  console.log('GIORNO:', (await txt(p, '#app')).match(/Presenze del giorno.{0,420}/i)?.[0]);
+  console.log('MESE:', (await txt(p, '#app')).match(/Presenze del mese.{0,200}/i)?.[0]);
+  console.log('REG:', (await txt(p, '#app')).match(/👷 Luca Bianchi \d.{0,60}|👷 Mario Rossi \d.{0,60}/g));
+  await p.screenshot({path: '/home/claude/work/presenze.png', fullPage: true});
   const [dl] = await Promise.all([p.waitForEvent('download', {timeout: 15000}), p.click('[data-a="orexls"]')]);
   await dl.saveAs('/home/claude/work/registro.xlsx'); console.log('FILE ok');
   await p.click('[data-regtec="Luca Bianchi"]'); await p.waitForTimeout(400);
