@@ -33,8 +33,6 @@ service cloud.firestore {
     match /crediti/{id} { allow read, write: if contab(); }
     // Altre spese senza fattura (stipendi, F24, assicurazioni, bolli…): come la contabilità
     match /spese/{id} { allow read, write: if contab(); }
-    // Presenze dei dipendenti (inizio, fine, pausa): come la contabilità
-    match /presenze/{id} { allow read, write: if contab(); }
     match /contabilita/{id} {
       allow read, write: if contab();
     }
@@ -60,6 +58,13 @@ service cloud.firestore {
     }
     // Allarmi già mandati (li scrive solo lo script su GitHub)
     match /allarmi/{id} { allow read: if office(); allow write: if false; }
+    // Presenze (inizio, fine, pausa): il dipendente segna il suo orario, l'ufficio e la contabilità vedono tutto e lo inseriscono se manca
+    match /presenze/{id} {
+      allow read: if contab() || office() || (active() && (resource == null || mieOre(resource.data)));
+      allow create: if contab() || office() || (active() && request.resource.data.uid == request.auth.uid);
+      allow update: if contab() || office() || (active() && mieOre(resource.data) && request.resource.data.uid == resource.data.uid && request.resource.data.tecnico == resource.data.tecnico);
+      allow delete: if contab() || office();
+    }
     match /oreLibere/{id} {
       allow read: if office() || (active() && mieOre(resource.data));
       allow create: if office() || (active() && request.resource.data.uid == request.auth.uid);

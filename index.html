@@ -248,6 +248,8 @@ nav.tabs button.on svg{background:var(--pri-2);border-radius:12px;padding:3px 10
 .seg.segtec{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}.seg.segtec::-webkit-scrollbar{display:none}.seg.segtec button{flex:0 0 auto;padding:7px 12px}
 @media(max-width:600px){.tecpage .card{padding:11px 12px;margin-bottom:8px}.tecpage .tec-act .btn{padding:9px 8px;font-size:14px}.tecpage .sg{min-height:76px}
 .tecpage .card .btn.big{padding:10px}.tecpage h3{margin:12px 0 6px}}
+.orario{border-color:#c9bdfb}.orario-g{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}.orario-g label{font-size:12px;color:var(--mute);display:flex;flex-direction:column;gap:3px}
+.orario-g input{font-size:16px;padding:8px 4px;min-width:0;width:100%;box-sizing:border-box}.orario-g{grid-template-columns:1.2fr 1.2fr .9fr!important}.xls tr.manca td{background:#fff7e0!important}
 </style>
 </head>
 <body>
@@ -472,7 +474,7 @@ async function initDb(){
   const MIE = colsPerMe();
   const timer = setTimeout(() => { if (loaded.size < MIE.length) { ui.stale = true; render(); } }, 10000);
   if (puoContab()) db.collection("contabilita").onSnapshot(snap => { S.contabilita = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
-  if (puoContab()) db.collection("presenze").onSnapshot(snap => { S.presenze = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
+  caricaPresenze();
   if (puoContab()) db.collection("spese").onSnapshot(snap => { S.spese = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
   if (puoContab()) db.collection("crediti").onSnapshot(snap => { S.crediti = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {});
   if (sonoTitolare()) { db.collection("eventiCal").onSnapshot(snap => { S.eventiCal = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}); db.collection("calendariFeed").doc("impostazioni").onSnapshot(sn => { S.calCfg = sn.exists ? sn.data() : {}; render(); }, () => {}); }
@@ -1890,6 +1892,15 @@ function vOggi(){
 const slugTec = s => String(s || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const giornataId = (tec, data) => data + "_" + slugTec(tec);
 const giornataAperta = tec => (S.giornate || []).find(g => g.data === today() && sameTec(g.tecnico, tec));
+async function caricaPresenze(){
+  S.presenze = []; if (!db) return;
+  if (puoContab() || puoEliminare()) { db.collection("presenze").onSnapshot(snap => { S.presenze = snap.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}); return; }
+  // il dipendente vede solo il suo orario (le regole lo impongono)
+  if (!MIO_UID) { try { const u = await claude.use("user"); MIO_UID = u && u.id ? await u.id() : null; } catch(e){} }
+  const parti = {}, metti = (k, sn) => { parti[k] = sn.docs.map(d => ({id: d.id, ...d.data()})); const m = new Map(); Object.values(parti).flat().forEach(d => m.set(d.id, d)); S.presenze = [...m.values()]; render(); };
+  if (MIO_UID) db.collection("presenze").where("uid", "==", MIO_UID).onSnapshot(sn => metti("u", sn), () => {});
+  const t = mioTecnico(); if (t) db.collection("presenze").where("tecnico", "==", t).onSnapshot(sn => metti("t", sn), () => {});
+}
 function caricaGiornate(){
   S.giornate = []; if (!db) return;
   if (puoEliminare()) { db.collection("giornate").where("data", "==", today()).onSnapshot(sn => { S.giornate = sn.docs.map(d => ({id: d.id, ...d.data()})); render(); }, () => {}); return; }
@@ -1902,6 +1913,7 @@ async function apriAttivita(tec, silenzioso){
     await db.collection("giornate").doc(id).set(body);
     if (!giornataAperta(tec)) S.giornate = [...(S.giornate || []), {id, ...body}];
     if (!silenzioso) toast("🟢 Attività aperta alle " + body.alle, 3000);
+    if (!(presDi(tec, today()) || {}).inizio) salvaPresenzaDi(tec, today(), "inizio", body.alle.slice(0, 5), true);
     render();
     posizione().then(pos => { if (pos) db.collection("giornate").doc(id).set({pos}, {merge: true}).catch(() => {}); });
   } catch(e) { if (!silenzioso) toast("Non riesco a salvare: controlla la connessione e riprova", 4000); }
@@ -2075,6 +2087,8 @@ function vMieOre(me){
   const rs = righeOre(ui.oreM, me), b = (rs[0] && totaliOre(rs)[rs[0].tec]) || vuotoOre(), oggi = rs.filter(r => r.lavoro && r.data === today()).reduce((s, r) => s + r.min, 0);
   return `${navMese()}
   <div class="tiles" style="margin-bottom:10px">${ui.oreM === today().slice(0, 7) ? `<div class="tile"><div class="n">${hm(oggi)}</div><div class="l">Oggi</div></div>` : ""}<div class="tile"><div class="n">${hm(b.min)}</div><div class="l">Ore lavorate nel mese</div></div><div class="tile"><div class="n">${Object.values(b.giorni).filter(Boolean).length}</div><div class="l">Giorni lavorati</div></div>${b.extra ? `<div class="tile"><div class="n">${hm(b.extra)}</div><div class="l">Oltre 8 ore/giorno</div></div>` : ""}${ASSENZE.filter(a => b.ass[a]).map(a => `<div class="tile"><div class="n">${durAss(b.ass[a])}</div><div class="l">${tipoOre(a)[1]} ${a}</div></div>`).join("")}</div>
+  ${(() => { const l = (S.presenze || []).filter(p => (p.data || "").startsWith(ui.oreM) && sameTec(p.tecnico, me) && minPres(p)).sort((a, b) => b.data.localeCompare(a.data)); const tot = l.reduce((s, p) => s + minPres(p), 0);
+    return l.length ? `<div class="card"><div class="row"><b style="flex:1">🕘 Il mio orario del mese</b><b>${hmc(tot)}</b></div>${l.map(p => `<div class="row" style="padding:5px 0;border-top:1px solid var(--line)"><span style="flex:1">${esc(fdl(p.data))}</span><span class="m">${esc(p.inizio)}–${esc(p.fine)}${num(p.pausaMin) ? " · pausa " + num(p.pausaMin) + "'" : ""}</span><b style="margin-left:8px">${hmc(minPres(p))}</b></div>`).join("")}</div>` : ""; })()}
   <button class="btn pri big" data-orelibnew="" style="margin-bottom:10px">+ Segna ore, ferie o permesso</button>
   <p class="m">Le ore dei lavori dai clienti arrivano da sole dai rapportini. Qui segni il resto: magazzino, fornitori, corsi, ferie, permessi, malattia.</p>
   ${rs.length ? dettaglioOre(rs) : empty("Nessuna ora segnata in questo mese.")}`;
@@ -3263,6 +3277,7 @@ function vTecnico(){
   const daFare = F.oggi.filter(x => x.stato !== "Completato").length;
   return `<div class="tecpage">${boxApertura(me)}
   ${settimanaTec(me, mine)}
+  ${boxOrario(me)}
   ${boxNotifiche()}
   <div class="row" style="margin:4px 0 8px"><b style="flex:1;font-size:17px">${esc(giornoTxt.charAt(0).toUpperCase() + giornoTxt.slice(1))}</b><span class="m">${F.oggi.length ? (daFare ? daFare + " da fare" : "tutto fatto ✔") : ""}</span></div>
   ${list.length ? list.map(x => intCard(x, {noTec: true, esteso: true, data: x.data !== (gSel || t) && !isCant(x), giorno: gSel || t, actions: dettaglioTec(x, gSel || t, me) + (gSel && gSel > t ? "" : act(x))})).join("")
@@ -4055,16 +4070,18 @@ function vPresenzeGiorno(){
   let tot = 0;
   const righe = nomi.map(n => { const p = presDi(n, d) || {}, m = minPres(p), ass = assenzaDi(n, d), pr = propostaPres(n, d); tot += m;
     const inp = (k, type, ph) => `<input data-pres="${esc(n)}|${k}" type="${type}" value="${esc(p[k] ?? "")}" ${ph ? `placeholder="${esc(ph)}"` : ""} ${type === "number" ? 'min="0" step="5" inputmode="numeric" style="text-align:right"' : ""}>`;
-    return `<tr><td><b>👷 ${esc(n)}</b>${ass ? ` <span class="chip" style="font-size:11px">${tipoOre(ass.tipo)[1]} ${esc(ass.tipo)}</span>` : ""}</td>
+    const manca = !(p.inizio && p.fine) && !ass && d <= today() && new Date(d + "T12:00:00").getDay() % 6 !== 0;
+    const chi = p.daTec && !p.daUff ? `<span class="chip ok" style="font-size:11px" title="Segnato dal dipendente">📱 dal dipendente</span>` : p.daUff ? `<span class="chip" style="font-size:11px" title="Inserito a mano da ${esc(p.da || "ufficio")}">✏️ ufficio</span>` : "";
+    return `<tr class="${manca ? "manca" : ""}"><td><b>👷 ${esc(n)}</b> ${ass ? `<span class="chip" style="font-size:11px">${tipoOre(ass.tipo)[1]} ${esc(ass.tipo)}</span> ` : ""}${manca ? `<span class="chip warn" style="font-size:11px">⚠️ manca</span>` : chi}</td>
       <td>${inp("inizio", "time")}</td><td>${inp("fine", "time")}</td><td>${inp("pausaMin", "number", "60")}</td>
       <td class="num" style="${m > ORE_GIORNO ? "color:var(--bad);font-weight:800" : "font-weight:800"}">${m ? hmc(m) : "–"}</td>
       <td>${inp("note", "text", "")}</td>
       <td style="text-align:center">${(pr.inizio || pr.fine) && !(p.inizio && p.fine) ? `<button class="btn sm" data-pressug="${esc(n)}" title="Proponi l'orario dai rapportini: ${esc((pr.inizio || "?") + "–" + (pr.fine || "?"))}">↧ ${esc((pr.inizio || "?") + "–" + (pr.fine || "?"))}</button>` : ""}</td></tr>`; }).join("");
   return `<h3>🕘 Presenze del giorno</h3>
   <div class="row wrap" style="gap:6px;margin-bottom:8px"><button class="btn sm" data-presnav="-1">‹</button><input type="date" data-presg value="${d}" style="width:auto"><button class="btn sm" data-presnav="1">›</button>${d !== today() ? `<button class="btn sm" data-presnav="0">Oggi</button>` : ""}<b style="margin-left:6px">${esc(titolo.charAt(0).toUpperCase() + titolo.slice(1))}</b></div>
-  ${nomi.length ? `<div class="xls-wrap" style="max-height:none"><table class="xls"><thead><tr><th style="width:200px">Dipendente</th><th style="width:110px">Inizio</th><th style="width:110px">Fine</th><th style="width:120px" class="num">Pausa pranzo (min)</th><th style="width:90px" class="num">Totale</th><th style="width:200px">Note</th><th style="width:130px">Dai rapportini</th></tr></thead>
+  ${nomi.length ? `<div class="xls-wrap" style="max-height:none"><table class="xls"><thead><tr><th style="width:260px">Dipendente</th><th style="width:110px">Inizio</th><th style="width:110px">Fine</th><th style="width:120px" class="num">Pausa pranzo (min)</th><th style="width:90px" class="num">Totale</th><th style="width:200px">Note</th><th style="width:130px">Dai rapportini</th></tr></thead>
   <tbody>${righe}</tbody><tfoot><tr><td>Totale del giorno</td><td></td><td></td><td></td><td class="num">${hmc(tot)}</td><td></td><td></td></tr></tfoot></table></div>
-  <p class="m">Scrivi inizio, fine e minuti di pausa: il totale si calcola e si salva da solo. "↧" propone l'orario dall'apertura dell'attività e dai rapportini del giorno.</p>` : empty("Aggiungi i tecnici dal pulsante 👷 in alto.")}`;
+  <p class="m">L'orario lo segnano i dipendenti dal telefono (📱). Se qualcuno se n'è dimenticato (⚠️ manca) puoi scriverlo tu qui: il totale si calcola e si salva da solo, e resta segnato ✏️ ufficio. "↧" propone l'orario dall'apertura dell'attività e dai rapportini.</p>` : empty("Aggiungi i tecnici dal pulsante 👷 in alto.")}`;
 }
 // presenze del mese: giorni × dipendenti, con totale
 function presenzeMese(mese){
@@ -4081,11 +4098,7 @@ function vPresenzeMese(){
   <tr class="m"><td>Giorni di presenza</td>${tecs.map(k => `<td>${P.giorni(k)}</td>`).join("")}<td></td></tr></tfoot></table></div>
   <p class="m" style="margin-top:-4px">Tocca un giorno per aprirlo nelle presenze. In rosso le giornate oltre le 8 ore.</p>`;
 }
-async function salvaPresenza(tec, campo, valore){
-  const d = ui.presG || today(), id = presId(tec, d), p = {...(presDi(tec, d) || {tecnico: tec, data: d, pausaMin: 60})};
-  delete p.id; p[campo] = campo === "pausaMin" ? num(valore) : String(valore || "").trim(); p.minuti = minPres(p); p.da = ui.uff || "Ufficio";
-  try { await save("presenze", id, p); } catch(e) {}
-}
+const salvaPresenza = (tec, campo, valore) => salvaPresenzaDi(tec, ui.presG || today(), campo, valore, false);
 document.addEventListener("change", e => {
   if (e.target.closest(".ov") || !puoContab()) return;
   const el = e.target.closest("[data-pres]"); if (el) { const [tec, campo] = el.dataset.pres.split("|"); salvaPresenza(tec, campo, el.value); return; }
@@ -4097,9 +4110,32 @@ document.addEventListener("click", async e => {
   if (d.presnav !== undefined) { const k = +d.presnav; ui.presG = k ? addDays(ui.presG || today(), k) : today(); ui.oreM = ui.presG.slice(0, 7); return render(); }
   if (d.presday) { ui.presG = d.presday; render(); document.querySelector("[data-presg]")?.scrollIntoView({block: "center"}); return; }
   if (d.pressug) { const tec = d.pressug, dd = ui.presG || today(), pr = propostaPres(tec, dd), p = {...(presDi(tec, dd) || {tecnico: tec, data: dd})}; delete p.id;
-    Object.assign(p, {inizio: p.inizio || pr.inizio, fine: p.fine || pr.fine, pausaMin: p.pausaMin ?? pr.pausaMin}); p.minuti = minPres(p); p.da = ui.uff || "Ufficio";
+    Object.assign(p, {inizio: p.inizio || pr.inizio, fine: p.fine || pr.fine, pausaMin: p.pausaMin ?? pr.pausaMin}); p.minuti = minPres(p); p.da = ui.uff || "Ufficio"; p.daUff = true;
     await save("presenze", presId(tec, dd), p); toast("Orario proposto: controlla e correggi se serve"); }
 });
+// ---- 🕘 Orario segnato dal dipendente (pagina del tecnico): inizio, fine, pausa pranzo del giorno scelto nella settimana ----
+// Scrive in presenze/{data}_{slug} con daTec: true e uid del dipendente; l'ufficio lo vede nel foglio presenze e lo inserisce a mano solo se manca.
+async function salvaPresenzaDi(tec, d, campo, valore, daTec){
+  const id = presId(tec, d), vecchio = presDi(tec, d), p = {...(vecchio || {tecnico: tec, data: d, pausaMin: 60, uid: daTec ? (MIO_UID || "") : ""})};
+  delete p.id; p[campo] = campo === "pausaMin" ? num(valore) : String(valore || "").trim(); p.minuti = minPres(p);
+  if (daTec) { p.daTec = true; p.da = tec; } else { p.da = ui.uff || "Ufficio"; p.daUff = true; }
+  if (daTec && campo === "inizio" && p.inizio && d === today() && !giornataAperta(tec)) setTimeout(() => apriAttivita(tec, true), 0);
+  if (!vecchio) S.presenze = [...(S.presenze || []), {id, ...p}];
+  try { await save("presenze", id, p); return true; } catch(e) { return false; }
+}
+function boxOrario(me){
+  const d = ui.tecG || today(); if (d > today()) return "";
+  const p = presDi(me, d) || {}, m = minPres(p), oggi = d === today();
+  const ora = nowTime().slice(0, 5);
+  return `<div class="card orario"><div class="row" style="margin-bottom:6px"><b style="flex:1">🕘 Il mio orario ${oggi ? "di oggi" : "del " + esc(fd(d))}</b>${m ? `<span class="chip ${m > ORE_GIORNO ? "warn" : "ok"}">Totale ${hmc(m)}</span>` : ""}</div>
+  <div class="orario-g"><label>Inizio<input type="time" data-mypres="inizio" value="${esc(p.inizio || "")}"></label><label>Fine<input type="time" data-mypres="fine" value="${esc(p.fine || "")}"></label><label>Pausa (min)<input type="number" min="0" step="5" inputmode="numeric" data-mypres="pausaMin" value="${esc(p.pausaMin ?? 60)}"></label></div>
+  ${oggi && (!p.inizio || !p.fine) ? `<div class="row" style="gap:6px;margin-top:8px">${!p.inizio ? `<button class="btn sm" style="flex:1" data-mypresnow="inizio">▶ Inizio adesso (${ora})</button>` : ""}${p.inizio && !p.fine ? `<button class="btn sm pri" style="flex:1" data-mypresnow="fine">⏹ Ho finito adesso (${ora})</button>` : ""}</div>` : ""}
+  ${p.daUff ? `<div class="m" style="margin-top:6px">✏️ Inserito dall'ufficio</div>` : ""}</div>`;
+}
+document.addEventListener("change", e => { const el = e.target.closest("[data-mypres]"); if (!el || e.target.closest(".ov") || !ui.tecnico) return; salvaPresenzaDi(ui.tecnico, ui.tecG || today(), el.dataset.mypres, el.value, true).then(ok => { if (!ok) toast("Non riesco a salvare l'orario: controlla la connessione", 4000); }); });
+document.addEventListener("click", async e => { const el = e.target.closest("[data-mypresnow]"); if (!el || e.target.closest(".ov") || !ui.tecnico) return;
+  const ok = await salvaPresenzaDi(ui.tecnico, today(), el.dataset.mypresnow, nowTime().slice(0, 5), true);
+  toast(ok ? (el.dataset.mypresnow === "fine" ? "⏹ Fine giornata segnata alle " : "▶ Inizio segnato alle ") + nowTime().slice(0, 5) : "Non riesco a salvare: controlla la connessione", 3500); render(); });
 // ---- ⏱ Registro ore dipendenti (Contabilità): ore del mese per dipendente, assenze, straordinari, costo; dettaglio giorno per giorno; Excel per il consulente ----
 // Usa gli stessi dati della pagina Ore tecnici: rapportini (oreRap) + ore libere (oreLibere). Mese in ui.oreM.
 function registroOre(){
@@ -5078,7 +5114,7 @@ function render(){
   if (ui.modo === "tecnico" && TEC().length && !TEC().some(t => sameTec(t.nome, ui.tecnico))) { ui.modo = ""; ls.set("modo", ""); toast("Il tuo profilo tecnico è cambiato: rientra con il tuo codice", 4000); }
   const app = $("#app"), nav = $("#nav"), fab = $("#fabwrap");
   const focusQ = document.activeElement && document.activeElement.hasAttribute("data-q");
-  const ae = document.activeElement, focusT = ae && ae.dataset && (ae.dataset.tcell || ae.dataset.pres) && ae.type !== "checkbox" ? {a: ae.dataset.tcell ? "data-tcell" : "data-pres", k: ae.dataset.tcell || ae.dataset.pres, v: ae.value} : null;
+  const ae = document.activeElement, fa = ae && ae.dataset ? ["tcell", "pres", "mypres"].find(k => ae.dataset[k] !== undefined) : null, focusT = fa && ae.type !== "checkbox" ? {a: "data-" + fa, k: ae.dataset[fa], v: ae.value} : null;
   const caret = focusQ ? document.activeElement.selectionStart : 0;
   let banner = "";
   if (ui.stale === "nodb") banner = `<div class="banner warn">I dati non sono raggiungibili. Controlla la connessione a internet e riapri l’app.</div>`;
