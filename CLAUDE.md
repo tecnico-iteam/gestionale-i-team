@@ -20,7 +20,9 @@ in italiano semplice, senza gergo tecnico.
   `listino-tecnosystemi-2026-09.json` = offerta BM n. 2909 con prezzi NETTI d'acquisto (BUNDLES `costo: true`: al caricamento
   si chiede il ricarico; nel listino `prezzo` = costo + ricarico, `costo` = netto). Prefisso documenti "ts".
   Stessa logica (`costo: true`, prefisso `pre`) per `listino-erredi-2026.json` ("er", da preventivi/fatture Erredi 2026, prezzo = netto
-  dopo sconti, con `listinoFornitore`/`scontoFornitore`/`fonte`) `listino-idrocentro-2026.json` ("ic") , `listino-doppler-2026.json` ("dp", listino General meno 52,75%) e `listino-sacchi-2026.json` ("sa", offerte Sacchi Orbassano). L'importazione in magazzino
+  dopo sconti, con `listinoFornitore`/`scontoFornitore`/`fonte`) `listino-idrocentro-2026.json` ("ic") , `listino-doppler-2026.json` ("dp", listino General meno 52,75%) e `listino-sacchi-2026.json` ("sa", offerte Sacchi Orbassano). `listino-wurth-2026.json` ("wu"): 56 articoli dall'offerta Würth del 25/11/2026
+  (prezzo netto) + elettroutensili/utensili dai cataloghi Power Tools 2026/2025 e Passione Utensili 2026 (prezzo = listino − 30,8%, sconto stimato
+  dall'unico articolo in comune con l'offerta; `listinoFornitore`/`scontoFornitore`), foto in `img/fornitori/wurth/`. L'importazione in magazzino
   crea da sola una spunta + ricarico per ogni listino `costo: true` di BUNDLES.
   `n` in BUNDLES = numero articoli del file: se nel listino ce ne sono meno compare "Aggiorna". Foto prese dai cataloghi
   dei fornitori in `img/fornitori/` (campo `img`); senza foto si usa un disegno di `ICONS`/`iconFor()` (regole `r0` per i fornitori).
