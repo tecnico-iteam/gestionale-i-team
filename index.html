@@ -4293,8 +4293,9 @@ function vContabScad(){
     <td style="text-align:center">${x.fatto ? `<span class="chip ok" style="font-size:11px">${x.dir === "in" ? "Incassato" : "Pagato"} ${esc(fd(x.fattoIl))}</span>` : `<button class="btn sm" data-scadok="${x.col}|${x.id}">${x.dir === "in" ? "✓ Arrivato" : "✓ Pagato"}</button>`}</td></tr>`; };
   // raggruppa per mese di scadenza: in ogni mese prima gli incassi poi i pagamenti, con i totali del mese
   const head = `<thead><tr>${["Scadenza", "N. carico", "Cliente / fornitore", "Documento", "Termini e pagamento", "Importo", "Stato"].map((h, i) => `<th style="width:${[100, 80, 220, 190, 170, 120, 120][i]}px" class="${i === 5 ? "num" : ""}">${h}</th>`).join("")}</tr></thead>`;
-  const mesiV = [...new Set(vis.map(x => (x.scad || "").slice(0, 7)))].sort((a, b) => (a || "9999").localeCompare(b || "9999"));
-  const meseBlocco = m => { const r = vis.filter(x => (x.scad || "").slice(0, 7) === m).sort((a, b) => (a.scad || "").localeCompare(b.scad || ""));
+  // dal più recente al più vecchio (gennaio in fondo); "senza scadenza" per ultimo
+  const mesiV = [...new Set(vis.map(x => (x.scad || "").slice(0, 7)))].sort((a, b) => (b || "0000").localeCompare(a || "0000"));
+  const meseBlocco = m => { const r = vis.filter(x => (x.scad || "").slice(0, 7) === m).sort((a, b) => (b.scad || "").localeCompare(a.scad || ""));
     const ap = r.filter(x => !x.fatto), ent = somma(ap, "in"), usc = somma(ap, "out"), passato = m && m < t.slice(0, 7), corrente = m === t.slice(0, 7);
     const parte = (dir, tit) => { const q = r.filter(x => x.dir === dir); if (!q.length) return "";
       return `<div class="m" style="margin:8px 2px 4px;font-weight:800;color:${dir === "in" ? "var(--ok)" : "var(--bad)"}">${tit} (${q.filter(x => !x.fatto).length})</div><div class="xls-wrap" style="max-height:none"><table class="xls">${head}<tbody>${q.map(riga).join("")}</tbody></table></div>`; };
@@ -4311,7 +4312,7 @@ function vContabScad(){
   <label class="row" style="gap:6px;cursor:pointer"><input type="checkbox" data-scadfatti ${fatti ? "checked" : ""} style="width:auto"> Mostra anche incassati e pagati</label><button class="btn" data-a="scadxls">⬇ Excel</button></div>
   <input class="search" placeholder="Cerca cliente, fornitore, n. carico, fattura…" value="${esc(ui.q)}" data-q>
   ${mesiV.length ? mesiV.map(meseBlocco).join("") : empty("Niente da incassare o da pagare. 🎉")}
-  <p class="m">Divise per mese di scadenza (i mesi passati con voci ancora aperte sono segnati ⚠️ scaduto). Le scadenze arrivano dalle fatture (termini 30/60/90 giorni, anche fine mese) e dalle altre spese. Quando arriva un bonifico tocca "✓ Arrivato"; quando paghi un fornitore "✓ Pagato". ↗ apre la scheda completa.</p>`;
+  <p class="m">Divise per mese di scadenza, dal più recente al più vecchio (i mesi passati con voci ancora aperte sono segnati ⚠️ scaduto). Le scadenze arrivano dalle fatture (termini 30/60/90 giorni, anche fine mese) e dalle altre spese. Quando arriva un bonifico tocca "✓ Arrivato"; quando paghi un fornitore "✓ Pagato". ↗ apre la scheda completa.</p>`;
 }
 async function segnaFattoScad(col, id){
   if (id.includes("#")) { const [did, i] = id.split("#"), d = byId(col, did); if (!d || !rateDi(d)) return;
