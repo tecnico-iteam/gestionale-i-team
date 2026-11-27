@@ -3841,21 +3841,29 @@ function importaPacchetto(){
   inp.click();
 }
 function formContab(d = {}){
-  openForm({ title: d.id ? d.tipo + (d.numero ? " n. " + d.numero : "") : "Nuovo documento contabile", values: {data: today(), pagata: false, ...d},
+  openForm({ title: d.id ? d.tipo + (d.numero ? " n. " + d.numero : "") : "Nuovo documento contabile", values: {data: today(), pagata: false, ...d, ...rateInValori(d)},
     intro: d.file ? `<div class="info" style="margin-bottom:10px">📎 <a href="${esc(d.file.url)}" target="_blank" rel="noopener">${esc(d.file.nome || "documento")}</a>${(d.altri || []).length ? ` + altri ${d.altri.length} file (li salvo come documenti separati con gli stessi dati)` : ""}</div>` : "",
     fields: [
-      {k:"carico", label:"N. carico", half:true, def: () => d.id ? "" : nextCarico("contabilita")},
+      {k:"carico", label:"N. registro (carico)", half:true, def: () => d.id ? "" : nextCarico("contabilita")},
       {k:"tipo", label:"Tipo", type:"select", options: TIPI_CONT, half:true, rerender:true}, {k:"fornitore", label:"Fornitore", list: fornitoriNoti, req:true, half:true},
-      {k:"numero", label:"Numero", half:true}, {k:"data", label:"Data", type:"date", half:true, rerender:true, onChange: v => { if (v.termini && v.termini !== "Altro") v.scadenza = scadDaTermini(v.data, v.termini); }},
-      {k:"importo", label:"Totale € (IVA inclusa)", type:"number", half:true, show: v => v.tipo !== "DDT"},
-      {k:"termini", label:"Termini di pagamento", type:"select", options: [["", "—"], ...TERMINI], half:true, rerender:true, show: v => v.tipo === "Fattura fornitore", onChange: v => { const s2 = scadDaTermini(v.data || today(), v.termini); if (s2) v.scadenza = s2; }},
+      {k:"numero", label:"Numero", half:true}, {k:"data", label:"Data", type:"date", half:true, rerender:true, onChange: v => { if (v.termini && v.termini !== "Altro") v.scadenza = scadDaTermini(v.data, v.termini); if (num(v.rateN) > 1) pianoInForm(v); }},
+      {k:"importo", label:"Totale € (IVA inclusa)", type:"number", half:true, rerender:true, show: v => v.tipo !== "DDT", onChange: v => { if (num(v.rateN) > 1) pianoInForm(v); }},
+      {k:"termini", label:"Termini di pagamento", type:"select", options: [["", "—"], ...TERMINI], half:true, rerender:true, show: v => v.tipo === "Fattura fornitore", onChange: v => { const s2 = scadDaTermini(v.data || today(), v.termini); if (s2) v.scadenza = s2; const g = giorniTermini(v.termini); if (g.length > 1) { v.rateN = String(g.length); if (!v.metodo) v.metodo = "RiBa"; } if (num(v.rateN) > 1) pianoInForm(v); }},
       {k:"scadenza", label:"Scadenza pagamento", type:"date", half:true, show: v => v.tipo === "Fattura fornitore"},
       {k:"metodo", label:"Come si paga", type:"select", options: [["", "—"], ...METODI_PAG], half:true, show: v => v.tipo === "Fattura fornitore"},
+      {k:"rateN", label:"Numero di rate (RiBa o pagamento diviso)", type:"select", options: Array.from({length: 12}, (_, i) => [String(i + 1), i ? (i + 1) + " rate" : "Unica soluzione"]), half:true, rerender:true, show: v => v.tipo === "Fattura fornitore",
+       onChange: v => { pianoInForm(v); }},
+      ...Array.from({length: 12}, (_, i) => [
+        {k:"rataS" + i, label:`${i + 1}ª rata: scadenza`, type:"date", half:true, show: v => v.tipo === "Fattura fornitore" && num(v.rateN) > 1 && i < num(v.rateN)},
+        {k:"rataI" + i, label:`${i + 1}ª rata: importo €`, type:"number", half:true, show: v => v.tipo === "Fattura fornitore" && num(v.rateN) > 1 && i < num(v.rateN)}]).flat(),
+      {k:"rateInfo", type:"info", show: v => v.tipo === "Fattura fornitore" && num(v.rateN) > 1, html: v => { const n = num(v.rateN), tot = Array.from({length: n}, (_, i) => num(v["rataI" + i])).reduce((a, b) => a + b, 0), diff = Math.round((num(v.importo) - tot) * 100) / 100;
+        return diff ? `<span style="color:var(--bad)">Le rate fanno ${eur(tot)}: mancano ${eur(diff)} al totale della fattura.</span>` : `Le ${n} rate fanno ${eur(tot)}, uguale al totale. Ogni rata compare da sola nello 📅 Scadenziario.`; }},
       {k:"pagata", label:"Pagata", type:"checkbox", show: v => v.tipo === "Fattura fornitore", rerender:true},
       {k:"pagataIl", label:"Pagata il", type:"date", half:true, show: v => v.tipo === "Fattura fornitore" && v.pagata},
       {k:"categoria", label:"Tipo di costo (per l'analisi)", type:"select", options: () => [["", "Automatico dal fornitore"], ...CAT_COSTI.map(c => c[0]), "Altro"], show: v => v.tipo !== "DDT"}, {k:"rif", label:"Cantiere / riferimento"}, {k:"note", label:"Note", type:"textarea"}
     ],
     onSave: async v => {
+      const n = doc0Rate(v); if (n === false) throw new Error("rate");
       const {altri, ...doc} = v; doc.caricatoDa = doc.caricatoDa || ui.uff || "Ufficio"; doc.il = doc.il || new Date().toISOString(); if (doc.pagata && !doc.pagataIl) doc.pagataIl = today();
       await save("contabilita", d.id, doc);
       for (const f of (altri || [])) await save("contabilita", null, {...doc, file: f, note: (doc.note ? doc.note + " · " : "") + "pagina aggiuntiva"});
@@ -3878,6 +3886,12 @@ function periodoBar(lista){
     filtra: x => (x.data || "").startsWith(anno + (mese ? "-" + mese : ""))};
 }
 const totBox = (titolo, senza, con, n, col) => `<div class="card" style="background:${col};border:0"><div class="m" style="margin-bottom:4px">${titolo}</div><div class="row wrap" style="gap:18px;align-items:baseline"><div><div class="m">Senza IVA</div><b class="money" style="font-size:22px">${eur(senza)}</b></div><div><div class="m">Con IVA</div><b class="money" style="font-size:22px">${eur(con)}</b></div><div><div class="m">Documenti</div><b style="font-size:22px">${n}</b></div></div></div>`;
+function perMeseReg(l, senza, con, card){
+  const g = {}, ord = []; l.forEach(x => { const k = (x.data || "").slice(0, 7) || "senza data"; if (!g[k]) { g[k] = []; ord.push(k); } g[k].push(x); });
+  const chiavi = Object.keys(g).sort().reverse();
+  return chiavi.map(k => { const r = g[k], nome = /^\d{4}-\d{2}$/.test(k) ? MESI_LUNGHI[+k.slice(5) - 1].replace(/^./, c => c.toUpperCase()) + " " + k.slice(0, 4) : "Senza data";
+    return `<div class="row" style="margin:16px 2px 6px;align-items:baseline;gap:8px"><b style="flex:1;font-size:16px">${nome}</b><span class="m">${eur(r.reduce((s, x) => s + senza(x), 0))} senza IVA · <b>${eur(r.reduce((s, x) => s + con(x), 0))}</b> con IVA</span></div>${r.map(card).join("")}`; }).join("");
+}
 function perMese(l, senza, con, card){
   const g = {}; l.forEach(x => { const k = (x.data || "").slice(0, 7) || "senza data"; (g[k] = g[k] || []).push(x); });
   return Object.keys(g).sort().reverse().map(k => { const r = g[k], nome = /^\d{4}-\d{2}$/.test(k) ? MESI_LUNGHI[+k.slice(5) - 1].replace(/^./, c => c.toUpperCase()) + " " + k.slice(0, 4) : "Senza data";
@@ -4213,13 +4227,39 @@ async function scaricaExcelOre(){
 // ---- 📅 Termini di pagamento, numero di carico e scadenziario (Contabilità) ----
 // fatture/contabilita: carico (numero di carico interno, deciso dall'ufficio), termini (TERMINI) → scadenza calcolata con scadDaTermini(), metodo.
 // Scadenziario (vContabScad): incassi (fatture da incassare) e pagamenti (fatture fornitori e altre spese da pagare) per scadenza.
-const TERMINI = ["Rimessa diretta", "30 gg", "60 gg", "90 gg", "30 gg FM", "60 gg FM", "90 gg FM", "Altro"];
+const TERMINI = ["Rimessa diretta", "30 gg", "60 gg", "90 gg", "120 gg", "30 gg FM", "60 gg FM", "90 gg FM", "30/60 gg", "30/60/90 gg", "60/90/120 gg", "30/60/90/120 gg", "30/60 gg FM", "30/60/90 gg FM", "60/90/120 gg FM", "Altro"];
 const METODI_PAG = ["Bonifico", "RiBa", "Contanti", "POS / carta", "Assegno", "Addebito in conto (SDD)", "F24"];
+const giorniTermini = t => (String(t || "").match(/\d+/g) || []).map(Number);
 function scadDaTermini(data, t){
   if (!data || !t || t === "Altro") return "";
   if (t === "Rimessa diretta") return data;
-  const m = /(\d+) gg( FM)?/.exec(t); if (!m) return "";
-  const d = addDays(data, +m[1]); return m[2] ? fineMese(d) : d;
+  const g = giorniTermini(t); if (!g.length) return "";
+  const d = addDays(data, g[0]); return /FM/.test(t) ? fineMese(d) : d;
+}
+// piano delle rate (RiBa o altro pagamento diviso in più mesi): date dai termini (30/60/90…) o ogni 30 giorni, importi divisi in parti uguali
+function pianoRate(data, termini, n, importo){
+  n = Math.max(1, Math.min(12, parseInt(n, 10) || 1)); const base = data || today(), fm = /FM/.test(termini || "");
+  let g = giorniTermini(termini); if (termini === "Rimessa diretta") g = [0];
+  const date = Array.from({length: n}, (_, i) => { const gg = g[i] != null ? g[i] : (g.length ? g[g.length - 1] + 30 * (i - g.length + 1) : 30 * (i + 1)); const d = addDays(base, gg); return fm ? fineMese(d) : d; });
+  const tot = Math.round(num(importo) * 100), q = Math.floor(tot / n);
+  return date.map((d, i) => ({scadenza: d, importo: (i === n - 1 ? tot - q * (n - 1) : q) / 100}));
+}
+const rateDi = d => Array.isArray(d.rate) && d.rate.length > 1 ? d.rate : null;
+function pianoInForm(v){ const n = num(v.rateN); if (n <= 1) return; pianoRate(v.data, v.termini, n, v.importo).forEach((r, i) => { v["rataS" + i] = r.scadenza; v["rataI" + i] = r.importo; }); }
+function rateInValori(d){ const r = rateDi(d), o = {rateN: String(r ? r.length : 1)}; (r || []).forEach((x, i) => { o["rataS" + i] = x.scadenza; o["rataI" + i] = x.importo; }); return o; }
+// dal modulo alle rate salvate: controlla la somma, tiene le rate già pagate, toglie i campi di appoggio; false = da correggere
+function doc0Rate(v){
+  const n = v.tipo === "Fattura fornitore" ? num(v.rateN) : 1, vecchie = Array.isArray(v.rate) ? v.rate : [];
+  if (n > 1) {
+    const rate = Array.from({length: n}, (_, i) => ({scadenza: v["rataS" + i] || "", importo: Math.round(num(v["rataI" + i]) * 100) / 100, pagata: !!(vecchie[i] && vecchie[i].pagata), pagataIl: (vecchie[i] && vecchie[i].pagataIl) || ""}));
+    if (rate.some(r => !r.scadenza)) { toast("Manca la scadenza di una rata"); return false; }
+    const tot = rate.reduce((a, r) => a + r.importo, 0);
+    if (Math.abs(tot - num(v.importo)) > 0.01) { toast(`Le rate fanno ${eur(tot)} ma la fattura è di ${eur(v.importo)}: correggi gli importi`, 5000); return false; }
+    v.rate = rate; if (v.pagata) v.rate.forEach(r => { r.pagata = true; r.pagataIl = r.pagataIl || v.pagataIl || today(); });
+    const aperta = v.rate.find(r => !r.pagata); v.scadenza = aperta ? aperta.scadenza : v.rate[n - 1].scadenza; v.pagata = !aperta;
+  } else v.rate = [];
+  for (let i = 0; i < 12; i++) { delete v["rataS" + i]; delete v["rataI" + i]; } delete v.rateInfo; delete v.rateN;
+  return n;
 }
 function nextCarico(col){
   const y = today().slice(0, 4), ns = (S[col] || []).filter(x => (x.data || x.il || "").startsWith(y)).map(x => parseInt(String(x.carico || "").replace(/\D/g, ""), 10)).filter(n => n > 0);
@@ -4230,7 +4270,9 @@ const termTxt = x => [x.termini, x.metodo].filter(Boolean).join(" · ");
 function vociScad(){
   const v = [];
   (S.fatture || []).filter(f => f.tipo !== "Nota di credito" && !f.stornata).forEach(f => v.push({dir: "in", col: "fatture", id: f.id, scad: f.scadenza || f.data || "", chi: cliName(f.clienteId), doc: "Fatt. " + (f.numero || "—"), carico: f.carico || "", importo: f.pagata ? fatTot(f) : residuo(f), metodo: f.metodo || "", termini: f.termini || "", fatto: !!f.pagata, fattoIl: f.dataPagamento || ""}));
-  (S.contabilita || []).filter(d => d.tipo === "Fattura fornitore").forEach(d => v.push({dir: "out", col: "contabilita", id: d.id, scad: d.scadenza || d.data || "", chi: d.fornitore || "Fornitore", doc: "Fatt. " + (d.numero || "—"), carico: d.carico || "", importo: num(d.importo), metodo: d.metodo || "", termini: d.termini || "", fatto: !!d.pagata, fattoIl: d.pagataIl || ""}));
+  (S.contabilita || []).filter(d => d.tipo === "Fattura fornitore").forEach(d => { const r = rateDi(d);
+    if (r) r.forEach((x, i) => v.push({dir: "out", col: "contabilita", id: d.id + "#" + i, docId: d.id, scad: x.scadenza || "", chi: d.fornitore || "Fornitore", doc: "Fatt. " + (d.numero || "—") + ` · rata ${i + 1}/${r.length}`, carico: d.carico || "", importo: num(x.importo), metodo: d.metodo || "", termini: d.termini || "", fatto: !!x.pagata, fattoIl: x.pagataIl || ""}));
+    else v.push({dir: "out", col: "contabilita", id: d.id, scad: d.scadenza || d.data || "", chi: d.fornitore || "Fornitore", doc: "Fatt. " + (d.numero || "—"), carico: d.carico || "", importo: num(d.importo), metodo: d.metodo || "", termini: d.termini || "", fatto: !!d.pagata, fattoIl: d.pagataIl || ""}); });
   (S.spese || []).forEach(s => v.push({dir: "out", col: "spese", id: s.id, scad: s.data || "", chi: s.beneficiario || s.categoria || "Spesa", doc: (ICO_SPESE[s.categoria] || "") + " " + (s.descrizione || s.categoria || "Spesa"), carico: "", importo: impSpesa(s), metodo: s.metodo || (s.categoria === "Contributi e F24" ? "F24" : ""), termini: "", fatto: !!s.pagata, fattoIl: s.pagataIl || ""}));
   return v;
 }
@@ -4248,7 +4290,7 @@ function vContabScad(){
   const riga = x => { const ritardo = !x.fatto && x.scad && x.scad < t ? giorniDa(x.scad) : 0;
     return `<tr><td>${esc(fd(x.scad)) || "–"}${ritardo ? `<br><span style="color:var(--bad);font-size:11px;font-weight:800">da ${ritardo} gg</span>` : ""}</td>
     <td style="text-align:center;font-weight:800;color:${x.dir === "in" ? "var(--ok)" : "var(--bad)"}">${x.dir === "in" ? "⬇ Incasso" : "⬆ Pagamento"}</td>
-    <td>${esc(x.carico) || "–"}</td><td class="apri" data-topen="${x.col}|${x.id}" title="Apri la scheda">↗ ${esc(x.chi)}</td><td>${esc(x.doc)}</td><td>${esc(termTxt(x)) || "–"}</td>
+    <td>${esc(x.carico) || "–"}</td><td class="apri" data-topen="${x.col}|${x.docId || x.id}" title="Apri la scheda">↗ ${esc(x.chi)}</td><td>${esc(x.doc)}</td><td>${esc(termTxt(x)) || "–"}</td>
     <td class="num"><b style="color:${x.dir === "in" ? "var(--ok)" : "var(--bad)"}">${x.dir === "in" ? "+" : "−"} ${eur(x.importo)}</b></td>
     <td style="text-align:center">${x.fatto ? `<span class="chip ok" style="font-size:11px">${x.dir === "in" ? "Incassato" : "Pagato"} ${esc(fd(x.fattoIl))}</span>` : `<button class="btn sm" data-scadok="${x.col}|${x.id}">${x.dir === "in" ? "✓ Arrivato" : "✓ Pagato"}</button>`}</td></tr>`; };
   const tabella = (tit, fn, bg) => { const r = vis.filter(fn).sort((a, b) => (a.scad || "9").localeCompare(b.scad || "9") || a.dir.localeCompare(b.dir)); if (!r.length) return "";
@@ -4272,6 +4314,10 @@ function vContabScad(){
   <p class="m">Le scadenze arrivano dalle fatture (termini 30/60/90 giorni, anche fine mese) e dalle altre spese. Quando arriva un bonifico tocca "✓ Arrivato"; quando paghi un fornitore "✓ Pagato". ↗ apre la scheda completa.</p>`;
 }
 async function segnaFattoScad(col, id){
+  if (id.includes("#")) { const [did, i] = id.split("#"), d = byId(col, did); if (!d || !rateDi(d)) return;
+    const rate = d.rate.map((r, k) => k === +i ? {...r, pagata: true, pagataIl: today()} : r), aperta = rate.find(r => !r.pagata);
+    await patch(col, did, {rate, pagata: !aperta, pagataIl: aperta ? (d.pagataIl || "") : today(), scadenza: aperta ? aperta.scadenza : d.scadenza});
+    toast(`⬆ Rata ${+i + 1} di ${rate.length} pagata` + (aperta ? "" : ": fattura saldata")); return; }
   const x = byId(col, id); if (!x) return;
   const p = col === "fatture" ? {pagata: true, dataPagamento: today()} : {pagata: true, pagataIl: today()};
   await patch(col, id, p); toast(col === "fatture" ? "⬇ Incasso registrato" : "⬆ Pagamento registrato");
@@ -4292,6 +4338,7 @@ async function scaricaExcelScad(){
 }
 document.addEventListener("click", e => {
   if (e.target.closest(".ov") || !puoContab()) return;
+  if (e.target.closest("[data-regcres]")) { ui.regCres = !ui.regCres; return render(); }
   const el = e.target.closest("[data-scadf],[data-scadok]"); if (!el) return;
   if (el.dataset.scadf) { ui.scadF = el.dataset.scadf; return render(); }
   if (el.dataset.scadok) { const [col, id] = el.dataset.scadok.split("|"); segnaFattoScad(col, id); }
@@ -4306,14 +4353,15 @@ const TAB_COL = {
     {k:"tipo", l:"Tipo", w:110, v: f => f.tipo === "Nota di credito" ? "Nota di credito" : f.stornata ? "Stornata" : "Fattura"},
     {k:"imponibile", l:"Imponibile", w:105, ed:"num", m:true, tot:true}, {k:"iva", l:"IVA %", w:62, v: f => num(f.iva ?? 22), n:true},
     {k:"ivaE", l:"IVA €", w:90, v: f => fatTot(f) - num(f.imponibile), m:true, tot:true}, {k:"totale", l:"Totale", w:105, v: fatTot, m:true, tot:true},
-    {k:"termini", l:"Termini", w:110, ed:"sel", opt: TERMINI}, {k:"scadenza", l:"Scadenza", w:112, ed:"date"}, {k:"metodo", l:"Pagamento", w:120, ed:"sel", opt: METODI_PAG},
+    {k:"termini", l:"Termini", w:120, ed:"sel", opt: TERMINI}, {k:"scadenza", l:"Scadenza", w:112, ed:"date"}, {k:"metodo", l:"Pagamento", w:120, ed:"sel", opt: METODI_PAG},
     {k:"pagata", l:"Pagata", w:64, ed:"chk"}, {k:"dataPagamento", l:"Pagata il", w:112, ed:"date"},
     {k:"residuo", l:"Da incassare", w:105, v: f => daIncassare(f) ? residuo(f) : 0, m:true, tot:true}],
   acquisti: [
     {k:"carico", l:"N. carico", w:80, ed:"text"}, {k:"tipo", l:"Tipo", w:130, v: d => d.tipo || ""}, {k:"numero", l:"N. fatt.", w:80, ed:"text"}, {k:"data", l:"Data", w:112, ed:"date"},
     {k:"fornitore", l:"Fornitore", w:190, v: d => d.fornitore || "—", apri: true}, {k:"importo", l:"Totale (IVA incl.)", w:120, ed:"num", m:true, tot:true},
     {k:"netto", l:"Senza IVA", w:105, v: d => d.tipo === "DDT" ? 0 : netAcq(d), m:true, tot:true},
-    {k:"termini", l:"Termini", w:110, ed:"sel", opt: TERMINI}, {k:"scadenza", l:"Scadenza", w:112, ed:"date"}, {k:"metodo", l:"Pagamento", w:120, ed:"sel", opt: METODI_PAG},
+    {k:"termini", l:"Termini", w:120, ed:"sel", opt: TERMINI}, {k:"scadenza", l:"Scadenza", w:112, ed:"date"}, {k:"metodo", l:"Pagamento", w:120, ed:"sel", opt: METODI_PAG},
+    {k:"rate", l:"Rate", w:100, v: d => rateDi(d) ? `${d.rate.filter(r => r.pagata).length}/${d.rate.length} pagate` : ""},
     {k:"pagata", l:"Pagata", w:64, ed:"chk"}, {k:"pagataIl", l:"Pagata il", w:112, ed:"date"},
     {k:"categoria", l:"Tipo di costo", w:170, v: d => d.tipo === "DDT" ? "" : catCosto(d)}, {k:"rif", l:"Cantiere / rif.", w:150, ed:"text"}, {k:"note", l:"Note", w:180, ed:"text"}],
   spese: [
@@ -4327,7 +4375,7 @@ function righeTabella(quale){
   const col = TAB_COLL[quale], all = S[col] || [], P = periodoBar(all), q = (ui.q || "").toLowerCase(), cols = TAB_COL[quale];
   let l = all.filter(P.filtra);
   if (q) l = l.filter(x => cols.map(c => String(tabVal(c, x))).join(" ").toLowerCase().includes(q));
-  const o = ui.tabOrd && ui.tabOrd.q === quale ? ui.tabOrd : {k: "data", dir: -1}, c = cols.find(c => c.k === o.k) || cols[1];
+  const o = ui.tabOrd && ui.tabOrd.q === quale ? ui.tabOrd : {k: quale === "spese" ? "data" : "carico", dir: -1}, c = cols.find(c => c.k === o.k) || cols[1];
   l.sort((a, b) => { const va = tabVal(c, a), vb = tabVal(c, b); return (typeof va === "number" || typeof va === "boolean" ? (va - vb) : String(va).localeCompare(String(vb), "it", {numeric: true})) * o.dir || (b.data || "").localeCompare(a.data || ""); });
   return {l, P, cols, col, o};
 }
@@ -4360,6 +4408,7 @@ async function salvaCella(el){
   const p = {[k]: v};
   if (k === "termini" && v) { const s2 = scadDaTermini(x.data, v); if (s2) p.scadenza = s2; }
   if (k === "data" && x.termini && x.termini !== "Altro") { const s2 = scadDaTermini(v, x.termini); if (s2) p.scadenza = s2; }
+  if (k === "pagata" && rateDi(x)) p.rate = x.rate.map(q => ({...q, pagata: !!v, pagataIl: v ? (q.pagataIl || today()) : ""}));
   if (k === "pagata" && v) { const dk = col === "fatture" ? "dataPagamento" : "pagataIl"; if (!x[dk]) p[dk] = today(); }
   if (k === "pagata" && !v) { p[col === "fatture" ? "dataPagamento" : "pagataIl"] = ""; }
   try { await patch(col, id, p); el.classList.add("salvata"); setTimeout(() => el.classList.remove("salvata"), 900); } catch(e) {}
@@ -4396,7 +4445,7 @@ document.addEventListener("click", e => {
   if (e.target.closest(".ov") || e.target.closest("a")) return;
   const el = e.target.closest("[data-ttab],[data-tsort],[data-tnew],[data-txls],[data-topen]"); if (!el || !puoContab()) return; const d = el.dataset;
   if (d.ttab) { ui.tabV = d.ttab; ui.q = ""; return render(); }
-  if (d.tsort) { const q = ui.tabV || "vendite", o = ui.tabOrd && ui.tabOrd.q === q ? ui.tabOrd : {k: "data", dir: -1}; ui.tabOrd = {q, k: d.tsort, dir: o.k === d.tsort ? -o.dir : 1}; return render(); }
+  if (d.tsort) { const q = ui.tabV || "vendite", o = ui.tabOrd && ui.tabOrd.q === q ? ui.tabOrd : {k: q === "spese" ? "data" : "carico", dir: -1}; ui.tabOrd = {q, k: d.tsort, dir: o.k === d.tsort ? -o.dir : 1}; return render(); }
   if (d.tnew) return d.tnew === "vendite" ? formFattura({data: today()}) : d.tnew === "spese" ? formSpesa() : formContab({tipo: "Fattura fornitore"});
   if (d.txls !== undefined) return scaricaExcelContab();
   if (d.topen) { const [col, id] = d.topen.split("|"), x = byId(col, id); if (x) return col === "fatture" ? formFattura(x) : col === "spese" ? formSpesa(x) : formContab(x); }
@@ -4582,17 +4631,19 @@ function vContabAcquisti(){
   let l = (S.contabilita || []).filter(P.filtra);
   if (F === "fatture") l = l.filter(d => d.tipo === "Fattura fornitore"); if (F === "ddt") l = l.filter(d => d.tipo === "DDT"); if (F === "dapagare") l = l.filter(d => d.tipo === "Fattura fornitore" && !d.pagata);
   if (q) l = l.filter(d => [d.fornitore, d.numero, d.rif, d.note, d.tipo].join(" ").toLowerCase().includes(q));
-  l.sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+  const nReg = d => parseInt(String(d.carico || "").replace(/\D/g, ""), 10) || 0, cres = ui.regCres;
+  l.sort((a, b) => (nReg(a) && nReg(b) ? (cres ? nReg(a) - nReg(b) : nReg(b) - nReg(a)) : nReg(b) - nReg(a)) || (b.data || "").localeCompare(a.data || ""));
   const dp = (S.contabilita || []).filter(d => d.tipo === "Fattura fornitore" && !d.pagata), scad = dp.filter(d => d.scadenza && d.scadenza < t);
   const per = P.mese ? MESI_LUNGHI[+P.mese - 1] + " " + P.anno : "tutto il " + P.anno, lf = l.filter(d => d.tipo !== "DDT");
   return `${P.html}${totBox("🔴 Acquisti di " + per + (q ? " (con la ricerca)" : ""), lf.reduce((s, d) => s + netAcq(d), 0), lf.reduce((s, d) => s + impAcq(d), 0), lf.length, "var(--cor-2,#ffe3da)")}
   <div class="tiles" style="margin-bottom:10px"><div class="tile" data-conf="dapagare"><div class="n money" style="font-size:19px">${eur(dp.reduce((s, d) => s + num(d.importo), 0))}</div><div class="l">Fatture fornitori da pagare (${dp.length})</div></div><div class="tile"><div class="n" style="color:${scad.length ? "var(--bad)" : "inherit"}">${scad.length}</div><div class="l">Scadute</div></div></div>
-  <button class="btn pri big" data-contab="up" style="margin-bottom:10px">⬆ Carica fatture o DDT (PDF o foto)</button>
+  <div class="row wrap" style="gap:8px;margin-bottom:10px"><button class="btn pri big" data-contab="up" style="flex:1 1 60%">⬆ Carica fatture o DDT (PDF o foto)</button><button class="btn" data-contab="newa" style="flex:1 1 30%">+ Nuova fattura a mano</button></div>
   <div class="seg">${[["tutti", "Tutti"], ["fatture", "Fatture"], ["ddt", "DDT"], ["dapagare", "Da pagare"]].map(([k, lb]) => `<button class="${F === k ? "on" : ""}" data-conf="${k}">${lb}</button>`).join("")}</div>
   <input class="search" placeholder="Cerca fornitore, numero, cantiere…" value="${esc(ui.q)}" data-q>
-  ${l.length ? perMese(l, d => d.tipo === "DDT" ? 0 : netAcq(d), d => d.tipo === "DDT" ? 0 : impAcq(d), d => `<div class="card"><div class="row"><span class="t tap" data-contabd="${d.id}" style="flex:1;cursor:pointer">${esc(d.fornitore || "—")} · ${esc(d.tipo)}${d.numero ? " n. " + esc(d.numero) : ""}</span>${d.tipo === "Fattura fornitore" ? `<span class="chip ${d.pagata ? "ok" : d.scadenza && d.scadenza < t ? "bad" : "warn"}">${d.pagata ? "pagata" : d.scadenza ? "scade " + fd(d.scadenza) : "da pagare"}</span>` : ""}</div>
+  <div class="row" style="gap:6px;margin:-2px 0 4px"><span class="m" style="flex:1">In ordine di numero di registro</span><button class="btn sm" data-regcres>${cres ? "↑ dal primo" : "↓ dall'ultimo"}</button></div>
+  ${l.length ? perMeseReg(l, d => d.tipo === "DDT" ? 0 : netAcq(d), d => d.tipo === "DDT" ? 0 : impAcq(d), d => `<div class="card"><div class="row"><span class="t tap" data-contabd="${d.id}" style="flex:1;cursor:pointer">${d.carico ? `<span class="chip" style="font-size:12px;margin-right:4px">Reg. ${esc(d.carico)}</span>` : `<span class="chip warn" style="font-size:11px;margin-right:4px">senza n. reg.</span>`}${esc(d.fornitore || "—")} · ${esc(d.tipo)}${d.numero ? " n. " + esc(d.numero) : ""}</span>${d.tipo === "Fattura fornitore" ? `<span class="chip ${d.pagata ? "ok" : d.scadenza && d.scadenza < t ? "bad" : "warn"}">${d.pagata ? "pagata" : d.scadenza ? "scade " + fd(d.scadenza) : "da pagare"}</span>` : ""}</div>
     <div class="m">${esc(fd(d.data))}${num(d.importo) ? " · " + eur(d.importo) : ""}${d.rif ? " · " + esc(d.rif) : ""}${d.caricatoDa ? " · caricato da " + esc(d.caricatoDa) : ""}</div>
-    ${d.file || (d.tipo === "Fattura fornitore" && !d.pagata) ? `<div class="row" style="margin-top:6px;gap:6px">${d.file ? `<a class="btn sm" style="text-decoration:none" href="${esc(d.file.url)}" target="_blank" rel="noopener">📎 Apri ${esc(/pdf/.test(d.file.tipo || "") ? "PDF" : "file")}</a>` : ""}${d.tipo === "Fattura fornitore" && !d.pagata ? `<button class="btn sm" data-contabpag="${d.id}">✓ Pagata</button>` : ""}</div>` : ""}</div>`) : empty("Nessun documento. Carica le fatture dei fornitori e i DDT: li vedete solo tu e chi abiliti.")}`;
+    ${d.file || (d.tipo === "Fattura fornitore" && !d.pagata) ? `<div class="row" style="margin-top:6px;gap:6px">${d.file ? `<a class="btn sm" style="text-decoration:none" href="${esc(d.file.url)}" target="_blank" rel="noopener">📎 Apri ${esc(/pdf/.test(d.file.tipo || "") ? "PDF" : "file")}</a>` : ""}${d.tipo === "Fattura fornitore" && !d.pagata ? `<button class="btn sm" data-contabpag="${d.id}">✓ Pagata</button>` : ""}</div>` : ""}${rateDi(d) ? `<div class="row wrap" style="gap:4px;margin-top:6px">${d.rate.map((q, i) => `<span class="chip ${q.pagata ? "ok" : q.scadenza < today() ? "bad" : ""}" style="font-size:11px">${i + 1}ª ${esc(fd(q.scadenza))} · ${eur(q.importo)}${q.pagata ? " ✓" : ""}</span>`).join("")}</div>` : ""}</div>`) : empty("Nessun documento. Carica le fatture dei fornitori e i DDT: li vedete solo tu e chi abiliti.")}`;
 }
 
 // ---- solo ufficio vero (Tommaso e Irene): F-gas completo, libretto e catasto, detrazioni fiscali ----
@@ -5187,13 +5238,16 @@ document.addEventListener("click", async e => {
   if (d.contab === "up") return caricaContab();
   if (d.contab === "upv") return caricaVendite();
   if (d.contab === "newv") return formFattura();
+  if (d.contab === "newa") return formContab({tipo: "Fattura fornitore"});
   if (d.contab === "pacchetto") return importaPacchetto();
   if (d.consez) { ui.conSez = d.consez; ui.q = ""; return render(); }
   if (d.convf) { ui.conVF = d.convf; return render(); }
   if (d.conanno) { ui.conAnno = d.conanno; ui.conMese = ""; return render(); }
   if (d.conmese !== undefined) { ui.conMese = d.conmese; return render(); }
   if (d.contabd) { const x = (S.contabilita || []).find(y => y.id === d.contabd); if (x) formContab(x); return; }
-  if (d.contabpag) { await patch("contabilita", d.contabpag, {pagata: true, pagataIl: today()}); toast("Segnata come pagata"); return; }
+  if (d.contabpag) { const x = byId("contabilita", d.contabpag), r = x && rateDi(x);
+    if (r) { const aperte = r.filter(q => !q.pagata).length; if (!confirm(`Questa fattura è a rate: segno pagate tutte le ${aperte} rate ancora aperte? (Per pagarne una sola usa lo 📅 Scadenziario)`)) return; }
+    await patch("contabilita", d.contabpag, {pagata: true, pagataIl: today(), ...(r ? {rate: r.map(q => q.pagata ? q : {...q, pagata: true, pagataIl: today()})} : {})}); toast("Segnata come pagata"); return; }
   if (d.conf) { ui.conF = d.conf; ui.altro = "contab"; render(); return; }
   if (d.tecfur) { ui.tecF = "furgone"; render(); return; }
 });
