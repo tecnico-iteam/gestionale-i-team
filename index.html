@@ -250,6 +250,7 @@ nav.tabs button.on svg{background:var(--pri-2);border-radius:12px;padding:3px 10
 .tecpage .card .btn.big{padding:10px}.tecpage h3{margin:12px 0 6px}}
 .orario{border-color:#c9bdfb}.orario-g{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}.orario-g label{font-size:12px;color:var(--mute);display:flex;flex-direction:column;gap:3px}
 .orario-g input{font-size:16px;padding:8px 4px;min-width:0;width:100%;box-sizing:border-box}.orario-g{grid-template-columns:1.2fr 1.2fr .9fr!important}.xls tr.manca td{background:#fff7e0!important}
+.card .xls-wrap{width:auto;min-width:0;max-width:100%;left:0;transform:none}
 </style>
 </head>
 <body>
@@ -4277,7 +4278,7 @@ function vociScad(){
   return v;
 }
 function vContabScad(){
-  const t = today(), in7 = addDays(t, 7), in30 = addDays(t, 30), f = ui.scadF || "tutto", fatti = !!ui.scadFatti;
+  const t = today(), f = ui.scadF || "tutto", fatti = !!ui.scadFatti;
   let l = vociScad().filter(x => f === "tutto" || x.dir === f);
   const aperte = l.filter(x => !x.fatto && x.importo > 0.005);
   const somma = (arr, dir) => arr.filter(x => x.dir === dir).reduce((s, x) => s + x.importo, 0);
@@ -4285,22 +4286,22 @@ function vContabScad(){
   const q = (ui.q || "").toLowerCase();
   let vis = fatti ? l.filter(x => !x.fatto || (x.fattoIl || "") >= addDays(t, -60)) : aperte;
   if (q) vis = vis.filter(x => [x.chi, x.doc, x.carico, x.metodo, x.termini].join(" ").toLowerCase().includes(q));
-  const gruppi = [["⚠️ Scaduti", x => !x.fatto && x.scad && x.scad < t, "#fff0ed"], ["Entro 7 giorni", x => !x.fatto && x.scad >= t && x.scad <= in7, ""], ["Entro 30 giorni", x => !x.fatto && x.scad > in7 && x.scad <= in30, ""],
-    ["Oltre 30 giorni", x => !x.fatto && x.scad > in30, ""], ["Senza scadenza", x => !x.fatto && !x.scad, ""], ["✓ Incassati e pagati (ultimi 60 giorni)", x => x.fatto, "#eefaf4"]];
   const riga = x => { const ritardo = !x.fatto && x.scad && x.scad < t ? giorniDa(x.scad) : 0;
     return `<tr><td>${esc(fd(x.scad)) || "–"}${ritardo ? `<br><span style="color:var(--bad);font-size:11px;font-weight:800">da ${ritardo} gg</span>` : ""}</td>
-    <td style="text-align:center;font-weight:800;color:${x.dir === "in" ? "var(--ok)" : "var(--bad)"}">${x.dir === "in" ? "⬇ Incasso" : "⬆ Pagamento"}</td>
     <td>${esc(x.carico) || "–"}</td><td class="apri" data-topen="${x.col}|${x.docId || x.id}" title="Apri la scheda">↗ ${esc(x.chi)}</td><td>${esc(x.doc)}</td><td>${esc(termTxt(x)) || "–"}</td>
     <td class="num"><b style="color:${x.dir === "in" ? "var(--ok)" : "var(--bad)"}">${x.dir === "in" ? "+" : "−"} ${eur(x.importo)}</b></td>
     <td style="text-align:center">${x.fatto ? `<span class="chip ok" style="font-size:11px">${x.dir === "in" ? "Incassato" : "Pagato"} ${esc(fd(x.fattoIl))}</span>` : `<button class="btn sm" data-scadok="${x.col}|${x.id}">${x.dir === "in" ? "✓ Arrivato" : "✓ Pagato"}</button>`}</td></tr>`; };
-  const tabella = (tit, fn, bg) => { const r = vis.filter(fn).sort((a, b) => (a.scad || "9").localeCompare(b.scad || "9") || a.dir.localeCompare(b.dir)); if (!r.length) return "";
-    const ent = somma(r, "in"), usc = somma(r, "out");
-    return `<div class="row" style="margin:14px 0 6px"><b style="flex:1;font-size:16px">${tit} (${r.length})</b><span class="m">${ent ? `<b style="color:var(--ok)">+${eur(ent)}</b>` : ""}${ent && usc ? " · " : ""}${usc ? `<b style="color:var(--bad)">−${eur(usc)}</b>` : ""}</span></div>
-    <div class="xls-wrap" style="max-height:none${bg ? ";background:" + bg : ""}"><table class="xls"><thead><tr>${["Scadenza", "Movimento", "N. carico", "Cliente / fornitore", "Documento", "Termini e pagamento", "Importo", "Stato"].map((h, i) => `<th style="width:${[100, 110, 80, 210, 170, 170, 120, 120][i]}px" class="${i === 6 ? "num" : ""}">${h}</th>`).join("")}</tr></thead><tbody>${r.map(riga).join("")}</tbody></table></div>`; };
-  // previsione di cassa per mese (solo voci aperte)
-  const mesi = [...new Set(aperte.filter(x => x.scad).map(x => (x.scad < t ? t : x.scad).slice(0, 7)))].sort().slice(0, 6);
-  const prev = mesi.length ? `<h3>Previsione di cassa</h3><div style="overflow-x:auto"><table class="oretab"><thead><tr><th>Mese</th><th>⬇ Incassi attesi</th><th>⬆ Pagamenti</th><th>Saldo</th></tr></thead><tbody>${mesi.map(m => { const r = aperte.filter(x => x.scad && (x.scad < t ? t : x.scad).startsWith(m)), e = somma(r, "in"), u = somma(r, "out");
-    return `<tr><td>${esc(meseNome(m))}${m === t.slice(0, 7) && scadute.length ? " <span class='m'>(con gli scaduti)</span>" : ""}</td><td style="color:var(--ok)">${eur(e)}</td><td style="color:var(--bad)">${eur(u)}</td><td><b style="color:${e - u >= 0 ? "var(--ok)" : "var(--bad)"}">${eur(e - u)}</b></td></tr>`; }).join("")}</tbody></table></div>` : "";
+  // raggruppa per mese di scadenza: in ogni mese prima gli incassi poi i pagamenti, con i totali del mese
+  const head = `<thead><tr>${["Scadenza", "N. carico", "Cliente / fornitore", "Documento", "Termini e pagamento", "Importo", "Stato"].map((h, i) => `<th style="width:${[100, 80, 220, 190, 170, 120, 120][i]}px" class="${i === 5 ? "num" : ""}">${h}</th>`).join("")}</tr></thead>`;
+  const mesiV = [...new Set(vis.map(x => (x.scad || "").slice(0, 7)))].sort((a, b) => (a || "9999").localeCompare(b || "9999"));
+  const meseBlocco = m => { const r = vis.filter(x => (x.scad || "").slice(0, 7) === m).sort((a, b) => (a.scad || "").localeCompare(b.scad || ""));
+    const ap = r.filter(x => !x.fatto), ent = somma(ap, "in"), usc = somma(ap, "out"), passato = m && m < t.slice(0, 7), corrente = m === t.slice(0, 7);
+    const parte = (dir, tit) => { const q = r.filter(x => x.dir === dir); if (!q.length) return "";
+      return `<div class="m" style="margin:8px 2px 4px;font-weight:800;color:${dir === "in" ? "var(--ok)" : "var(--bad)"}">${tit} (${q.filter(x => !x.fatto).length})</div><div class="xls-wrap" style="max-height:none"><table class="xls">${head}<tbody>${q.map(riga).join("")}</tbody></table></div>`; };
+    return `<div class="card" style="margin-top:14px;${passato && ap.length ? "border-color:#f3b4a6" : corrente ? "border-color:#c9bdfb" : ""}"><div class="row wrap" style="gap:8px;align-items:baseline">
+      <b style="flex:1;font-size:18px">${m ? esc(meseNome(m).replace(/^./, c => c.toUpperCase())) : "Senza scadenza"}${passato && ap.length ? ` <span class="chip bad" style="font-size:11px">⚠️ scaduto</span>` : corrente ? ` <span class="chip" style="font-size:11px">questo mese</span>` : ""}</b>
+      <span>${ent ? `<b style="color:var(--ok)">⬇ +${eur(ent)}</b>` : ""}${ent && usc ? " · " : ""}${usc ? `<b style="color:var(--bad)">⬆ −${eur(usc)}</b>` : ""}${ent || usc ? ` · saldo <b style="color:${ent - usc >= 0 ? "var(--ok)" : "var(--bad)"}">${eur(ent - usc)}</b>` : `<span class="m">tutto chiuso ✓</span>`}</span></div>
+      ${parte("in", "⬇ Incassi")}${parte("out", "⬆ Pagamenti")}</div>`; };
   return `<div class="tiles" style="margin-bottom:10px">
     <div class="tile" style="background:#e5f4e4"><div class="l" style="color:#1e6b3a">⬇ Da incassare</div><div class="n money" style="font-size:20px;color:#1e6b3a">${eur(somma(aperte, "in"))}</div><div class="m">${aperte.filter(x => x.dir === "in").length} fatture</div></div>
     <div class="tile" style="background:#fbebeb"><div class="l" style="color:#a8361a">⬆ Da pagare</div><div class="n money" style="font-size:20px;color:#a8361a">${eur(somma(aperte, "out"))}</div><div class="m">${aperte.filter(x => x.dir === "out").length} tra fatture e spese</div></div>
@@ -4309,9 +4310,8 @@ function vContabScad(){
   <div class="row wrap" style="gap:8px;margin-bottom:8px"><div class="seg" style="margin:0;flex:1;min-width:260px">${[["tutto", "Tutto"], ["in", "⬇ Incassi"], ["out", "⬆ Pagamenti"]].map(([k, lb]) => `<button class="${f === k ? "on" : ""}" data-scadf="${k}">${lb}</button>`).join("")}</div>
   <label class="row" style="gap:6px;cursor:pointer"><input type="checkbox" data-scadfatti ${fatti ? "checked" : ""} style="width:auto"> Mostra anche incassati e pagati</label><button class="btn" data-a="scadxls">⬇ Excel</button></div>
   <input class="search" placeholder="Cerca cliente, fornitore, n. carico, fattura…" value="${esc(ui.q)}" data-q>
-  ${gruppi.map(([tit, fn, bg]) => tabella(tit, fn, bg)).join("") || empty("Niente da incassare o da pagare. 🎉")}
-  ${prev}
-  <p class="m">Le scadenze arrivano dalle fatture (termini 30/60/90 giorni, anche fine mese) e dalle altre spese. Quando arriva un bonifico tocca "✓ Arrivato"; quando paghi un fornitore "✓ Pagato". ↗ apre la scheda completa.</p>`;
+  ${mesiV.length ? mesiV.map(meseBlocco).join("") : empty("Niente da incassare o da pagare. 🎉")}
+  <p class="m">Divise per mese di scadenza (i mesi passati con voci ancora aperte sono segnati ⚠️ scaduto). Le scadenze arrivano dalle fatture (termini 30/60/90 giorni, anche fine mese) e dalle altre spese. Quando arriva un bonifico tocca "✓ Arrivato"; quando paghi un fornitore "✓ Pagato". ↗ apre la scheda completa.</p>`;
 }
 async function segnaFattoScad(col, id){
   if (id.includes("#")) { const [did, i] = id.split("#"), d = byId(col, did); if (!d || !rateDi(d)) return;
